@@ -1,0 +1,9 @@
+V21 — Restore old Food page UI
+- Replaced the temporary V20 food list UI with the previous compact table-style Food page.
+- Sticky header: Thực phẩm / Kcal / Đạm / Carb / Fat / Tỷ lệ.
+- Restored old category model: Thịt, Cá, Trứng, Bơ sữa, Tinh bột, Rau củ, Hoa quả, Hạt, Bánh, Ăn ngoài, Ăn vặt, Gia vị, Đồ uống.
+- Category controls use 3 columns on mobile.
+- Retained V20 parser/recognition fixes and dried shrimp data.
+- Tép khô and Tôm khô remain in the local food engine; no 22,000 kcal bug.
+- Display conventions: Bánh mì baguette, Ức gà phi lê không da, Đùi gà phi lê không da.
+- Cache bumped to V21.

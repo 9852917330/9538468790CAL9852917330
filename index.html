@@ -1104,10 +1104,63 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </style>
 
 
-<style id="food-database-v20">
-.food-db-section{overflow:hidden}.food-db-toolbar{display:flex;align-items:center;gap:10px;margin:14px 0 10px}.food-search-wrap{flex:1;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);min-height:46px}.food-search-wrap span{font-size:20px;color:var(--muted)}.food-search-wrap input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:12px;font-weight:750}.food-search-wrap input::placeholder{color:var(--muted);font-weight:650}.food-db-count{white-space:nowrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:10px;font-weight:900}.food-db-categories{display:flex;gap:7px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}.food-db-categories::-webkit-scrollbar{display:none}.food-cat{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.03);color:var(--muted);font-size:10px;font-weight:950}.food-cat.active{background:linear-gradient(135deg,var(--mint),var(--mint2));border-color:transparent;color:#073529}.food-db-head{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;color:var(--muted);font-size:9px}.food-db-head strong{color:var(--text);font-size:11px}.food-db-list{display:grid;gap:8px}.food-db-row{display:grid;grid-template-columns:minmax(170px,1.4fr) minmax(230px,1fr) auto;gap:12px;align-items:center;padding:12px 13px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.025)}.food-db-name{min-width:0}.food-db-name strong{display:block;font-size:12px;line-height:1.3}.food-db-name small{display:block;margin-top:4px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.food-db-macros{display:flex;gap:6px;flex-wrap:wrap}.food-db-metric{padding:5px 7px;border-radius:999px;border:1px solid var(--line);font-size:9px;font-weight:900;white-space:nowrap}.food-db-kcal{font-size:13px;font-weight:1000;text-align:right}.food-db-kcal small{display:block;margin-top:2px;color:var(--muted);font-size:8px;font-weight:800}.food-db-empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:15px;font-size:11px}
-html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row,html[data-theme="light"] .food-cat{background:#fff!important;border-color:#cddbd7!important}html[data-theme="dark"] .food-search-wrap,html[data-theme="dark"] .food-db-row,html[data-theme="dark"] .food-cat{background:#172b41!important;border-color:#405f7d!important}
-@media(max-width:620px){.food-db-toolbar{align-items:stretch;flex-direction:column}.food-db-count{align-self:flex-start}.food-db-row{grid-template-columns:1fr auto;gap:8px}.food-db-macros{grid-column:1/-1;grid-row:2}.food-db-kcal{grid-column:2;grid-row:1}.food-db-head span{display:none}}
+<style id="food-database-v21-old-ui">
+/* V21 — khôi phục giao diện trang Thực phẩm kiểu cũ: bảng dữ liệu + header sticky + nhóm 3 cột trên mobile */
+#page-foods .food-library{overflow:visible}
+#page-foods .section-head{margin-bottom:12px}
+#page-foods .food-old-note{color:var(--muted);font-size:10px;line-height:1.5;margin-top:3px}
+#page-foods .food-search-old{display:flex;align-items:center;gap:9px;min-height:44px;padding:0 13px;margin:0 0 12px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}
+#page-foods .food-search-old b{font-size:17px;color:var(--muted);line-height:1}
+#page-foods .food-search-old input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:11px;font-weight:750}
+#page-foods .food-search-old input::placeholder{color:var(--muted)}
+#page-foods .food-category-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin-bottom:14px}
+#page-foods .food-cat-old{min-width:0;border:1px solid var(--line);border-radius:11px;padding:9px 6px;background:rgba(255,255,255,.025);color:var(--muted);font:inherit;font-size:9px;font-weight:950;line-height:1.15;cursor:pointer;text-align:center}
+#page-foods .food-cat-old.active{background:linear-gradient(135deg,var(--mint),var(--mint2));border-color:transparent;color:#073529;box-shadow:0 7px 16px rgba(28,196,147,.14)}
+#page-foods .food-table-shell{border:1px solid var(--line);border-radius:15px;overflow:clip;background:rgba(255,255,255,.02)}
+#page-foods .food-table-head{position:sticky;top:69px;z-index:8;display:grid;grid-template-columns:minmax(150px,1.55fr) .65fr .7fr .7fr .7fr .7fr;align-items:center;gap:0;padding:10px 11px;border-bottom:1px solid var(--line);background:var(--surface,#0e1b18);backdrop-filter:blur(14px);box-shadow:0 8px 18px rgba(0,0,0,.08);font-size:8px;font-weight:1000;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+#page-foods .food-table-head span:not(:first-child){text-align:center}
+#page-foods .food-group-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;background:rgba(101,242,194,.07);border-bottom:1px solid var(--line)}
+#page-foods .food-group-title strong{font-size:10px;letter-spacing:.01em}
+#page-foods .food-group-title small{font-size:8px;color:var(--muted);font-weight:850}
+#page-foods .food-old-row{display:grid;grid-template-columns:minmax(150px,1.55fr) .65fr .7fr .7fr .7fr .7fr;align-items:stretch;border-bottom:1px solid var(--line);min-height:46px}
+#page-foods .food-old-row:last-child{border-bottom:0}
+#page-foods .food-old-cell{display:flex;align-items:center;padding:8px 7px;min-width:0;font-size:9px}
+#page-foods .food-old-cell:not(:first-child){justify-content:center;text-align:center;border-left:1px solid rgba(130,165,155,.12);font-weight:900}
+#page-foods .food-old-name{display:block;min-width:0}
+#page-foods .food-old-name b{display:block;color:var(--text);font-size:10px;line-height:1.25;white-space:normal}
+#page-foods .food-old-name small{display:block;margin-top:3px;color:var(--muted);font-size:7.5px;line-height:1.25;white-space:normal}
+#page-foods .food-old-kcal{color:#ffb84d}.food-old-protein{color:#66bfff}.food-old-carb{color:#ffc86f}.food-old-fat{color:#c7a1ff}
+#page-foods .food-old-ratio{font-size:8.5px!important;color:var(--mint)!important}
+#page-foods .food-old-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:10px}
+#page-foods .food-total-line{display:flex;justify-content:space-between;gap:10px;margin:10px 2px 0;color:var(--muted);font-size:8.5px}
+html[data-theme="light"] #page-foods .food-search-old,html[data-theme="light"] #page-foods .food-cat-old,html[data-theme="light"] #page-foods .food-table-shell{background:#fff!important;border-color:#cddbd7!important}
+html[data-theme="light"] #page-foods .food-table-head{background:rgba(255,255,255,.96)!important;border-color:#cddbd7!important;color:#647b73!important}
+html[data-theme="light"] #page-foods .food-group-title{background:#eefbf6!important;border-color:#d6e8e2!important}
+html[data-theme="dark"] #page-foods .food-search-old,html[data-theme="dark"] #page-foods .food-cat-old,html[data-theme="dark"] #page-foods .food-table-shell{background:#172b41!important;border-color:#405f7d!important}
+html[data-theme="dark"] #page-foods .food-table-head{background:rgba(20,37,56,.96)!important;border-color:#405f7d!important}
+html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!important}
+@media(max-width:760px){
+  #page-foods .food-category-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  #page-foods .food-cat-old{padding:9px 4px;font-size:8.5px}
+  #page-foods .food-table-shell{border-radius:12px;overflow:visible}
+  #page-foods .food-table-head,#page-foods .food-old-row{grid-template-columns:minmax(110px,1.55fr) .58fr .62fr .62fr .62fr .64fr}
+  #page-foods .food-table-head{top:62px;padding:9px 4px;font-size:7px;border-radius:10px 10px 0 0}
+  #page-foods .food-table-head span:first-child{padding-left:5px}
+  #page-foods .food-old-row{min-height:44px}
+  #page-foods .food-old-cell{padding:7px 3px;font-size:8px}
+  #page-foods .food-old-cell:first-child{padding-left:7px}
+  #page-foods .food-old-name b{font-size:9px}
+  #page-foods .food-old-name small{font-size:6.7px}
+  #page-foods .food-old-ratio{font-size:7.4px!important}
+  #page-foods .food-group-title{padding:9px 8px}
+}
+@media(max-width:390px){
+  #page-foods .food-table-head,#page-foods .food-old-row{grid-template-columns:minmax(96px,1.45fr) .58fr .62fr .62fr .62fr .66fr}
+  #page-foods .food-table-head{font-size:6.5px}
+  #page-foods .food-old-cell{font-size:7.4px;padding-left:2px;padding-right:2px}
+  #page-foods .food-old-name b{font-size:8.4px}
+  #page-foods .food-old-name small{display:none}
+}
 </style>
 </head>
 
@@ -1165,22 +1218,30 @@ html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row
     <aside class="panel forecast-panel"><div class="forecast-list" id="targetDates"></div></aside>
   </div></section>
 </section>
-<section id="page-foods" class="page"><section class="section food-db-section" style="margin-top:0">
-  <div class="section-head"><div><h2>Thực phẩm</h2><p>Danh sách món ưu tiên của web. Khi nhập đúng tên hoặc alias của món, dữ liệu ở đây được dùng trước nguồn trực tuyến.</p></div><span class="tag">FOOD DATABASE</span></div>
-  <div class="food-db-toolbar">
-    <label class="food-search-wrap" for="foodDbSearch"><span>⌕</span><input id="foodDbSearch" type="search" autocomplete="off" placeholder="Tìm thực phẩm, ví dụ: cá lăng, tép khô, phở bò…"></label>
-    <div id="foodDbCount" class="food-db-count">—</div>
+<section id="page-foods" class="page"><section class="section food-library" style="margin-top:0">
+  <div class="section-head"><div><h2>Thực phẩm</h2><p class="food-old-note">Bảng thực phẩm thường dùng · dữ liệu theo 100g nếu không ghi đơn vị khác.</p></div><span class="tag">THỰC PHẨM</span></div>
+  <label class="food-search-old" for="foodDbSearch"><b>⌕</b><input id="foodDbSearch" type="search" autocomplete="off" placeholder="Tìm món trong bảng thực phẩm…"></label>
+  <div id="foodDbCategories" class="food-category-grid" role="tablist" aria-label="Nhóm thực phẩm">
+    <button type="button" class="food-cat-old active" data-food-cat="all">Tất cả</button>
+    <button type="button" class="food-cat-old" data-food-cat="meat">Thịt</button>
+    <button type="button" class="food-cat-old" data-food-cat="fish">Cá</button>
+    <button type="button" class="food-cat-old" data-food-cat="egg">Trứng</button>
+    <button type="button" class="food-cat-old" data-food-cat="dairy">Bơ sữa</button>
+    <button type="button" class="food-cat-old" data-food-cat="starch">Tinh bột</button>
+    <button type="button" class="food-cat-old" data-food-cat="vegetable">Rau củ</button>
+    <button type="button" class="food-cat-old" data-food-cat="fruit">Hoa quả</button>
+    <button type="button" class="food-cat-old" data-food-cat="nuts">Hạt</button>
+    <button type="button" class="food-cat-old" data-food-cat="bakery">Bánh</button>
+    <button type="button" class="food-cat-old" data-food-cat="outside">Ăn ngoài</button>
+    <button type="button" class="food-cat-old" data-food-cat="snack">Ăn vặt</button>
+    <button type="button" class="food-cat-old" data-food-cat="seasoning">Gia vị</button>
+    <button type="button" class="food-cat-old" data-food-cat="drink">Đồ uống</button>
   </div>
-  <div id="foodDbCategories" class="food-db-categories" role="tablist" aria-label="Nhóm thực phẩm">
-    <button type="button" class="food-cat active" data-food-cat="all">Tất cả</button>
-    <button type="button" class="food-cat" data-food-cat="home">Ăn trong</button>
-    <button type="button" class="food-cat" data-food-cat="outside">Ăn ngoài</button>
-    <button type="button" class="food-cat" data-food-cat="snack">Ăn vặt</button>
-    <button type="button" class="food-cat" data-food-cat="seasoning">Gia vị</button>
-    <button type="button" class="food-cat" data-food-cat="drink">Đồ uống</button>
+  <div class="food-table-shell">
+    <div class="food-table-head"><span>Thực phẩm</span><span>Kcal</span><span>Đạm</span><span>Carb</span><span>Fat</span><span>Tỷ lệ</span></div>
+    <div id="foodDbList"></div>
   </div>
-  <div class="food-db-head"><strong>Danh sách thực phẩm</strong><span>Kcal · Protein · Carb · Fat</span></div>
-  <div id="foodDbList" class="food-db-list"></div>
+  <div class="food-total-line"><span id="foodDbCount">—</span><span>Dữ liệu trang này cũng được dùng để nhận diện món khi nhập nhật ký.</span></div>
 </section></section>
 <section id="page-calendar" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2 id="calendarTitle">Lịch năm</h2><p>Tự động hiển thị năm hiện tại. Ô mint là ngày thâm hụt; ô đỏ là ngày dư thừa.</p></div><div class="calendar-summary"><span class="summary-chip"><i class="key good"></i>Ngày thâm hụt <b id="calendarGood">0</b></span><span class="summary-chip"><i class="key bad"></i>Ngày dư thừa <b id="calendarBad">0</b></span><span class="summary-chip"><i class="key empty"></i>Chưa đủ dữ liệu <b id="calendarEmpty">0</b></span></div></div><div id="yearCalendar" class="year-calendar"></div></section></section>
 <section id="page-charts" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Biểu đồ tiến độ</h2><p>Bốn biểu đồ có kích thước cân đối và cùng nhịp hiển thị.</p></div><span class="tag">DAILY TREND</span></div><div class="grid chart-grid">
@@ -8102,16 +8163,30 @@ html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row
     };
   }
   let foodDbCategory = "all";
+  const FOOD_CATEGORY_LABELS = {
+    meat:"THỊT",fish:"CÁ",egg:"TRỨNG",dairy:"BƠ SỮA",starch:"TINH BỘT",vegetable:"RAU CỦ",fruit:"HOA QUẢ",nuts:"HẠT",bakery:"BÁNH",outside:"ĂN NGOÀI",snack:"ĂN VẶT",seasoning:"GIA VỊ",drink:"ĐỒ UỐNG"
+  };
+  const FOOD_CATEGORY_ORDER = ["meat","fish","egg","dairy","starch","vegetable","fruit","nuts","bakery","outside","snack","seasoning","drink"];
   function foodDisplayCategory(food) {
     const t = normalizePhrase(`${food.name || ""} ${food.en || ""} ${(food.aliases || []).join(" ")} ${food.id || ""}`);
-    if (/(coffee|cafe|tea|tra |matcha drink|milk tea|sua tuoi|milk$|soft drink|coca|pepsi|juice|nuoc ep|beer|bia|wine|smoothie|sinh to|coconut water|nuoc dua)/.test(t)) return "drink";
-    if (/(oil|dau |sesame|me |olive|butter|bo |sugar|duong|honey|mat ong|salt|muoi|fish sauce|nuoc mam|soy sauce|xi dau|sauce|sot |mayonnaise|ketchup|mustard|seasoning|gia vi|pepper|tieu|matcha powder|bot matcha)/.test(t)) return "seasoning";
-    if (/(banh chuoi chien|banana fritter|banh ran|donut|pate|khoai chien|french fries|potato fries|snack|chips|cookie|biscuit|chocolate|ice cream|kem |che |popcorn|nuts|hat |croissant|cake|brownie|muffin)/.test(t)) return "snack";
-    if (/(pho |bun |mien |hu tieu|noodle soup|mi vit quay|mi van than|mi quang|pasta|spaghetti|long ran|fried intestine|chim quay|roast bird|ngan chay toi|vit quay|roast duck|banh canh|nem ran|cha gio|fried spring roll|banh cuon|com rang|fried rice|pizza|burger|kfc|lotteria|restaurant)/.test(t)) return "outside";
-    return "home";
+    // Các món đã chốt phải giữ tại Ăn ngoài.
+    if (/(pho bo|pho ga|pho |bun ngan|bun bo|bun cha|bun rieu|bun |mien ngan|mien |hu tieu|mi vit quay|mi van than|mi quang|mi y|pasta|spaghetti|noodle soup|long ran|fried intestine|chim quay|roast bird|ngan chay toi|vit quay|roast duck|banh canh|nem ran|cha nem ran|cha gio|fried spring roll|banh cuon|com rang|fried rice|pizza|burger|kfc|lotteria|restaurant)/.test(t)) return "outside";
+    if (/(coffee|cafe|tea|tra |matcha drink|milk tea|soft drink|coca|pepsi|juice|nuoc ep|beer|bia|wine|smoothie|sinh to|coconut water|nuoc dua)/.test(t)) return "drink";
+    if (/(oil|dau |sesame oil|dau me|olive|sugar|duong|honey|mat ong|salt|muoi|fish sauce|nuoc mam|soy sauce|xi dau|sauce|sot |mayonnaise|ketchup|mustard|seasoning|gia vi|pepper|tieu|matcha powder|bot matcha)/.test(t)) return "seasoning";
+    // Ăn vặt: các món đã chốt + đồ khô/đồ sấy.
+    if (/(banh chuoi chien|banana fritter|banh ran|donut|pate|khoai chien|french fries|potato fries|snack|chips|cookie|biscuit|chocolate|ice cream|kem |che |popcorn|ca bo kho|muc kho|ga kho|bo kho|dried fruit|hoa qua say|tep kho|tom kho|dried tiny shrimp|dried shrimp)/.test(t)) return "snack";
+    if (/(croissant|baguette|banh mi khong|bread|cake|pancake|brownie|muffin|banh gai|banh dau xanh|banh com|banh nhan|banh |pastry)/.test(t)) return "bakery";
+    if (/(nut|nuts|hat dieu|hanh nhan|almond|cashew|peanut|lac |chia|walnut|pistachio|macadamia|seed)/.test(t)) return "nuts";
+    if (/(banana|chuoi|apple|tao |orange|cam |grape|nho |mango|xoai|papaya|du du|watermelon|dua hau|pineapple|dua |avocado|bo trai|dragon fruit|thanh long|longan|nhan |lychee|vai |fruit)/.test(t)) return "fruit";
+    if (/(vegetable|rau |cucumber|dua chuot|carrot|ca rot|broccoli|sup lo|cauliflower|pumpkin|bi do|spinach|cai |tomato|ca chua|mushroom|nam |corn|ngo |sweet corn)/.test(t)) return "vegetable";
+    if (/(rice|com |oat|yen mach|potato|khoai|sweet potato|xoi|sticky rice|porridge|chao|bun tuoi|pho noodle|glass noodle|mien dong|hu tieu noodle|egg noodle|noodle|tinh bot)/.test(t)) return "starch";
+    if (/(milk|sua |yogurt|sua chua|cheese|pho mai|butter|bo sua|whey)/.test(t)) return "dairy";
+    if (/(egg|trung|long trang)/.test(t)) return "egg";
+    if (/(fish|ca |salmon|ca hoi|tuna|ca ngu|anchov|ca com|shrimp|tom |prawn|tep |squid|muc |octopus|bach tuoc|oyster|hau |scallop|so diep|snail|oc |seafood|hai san)/.test(t)) return "fish";
+    return "meat";
   }
   function foodDisplayBasis(food) {
-    if (Number.isFinite(Number(food.perPortion)) && Number(food.perPortion) > 0) {
+    if (Number.isFinite(Number(food.perPortion)) && Number(food.perPortion) > 0 && !(Number(food.per100g)>0)) {
       return { kcal:Number(food.perPortion), protein:Number(food.defaultProtein)||0, carbs:Number(food.defaultCarbs)||0, fat:Number(food.defaultFat)||0, label:"1 phần" };
     }
     const kcal = Number(food.per100g);
@@ -8121,19 +8196,38 @@ html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row
       return { kcal, protein:Number(pm.per100g)||0, carbs:Number(mm.carbs100g)||0, fat:Number(mm.fat100g)||0, label:"100g" };
     }
     const unitKcal = Number(food.perUnit || food.perBowl || food.perCup || food.defaultKcal);
-    return { kcal:Number.isFinite(unitKcal)?unitKcal:0, protein:Number(food.defaultProtein)||0, carbs:Number(food.defaultCarbs)||0, fat:Number(food.defaultFat)||0, label:"1 phần" };
+    return { kcal:Number.isFinite(unitKcal)?unitKcal:0, protein:Number(food.defaultProtein)||0, carbs:Number(food.defaultCarbs)||0, fat:Number(food.defaultFat)||0, label:(food.perBowl?"1 bát":food.perCup?"1 cốc":"1 phần") };
   }
   function foodDbUniqueItems() {
     const out=[], seen=new Set();
+    // allFoods() giữ nguyên engine nhận diện V20; trang Thực phẩm chỉ là lớp trình bày.
     for (const f of allFoods()) {
       if (!f || f.isOnline || f.isHeuristic || !f.name) continue;
       const key=normalizePhrase(f.name);
       if (!key || seen.has(key)) continue;
       const d=foodDisplayBasis(f);
       if (!(d.kcal>0)) continue;
+      // Ẩn món quá chung chung theo layout cũ.
+      if (/^(lau cac loai|lau|hotpot)$/i.test(key)) continue;
       seen.add(key); out.push({...f,_display:d,_cat:foodDisplayCategory(f)});
     }
-    return out.sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
+    return out.sort((a,b)=>{
+      const ca=FOOD_CATEGORY_ORDER.indexOf(a._cat), cb=FOOD_CATEGORY_ORDER.indexOf(b._cat);
+      if(ca!==cb) return ca-cb;
+      return String(a.name).localeCompare(String(b.name),'vi');
+    });
+  }
+  function foodProteinRatio(d){
+    const kcal=Number(d.kcal)||0, p=Number(d.protein)||0;
+    if(!(kcal>0) || !(p>=0)) return "—";
+    return `${Math.round((p*4/kcal)*100)}%`;
+  }
+  function preferredFoodDisplayName(f){
+    const k=normalizePhrase(f.name||"");
+    if(k==="banh mi khong") return "Bánh mì baguette";
+    if(k==="uc ga") return "Ức gà phi lê không da";
+    if(k==="dui ga") return "Đùi gà phi lê không da";
+    return f.name||"";
   }
   function renderFoodDatabase() {
     const list=document.getElementById("foodDbList"), count=document.getElementById("foodDbCount"), input=document.getElementById("foodDbSearch");
@@ -8142,14 +8236,22 @@ html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row
     const items=foodDbUniqueItems().filter(f=>{
       if(foodDbCategory!=="all" && f._cat!==foodDbCategory) return false;
       if(!q) return true;
-      const hay=normalizePhrase(`${f.name||""} ${f.en||""} ${(f.aliases||[]).join(" ")}`);
+      const hay=normalizePhrase(`${preferredFoodDisplayName(f)} ${f.name||""} ${f.en||""} ${(f.aliases||[]).join(" ")}`);
       return hay.includes(q) || q.split(/\s+/).every(x=>hay.includes(x));
     });
     if(count) count.textContent=`${items.length} món`;
-    list.innerHTML=items.length?items.map(f=>{
-      const d=f._display, src=String(f.source||"").replace(/·/g," · ");
-      return `<article class="food-db-row"><div class="food-db-name"><strong>${escapeHtml(f.name)}</strong><small>${escapeHtml(f.en||src||"")}</small></div><div class="food-db-macros"><span class="food-db-metric">Protein ${fmt(d.protein,1)}g</span><span class="food-db-metric">Carb ${fmt(d.carbs,1)}g</span><span class="food-db-metric">Fat ${fmt(d.fat,1)}g</span></div><div class="food-db-kcal">${fmt(d.kcal)} kcal<small>${d.label}</small></div></article>`;
-    }).join(""):`<div class="food-db-empty">Không tìm thấy món phù hợp.</div>`;
+    const groups=foodDbCategory==="all" ? FOOD_CATEGORY_ORDER : [foodDbCategory];
+    let html="";
+    for(const cat of groups){
+      const groupItems=items.filter(f=>f._cat===cat);
+      if(!groupItems.length) continue;
+      html += `<div class="food-group-title"><strong>${FOOD_CATEGORY_LABELS[cat]||cat}</strong><small>${groupItems.length} món</small></div>`;
+      html += groupItems.map(f=>{
+        const d=f._display;
+        return `<article class="food-old-row"><div class="food-old-cell"><div class="food-old-name"><b>${escapeHtml(preferredFoodDisplayName(f))}</b><small>${escapeHtml(d.label)}${f.en?` · ${escapeHtml(f.en)}`:""}</small></div></div><div class="food-old-cell food-old-kcal">${fmt(d.kcal)}</div><div class="food-old-cell food-old-protein">${fmt(d.protein,1)}g</div><div class="food-old-cell food-old-carb">${fmt(d.carbs,1)}g</div><div class="food-old-cell food-old-fat">${fmt(d.fat,1)}g</div><div class="food-old-cell food-old-ratio">${foodProteinRatio(d)}</div></article>`;
+      }).join("");
+    }
+    list.innerHTML=html||`<div class="food-old-empty">Không tìm thấy món phù hợp.</div>`;
   }
   function previewFoodText() { renderFoodDatabase(); }
   function parseDurationMinutes(text, type) {
@@ -9318,9 +9420,9 @@ html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row
   }
   const foodDbSearch = document.getElementById("foodDbSearch");
   if (foodDbSearch) foodDbSearch.addEventListener("input", renderFoodDatabase);
-  document.querySelectorAll(".food-cat").forEach((b)=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".food-cat-old").forEach((b)=>b.addEventListener("click",()=>{
     foodDbCategory=b.dataset.foodCat||"all";
-    document.querySelectorAll(".food-cat").forEach(x=>x.classList.toggle("active",x===b));
+    document.querySelectorAll(".food-cat-old").forEach(x=>x.classList.toggle("active",x===b));
     renderFoodDatabase();
   }));
   renderFoodDatabase();
