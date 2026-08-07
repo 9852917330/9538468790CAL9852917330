@@ -1734,7 +1734,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-04-v50-authoritative-food-parser";
+  const APP_BUILD = "2026-08-07-v51-bilingual-food-parser-custom-macros";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -6672,6 +6672,15 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       .replace(/\s+/g, " ")
       .trim();
   }
+  /* V51: giữ dấu cho exact match tiếng Việt để phân biệt các tên như “Cốm” và “Cơm”. */
+  function normalizePhraseAccentV51(text = "") {
+    return String(text)
+      .toLowerCase()
+      .normalize("NFC")
+      .replace(/[^a-z0-9à-ỹđ.%/]+/gi," ")
+      .replace(/\s+/g," ")
+      .trim();
+  }
   function getOnlineFoods() {
     try {
       const x = JSON.parse(localStorage.getItem(ONLINE_FOOD_CACHE_KEY) || "[]");
@@ -6710,19 +6719,36 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
   function foodIndex() {
     if (FOOD_INDEX_CACHE) return FOOD_INDEX_CACHE;
-    const exact = new Map(), aliases = [];
+    const exact = new Map(), exactAccent = new Map(), aliases = [], catalogTexts = [];
     for (const item of allFoods()) {
       for (const raw of [item.name, item.en, ...(item.aliases || [])].filter(Boolean)) {
         const key = normalizePhrase(raw);
+        const accentKey = normalizePhraseAccentV51(raw);
         if (!key) continue;
-        const score = (Number(item.priority) || 0) + key.length * 20 + key.split(" ").length * 100;
+        const primaryBoost = raw===item.name ? 50000 : (item.en && raw===item.en ? 40000 : 0);
+        const score = (Number(item.priority) || 0) + primaryBoost + key.length * 20 + key.split(" ").length * 100;
         const current = exact.get(key);
         if (!current || score > current.baseScore) exact.set(key, { food:item, matchedAlias:raw, baseScore:score });
+        if (accentKey) {
+          const currentAccent = exactAccent.get(accentKey);
+          if (!currentAccent || score > currentAccent.baseScore) exactAccent.set(accentKey,{food:item,matchedAlias:raw,baseScore:score});
+        }
         aliases.push({ key, raw, food:item, baseScore:score });
+      }
+      if (item.authoritativeV50 && item.catalogAliasText) {
+        const text = normalizePhrase(item.catalogAliasText);
+        if (text) catalogTexts.push({
+          text,
+          singularText: singularizeEnglish(text),
+          food: item,
+          sourceScore: Number(item.catalogSourceScore) || 0,
+          curated: !!item.catalogCurated
+        });
       }
     }
     aliases.sort((a,b)=>b.key.length-a.key.length || b.baseScore-a.baseScore);
-    FOOD_INDEX_CACHE = { exact, aliases };
+    catalogTexts.sort((a,b)=>(b.curated-a.curated)||(b.sourceScore-a.sourceScore)||b.text.length-a.text.length);
+    FOOD_INDEX_CACHE = { exact, exactAccent, aliases, catalogTexts };
     return FOOD_INDEX_CACHE;
   }
   function setLookupText(text) {
@@ -7085,7 +7111,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         .filter(Boolean);
       for (const seg of segments) {
         const norm = normalizePhrase(seg);
-        if (/\d+(?:[.,]\d+)?\s*kcal\b/.test(norm) || findFood(norm)) continue;
+        if (/\d+(?:[.,]\d+)?\s*kcal\b/.test(norm) || findFood(seg)) continue;
         const q = cleanLookupQuery(seg),
           key = normalizePhrase(q);
         if (failed[key] && now - failed[key] < 21600000) continue;
@@ -7163,10 +7189,72 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       })
       .join(" ");
   }
+  function cleanCatalogAliasQueryV51(query) {
+    return normalizePhrase(query)
+      .replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|kilogram|kilograms|g|gram|grams|ml|l|lit|liter|litre|liters|litres|cai|chiec|qua|trai|mieng|vien|cuon|o|coc|ly|bat|chen|to|dia|plate|plates|hop|box|boxes|bich|bag|bags|goi|lon|que|xien|skewer|skewers|thia|muong|lat|slice|slices|serving|servings|phan|suat|piece|pieces|pc|pcs|unit|units|cup|cups|bowl|bowls|glass|glasses|pack|packet|packets|can|cans|con|whole|bird)\b/g," ")
+      .replace(/\b\d+(?:[.,]\d+)?\b/g," ")
+      .replace(/\s+/g," ").trim();
+  }
+  function authoritativeCatalogAliasMatchV51(query, idx) {
+    const raw = normalizePhrase(query);
+    const cleaned = cleanCatalogAliasQueryV51(query);
+    if ((!raw && !cleaned) || !idx?.catalogTexts?.length) return null;
+    const variants = [...new Set([cleaned, raw, singularizeEnglish(cleaned), singularizeEnglish(raw)].filter(Boolean))];
+    const genericSingles = new Set([
+      "raw","cooked","fresh","dried","food","dish","meal","meat","fish","rice","bread","cake","cheese","milk","bean","beans","seed","seeds","drink","tea","coffee","soup","noodle","noodles"
+    ]);
+    const matches = [];
+    for (const entry of idx.catalogTexts) {
+      let hitVariant = "";
+      for (const variant of variants) {
+        const words = variant.split(" ").filter(Boolean);
+        if (!variant || (words.length === 1 && (variant.length < 4 || genericSingles.has(variant)))) continue;
+        const pattern = escapeRegExp(variant).replace(/\s+/g, "\\s+");
+        const re = new RegExp(`(^|[^a-z0-9])${pattern}(?=$|[^a-z0-9])`, "i");
+        if (re.test(entry.text) || re.test(entry.singularText)) { hitVariant = variant; break; }
+      }
+      if (!hitVariant) continue;
+      const words = hitVariant.split(" ").length;
+      const canonical = normalizePhrase(entry.food?.name || "");
+      const curatedBoost = entry.curated ? 50000 : 0;
+      const canonicalBoost = canonical === hitVariant ? 100000 : 0;
+      const contextWords = entry.text.split(" ").filter(Boolean).length;
+      const specificityBoost = Math.max(0, 5000 - Math.max(0, contextWords - words) * 120);
+      const score = (Number(entry.food?.priority) || 0) + curatedBoost + canonicalBoost + specificityBoost + entry.sourceScore * 100 + hitVariant.length * 30 + words * 500;
+      matches.push({entry,score,hitVariant});
+    }
+    if (!matches.length) return null;
+    matches.sort((a,b)=>b.score-a.score);
+    const top = matches[0];
+    const sameFood = matches.filter((m)=>m.entry.food?.id===top.entry.food?.id);
+    const competing = matches.find((m)=>m.entry.food?.id!==top.entry.food?.id && m.score>=top.score-250);
+    if (competing && top.hitVariant.split(" ").length===1 && !top.entry.curated) return null;
+    return {
+      food: top.entry.food,
+      score: top.score,
+      matchedAlias: top.hitVariant,
+      catalogAlias: true,
+      duplicateHits: sameFood.length
+    };
+  }
   function findFood(norm) {
-    const normalized = normalizePhrase(norm);
+    const input = String(norm || "");
+    const normalized = normalizePhrase(input);
     if (!normalized) return null;
     const idx = foodIndex();
+    const accentCandidates=[normalizePhraseAccentV51(input),normalizePhraseAccentV51(cleanLookupQuery(input))].filter(Boolean);
+    for(const accentKey of [...new Set(accentCandidates)]){
+      const accentExact=idx.exactAccent?.get(accentKey);
+      if(accentExact) return {food:accentExact.food,score:9000000+accentExact.baseScore,matchedAlias:accentExact.matchedAlias,accentExact:true};
+    }
+    /* V51: tên/alias tiếng Anh nằm trong chính danh mục Thực phẩm được ưu tiên trước CSDL cũ. */
+    const catalogAlias = authoritativeCatalogAliasMatchV51(input, idx);
+    for (const variant of [normalized, singularizeEnglish(normalized)]) {
+      const exact = idx.exact.get(variant);
+      if (exact && (!catalogAlias || exact.food?.authoritativeV50))
+        return { food:exact.food, score:5000 + 2000 + exact.baseScore, matchedAlias:exact.matchedAlias };
+    }
+    if (catalogAlias) return catalogAlias;
     for (const variant of [normalized, singularizeEnglish(normalized)]) {
       const exact = idx.exact.get(variant);
       if (exact) return { food:exact.food, score:5000 + 2000 + exact.baseScore, matchedAlias:exact.matchedAlias };
@@ -8312,6 +8400,57 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       return `${fraction[1]}/${fraction[2]}`;
     return Number.isInteger(q) ? String(q) : fmt(q, 2);
   }
+  function parseExplicitMacroValueV51(text, labels) {
+    const raw = String(text || "");
+    const label = labels.map(escapeRegExp).join("|");
+    const numberFirst = new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*g(?:ram|rams)?\\s*(?:${label})\\b`, "i");
+    const labelFirst = new RegExp(`\\b(?:${label})\\s*[:=]?\\s*(\\d+(?:[.,]\\d+)?)\\s*g(?:ram|rams)?\\b`, "i");
+    const m = raw.match(numberFirst) || raw.match(labelFirst);
+    return m ? Number(String(m[1]).replace(",", ".")) : null;
+  }
+  function parseExplicitCustomNutritionV51(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return null;
+    const kcalMatch = raw.match(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calories?)\b/i);
+    if (!kcalMatch) return null;
+    const protein = parseExplicitMacroValueV51(raw,["đạm","dam","protein","proteins"]);
+    const carbs = parseExplicitMacroValueV51(raw,["carb","carbs","carbohydrate","carbohydrates","tinh bột","tinh bot"]);
+    const fat = parseExplicitMacroValueV51(raw,["fat","fats","chất béo","chat beo"]);
+    if (![protein,carbs,fat].some((v)=>Number.isFinite(v))) return null;
+    const kcal = Number(String(kcalMatch[1]).replace(",","."));
+    if (!(kcal>=0) || kcal>10000) return null;
+    const stripMacroPairs = (value) => String(value)
+      .replace(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calories?)\b/ig," ")
+      .replace(/(\d+(?:[.,]\d+)?)\s*g(?:ram|rams)?\s*(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\b/ig," ")
+      .replace(/\b(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*g(?:ram|rams)?\b/ig," ")
+      .replace(/(?:^|\s)(?:và|and)(?=\s|$)/ig," ")
+      .replace(/[=,:;|]+/g," ")
+      .replace(/\s+/g," ").trim();
+    const name = stripMacroPairs(raw) || "Món tự chế biến";
+    const missing = [protein===null?"Đạm":null,carbs===null?"Carb":null,fat===null?"Fat":null].filter(Boolean);
+    return {
+      name,kcal,
+      protein:protein??0,
+      carbs:carbs??0,
+      fat:fat??0,
+      missingMacros:missing,
+      completeMacros:missing.length===0
+    };
+  }
+  function splitFoodSegmentsV51(source) {
+    const hard = String(source||"").split(/\s*(?:\+|;|\n)\s*/i).map((s)=>s.trim()).filter(Boolean);
+    return hard.flatMap((part)=>{
+      /* Nếu có kcal + ít nhất một macro tự nhập, “và/and” thuộc cùng một món, không phải dấu tách món. */
+      if (parseExplicitCustomNutritionV51(part)) return [part];
+      const viParts = part.split(/\s+và\s+/i).map((s)=>s.trim()).filter(Boolean);
+      return viParts.flatMap((viPart)=>{
+        if (!/\s+and\s+/i.test(viPart)) return [viPart];
+        const whole = findFood(viPart);
+        const alias = normalizePhrase(whole?.matchedAlias || "");
+        return /\band\b/.test(alias) ? [viPart] : viPart.split(/\s+and\s+/i).map((s)=>s.trim()).filter(Boolean);
+      });
+    });
+  }
   function estimateFood(text) {
     const source = String(text ?? "").trim();
     if (!source || /^0+(?:[.,]0+)?$/.test(source))
@@ -8324,18 +8463,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         unresolvedCount: 0,
         warningCount: 0,
       };
-    const hardSegments = source
-      .split(/\s*(?:\+|;|\n|\s+và\s+)\s*/i)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const segments = hardSegments.flatMap((part) => {
-      if (!/\s+and\s+/i.test(part)) return [part];
-      const whole = findFood(normalizePhrase(part));
-      const alias = normalizePhrase(whole?.matchedAlias || "");
-      return /\band\b/.test(alias)
-        ? [part]
-        : part.split(/\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
-    });
+    const segments = splitFoodSegmentsV51(source);
     let total = 0,
       proteinTotal = 0,
       carbsTotal = 0,
@@ -8344,8 +8472,35 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       unresolvedCount = 0;
     const items = [];
     for (const original of segments) {
+      const explicitCustom = parseExplicitCustomNutritionV51(original);
+      if (explicitCustom) {
+        const missingNote = explicitCustom.missingMacros.length
+          ? ` · chưa nhập ${explicitCustom.missingMacros.join("/")} nên các macro đó không được tự đoán`
+          : "";
+        total += explicitCustom.kcal;
+        proteinTotal += explicitCustom.protein;
+        carbsTotal += explicitCustom.carbs;
+        fatTotal += explicitCustom.fat;
+        if (!explicitCustom.completeMacros) warningCount++;
+        items.push({
+          label: explicitCustom.name,
+          original,
+          kcal: Math.round(explicitCustom.kcal),
+          protein: explicitCustom.protein,
+          carbs: explicitCustom.carbs,
+          fat: explicitCustom.fat,
+          basis: `Calo và macro nhập trực tiếp${missingNote}`,
+          confidence: "exact",
+          confidenceText: confidenceLabel("exact"),
+          source: "Dữ liệu tự nhập trong Excel",
+          resolved: true,
+          foodId: "custom_explicit_v51",
+          customNutrition: true
+        });
+        continue;
+      }
       const norm = normalizePhrase(original),
-        match = findFood(norm);
+        match = findFood(original);
       if (!match?.food) {
         unresolvedCount++;
         warningCount++;
@@ -10257,6 +10412,16 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     "dau hu non":["đậu phụ non","đậu hũ non","tàu hũ non","silken tofu"],
     "thit than heo":["thịt heo nạc","thịt lợn nạc","thịt heo thăn","thịt lợn thăn","pork tenderloin","pork loin"]
   };
+  /* V51 · English aliases for every displayed food whose catalog row had no English primary name. Parser-only: does not alter UI/catalog. */
+  const V51_BILINGUAL_EN_ALIAS_ROWS = [["Thịt cua/ghẹ",["crab and blue crab meat","mixed crab meat"]],["Ức gà phi lê không da",["skinless boneless chicken breast","raw skinless chicken breast","chicken breast fillet"]],["Cá điêu hồng",["red tilapia","red tilapia fillet"]],["Tép",["small shrimp","tiny shrimp"]],["Thịt ốc bươu",["apple snail meat","freshwater apple snail meat"]],["Thịt ốc hương",["babylon snail meat","spotted babylon snail meat"]],["Cá trắm",["grass carp","grass carp fillet"]],["Cá basa/tra phi lê",["basa fillet","pangasius fillet","swai fillet"]],["Dạ dày heo",["pork stomach","pig stomach"]],["Mực",["squid","calamari"]],["Bạch tuộc",["octopus"]],["Cá cam phi lê",["amberjack fillet","amberjack"]],["Thịt bò nạc",["lean beef","lean beef steak"]],["Vẹm",["mussels","mussel meat"]],["Thịt hàu",["oyster meat","oysters"]],["Thịt sò điệp",["scallop meat","scallops"]],["Phô mai Cottage ít béo",["low fat cottage cheese","reduced fat cottage cheese"]],["Sữa đậu nành",["soy milk","soya milk"]],["Đậu hũ non",["silken tofu","soft tofu"]],["Đùi gà phi lê không da",["skinless boneless chicken thigh","raw skinless chicken thigh","chicken thigh fillet"]],["Cá chép",["common carp","carp fillet"]],["Trứng cá",["fish roe","fish eggs"]],["Trứng vịt lộn",["balut","balut duck egg","fertilized duck egg"]],["Nhộng tằm",["silkworm pupae","silkworm pupa"]],["Cà chua",["tomato","tomatoes"]],["Nấm đùi gà",["king oyster mushroom","king trumpet mushroom"]],["Cà tím",["eggplant","aubergine"]],["Nước dừa",["coconut water"]],["Soba",["soba noodles","buckwheat noodles"]],["Udon",["udon noodles"]],["Miến",["glass noodles","cellophane noodles","mung bean vermicelli"]],["Cơm gạo lứt",["cooked brown rice","brown rice cooked"]],["Bún",["rice vermicelli","fresh rice vermicelli"]],["Phở",["pho noodles","flat rice noodles","pho rice noodles"]],["Bánh đa trắng",["white rice noodles","white banh da noodles","flat white rice noodles"]],["Bánh canh",["banh canh noodles","thick tapioca rice noodles","thick vietnamese noodles"]],["Mì",["noodles","wheat noodles"]],["Khoai môn",["taro","taro root"]],["Hạt dẻ",["chestnuts","chestnut"]],["Tteokbokki",["korean rice cakes","tteokbokki rice cakes","spicy korean rice cakes"]],["Sữa kem",["dairy cream","cream"]],["Hạt lanh",["flax seeds","flaxseed","linseed"]],["Hạt chia",["chia seeds","chia seed"]],["Hạt hướng dương",["sunflower seeds","sunflower seed"]],["Hạt dẻ cười",["pistachios","pistachio nuts"]],["Phô mai Parmesan bào",["grated parmesan cheese","shredded parmesan"]],["Thịt vịt có da",["duck meat with skin","skin on duck meat"]],["Thịt ngan có da",["muscovy duck meat with skin","skin on muscovy duck"]],["Lòng heo",["pork intestines","pig intestines","pork offal"]],["Dâu",["strawberries","strawberry"]],["Cam quýt",["citrus fruit","oranges and tangerines","orange tangerine"]],["Thanh long",["dragon fruit","pitaya"]],["Lê",["pear","pears"]],["Kiwi",["kiwi fruit","kiwifruit"]],["Cherry",["cherries","cherry fruit"]],["Mít",["jackfruit"]],["Na",["custard apple","sugar apple","sweetsop"]],["Bông cải xanh",["broccoli"]],["Bông cải trắng",["cauliflower"]],["Ngô",["corn","maize","sweet corn"]],["Thịt chim",["quail or pigeon meat","small bird meat","quail meat"]],["Phô mai regular cheese (loại phô mai vẫn cho vào burger)",["regular cheese slice","burger cheese","processed cheese slice","american cheese slice"]],["Kem",["ice cream"]],["Bánh mì baguette",["baguette","vietnamese baguette","plain baguette","plain vietnamese bread"]],["Vỏ bánh tráng",["rice paper wrapper","spring roll rice paper","rice paper sheets"]],["Đuôi bò",["oxtail","beef tail"]],["Cháo",["rice porridge","congee","plain rice porridge"]],["Việt quất",["blueberries","blueberry"]],["Phúc bồn tử",["raspberries","raspberry"]],["Mãng cầu xiêm",["soursop","guanabana"]],["Thịt nạc vai heo",["lean pork shoulder","pork shoulder"]],["Thịt ba chỉ heo",["pork belly","pork belly slices"]],["Thịt ba chỉ bò",["beef belly","beef short plate"]],["Nấm kim châm",["enoki mushroom","enoki mushrooms"]],["Nấm mỡ",["button mushroom","white mushroom"]],["Mộc nhĩ",["wood ear mushroom","black fungus","wood ear fungus"]],["Dầu hào",["oyster sauce"]],["Sữa đặc",["sweetened condensed milk","condensed milk"]],["Bánh đúc",["vietnamese rice flour cake","banh duc","savory rice flour cake"]],["Hạt thốt nốt",["palmyra palm seeds","palm fruit seeds","toddy palm seeds"]],["Đậu phụ",["firm tofu","tofu","bean curd"]],["Cơm gạo trắng",["cooked white rice","white rice cooked","steamed white rice"]],["Xôi trắng",["cooked sticky rice","glutinous rice","sticky rice"]],["Cốm",["green rice flakes","young green rice flakes","vietnamese green rice flakes"]],["Xôi cốm",["sticky rice with green rice flakes","green rice sticky rice"]],["Xôi khúc",["xoi khuc","mung bean pork sticky rice dumpling","sticky rice dumpling with mung bean and pork"]],["Xôi lạc",["peanut sticky rice","sticky rice with peanuts"]],["Xôi đỗ xanh",["mung bean sticky rice","sticky rice with mung beans"]],["Xôi đỗ đen",["black bean sticky rice","sticky rice with black beans"]],["Bánh bao chay",["vegetarian steamed bun","vegetable bao","veggie bao"]],["Bánh dày",["banh day","vietnamese glutinous rice cake","round glutinous rice cake"]],["Tortilla",["tortilla flatbread","tortilla wrap"]],["Bánh mì naan",["naan bread","naan"]],["Cá bò khô",["dried leatherjacket fish","dried filefish"]],["Cá chỉ vàng khô",["dried yellowstripe scad","dried yellow stripe scad"]],["Mực khô",["dried squid"]],["Tép khô",["dried small shrimp","dried tiny shrimp"]],["Tôm khô",["dried shrimp","dried shrimps"]],["Cá cơm khô",["dried anchovy","dried anchovies"]],["Đậu nành",["raw soybeans","dry soybeans","soybeans raw"]],["Đậu đỏ",["raw red beans","dry red beans","adzuki beans raw"]],["Đậu đen",["raw black beans","dry black beans","black beans raw"]],["Đậu xanh",["raw mung beans","dry mung beans","mung beans raw"]],["Đậu trắng",["raw white beans","dry white beans","white beans raw"]],["Đậu Hà Lan",["raw green peas","dry peas","green peas raw"]],["Đậu gà",["raw chickpeas","dry chickpeas","chickpeas raw"]],["Đậu lăng",["raw lentils","dry lentils","lentils raw"]],["Hạt đác",["attap seeds","nipa palm seeds","nipa palm fruit"]],["Hạt vừng",["sesame seeds","sesame seed"]],["Kem vani",["vanilla ice cream"]],["Bánh cheesecake",["cheesecake","cheese cake"]],["Bánh flan caramen",["caramel flan","creme caramel","caramel custard"]],["Crème brûlée",["creme brulee","crème brûlée"]],["Bánh croissant",["croissant","butter croissant"]],["Bánh Mexican bun",["mexican bun","mexican coffee bun","coffee bun"]],["Bánh cinnamon swirl",["cinnamon swirl","cinnamon swirl pastry"]],["Bánh bông lan",["sponge cake","vietnamese sponge cake"]],["Bánh su kem",["cream puff","choux cream","profiterole"]],["Bánh mochi",["mochi","mochi cake"]],["Bánh quy bơ",["butter cookies","butter cookie"]],["Bánh Chocopie",["choco pie","chocopie"]],["Bánh macaron",["macaron","french macaron"]],["Bánh donut",["donut","doughnut"]],["Bánh tiramisu",["tiramisu","tiramisu cake"]],["Bánh muffin",["muffin","muffins"]],["Bánh pancake",["pancake","pancakes"]],["Bánh táo",["apple cake","apple pie"]],["Bánh pía",["pia cake","vietnamese pia cake","durian mung bean pastry"]],["Bánh cốm",["green rice cake","vietnamese green rice cake"]],["Bánh bò",["vietnamese honeycomb cake","honeycomb cake","banh bo"]],["Bánh trung thu",["mooncake","moon cake"]],["Chè khúc bạch",["khuc bach sweet soup","almond panna cotta dessert soup","khuc bach dessert"]],["Chè đỗ đen",["black bean sweet soup","black bean dessert soup"]],["Chè bà cốt",["glutinous rice ginger sweet soup","sticky rice molasses sweet soup"]],["Chè bưởi",["pomelo sweet soup","pomelo dessert soup"]],["Chè sen long nhãn",["lotus seed longan sweet soup","longan lotus seed dessert"]],["Thạch găng",["vietnamese green jelly","green jelly vietnam"]],["Thạch đen",["black grass jelly","grass jelly","black jelly"]],["Cơm cháy chà bông",["crispy rice with pork floss","scorched rice with pork floss"]],["Nộm bò khô",["green papaya salad with dried beef","dried beef papaya salad"]],["Bánh bột lọc",["tapioca dumpling","vietnamese tapioca dumpling"]],["Bánh xèo",["vietnamese sizzling pancake","vietnamese crispy pancake","banh xeo"]],["Bánh bèo Hải Phòng",["hai phong steamed rice cake","hai phong banh beo"]],["Bánh khoái tép",["crispy shrimp pancake","shrimp banh khoai","vietnamese shrimp pancake"]],["Bánh xíu páo Nam Định",["nam dinh xiu pao pastry","xiu pao pastry","nam dinh pork pastry"]],["Bánh nhãn Hải Hậu",["hai hau fried glutinous rice balls","hai hau banh nhan"]],["Mít sấy",["dried jackfruit","jackfruit chips"]],["Chuối sấy",["dried banana","banana chips"]],["Khoai sấy",["dried sweet potato chips","dried root vegetable chips"]],["Ngô sấy",["dried corn","roasted dried corn","corn snacks"]],["Nấm hương sấy lạnh",["freeze dried shiitake mushroom","cold dried shiitake mushroom"]],["Thịt bò khô (đã tẩm ướp)",["seasoned dried beef","beef jerky","seasoned beef jerky"]],["Gà khô (đã tẩm ướp)",["seasoned dried chicken","chicken jerky","seasoned chicken jerky"]],["Heo khô (đã tẩm ướp)",["seasoned dried pork","pork jerky","seasoned pork jerky"]],["Nem chua",["vietnamese fermented pork roll","fermented pork roll"]],["Bỏng ngô",["popcorn","plain popcorn"]],["Caramel popcorn",["caramel popcorn","caramel corn"]],["Bột matcha",["matcha powder","green tea powder"]],["Dầu mè",["sesame oil"]],["Bia lager",["lager beer","beer lager"]],["Rượu vang đỏ",["red wine"]],["Rượu mạnh",["spirits","distilled spirits","liquor"]],["Strongbow cider",["strongbow cider","strongbow"]],["Bò Húc / Red Bull",["red bull","red bull energy drink","energy drink red bull"]],["Coca-Cola / Pepsi",["coca cola","coke","pepsi","cola"]],["Coca-Cola / Pepsi Zero",["coke zero","coca cola zero","pepsi zero","zero sugar cola"]],["Trà sữa",["milk tea","bubble tea","boba tea"]],["Nước mía",["sugarcane juice","sugar cane juice"]],["Lipton Ice Tea",["lipton iced tea","lipton ice tea"]],["Mì Ý bò bằm",["spaghetti bolognese","minced beef spaghetti","ground beef pasta"]],["Mì Ý sốt kem",["creamy pasta","cream sauce pasta","pasta alfredo"]],["Vịt quay",["roast duck","roasted duck","peking duck"]],["Ngan cháy tỏi",["garlic fried muscovy duck","garlic roasted muscovy duck","garlic duck"]],["Chim quay",["roast quail","roasted quail","roasted bird"]],["Lòng rán",["fried pork intestines","fried pork offal","fried intestines"]],["Bánh rán ngọt",["sweet fried glutinous rice ball","vietnamese sweet donut","sweet sesame ball"]],["Bánh rán mặn",["savory fried glutinous rice ball","vietnamese savory donut","savory rice ball"]],["Pa tê",["pate","pâté","pork liver pate"]],["Khoai tây chiên",["french fries","fries"]],["Khoai lang chiên",["sweet potato fries","fried sweet potato"]],["Bò bít tết",["beef steak","steak"]],["Nem thính",["pork skin with roasted rice powder","pork skin rice powder salad"]],["Nem tai",["pork ear with roasted rice powder","vietnamese pork ear nem","pork ear salad"]],["Nem rán",["fried spring roll","fried spring rolls","vietnamese egg roll"]],["Nem cuốn",["fresh spring roll","vietnamese summer roll","summer roll"]],["Bánh cuốn nhân",["filled steamed rice rolls","pork filled rice rolls","banh cuon with pork"]],["Bánh cuốn chay",["vegetarian steamed rice rolls","vegetarian banh cuon"]],["Bánh Tôm Hồ Tây",["west lake shrimp cake","hanoi shrimp fritter","west lake shrimp fritter"]],["Bánh chuối chiên",["fried banana fritter","banana fritter"]],["Phở bò",["beef pho","beef pho noodle soup","pho with beef"]],["Phở gà",["chicken pho","chicken pho noodle soup","pho with chicken"]],["Bún ngan",["muscovy duck rice vermicelli soup","duck rice vermicelli soup"]],["Bún mắm",["fermented fish noodle soup","vietnamese fermented fish noodle soup"]],["Bún bò Huế",["hue spicy beef noodle soup","hue beef noodle soup","spicy beef noodle soup"]],["Bánh đa cua",["crab red noodle soup","crab rice noodle soup"]],["Bún tôm",["shrimp rice vermicelli soup","shrimp noodle soup"]],["Bún cá",["fish noodle soup","fish rice noodle soup"]],["Bánh canh ghẹ",["crab thick noodle soup","blue crab thick noodle soup"]],["Hủ tiếu",["hu tieu noodle soup","southern vietnamese noodle soup"]],["Mì Quảng",["quang noodles","quang style turmeric noodles","mi quang"]],["Mì vằn thắn",["wonton egg noodle soup","wonton noodle soup"]],["Miến lươn",["eel glass noodle soup","eel vermicelli soup"]],["Gà rán KFC",["kfc fried chicken","kfc chicken"]],["Big Mac",["big mac"]],["Quarter Pounder with Cheese",["quarter pounder with cheese","quarter pounder cheese"]],["Filet-O-Fish",["filet o fish","fillet o fish"]],["McChicken",["mcchicken"]],["Whopper",["whopper"]],["Whopper Cheese",["whopper cheese","cheese whopper"]],["Double Whopper",["double whopper"]],["Double Whopper Cheese",["double whopper cheese"]],["Pizza BBQ chicken",["bbq chicken pizza","barbecue chicken pizza"]],["Pizza phô mai",["cheese pizza","pizza cheese"]],["Pizza bò bằm",["minced beef pizza","ground beef pizza","beef pizza"]]];
+  const V51_BILINGUAL_EN_ALIASES = new Map(V51_BILINGUAL_EN_ALIAS_ROWS.map(([name,aliases])=>[normalizePhrase(name),aliases]));
+  /* V51: chặn một số alias cũ bị gộp nhầm giữa hai thực phẩm khác nhau. */
+  const V51_BLOCKED_ALIASES = new Map([
+    ["thit bo nac",["beef steak","beef"]],
+    ["mi",["bun chin"]],
+    ["pho mai regular cheese loai pho mai van cho vao burger",["cheese cake"]],
+    ["bo bit tet",["thit bo nac","lean beef","bo nac","beef"]]
+  ]);
   let AUTHORITATIVE_FOOD_DB_V50_CACHE=null;
   function aliasVariantsV50(name="") {
     const out=new Set(), add=(x)=>{x=String(x||"").trim();if(x)out.add(x);};
@@ -10269,6 +10434,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     ];
     [...out].forEach((base)=>replacements.forEach(([re,to])=>add(base.replace(re,to))));
     (V50_EXPLICIT_ALIASES[normalizePhrase(name)]||[]).forEach(add);
+    (V51_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[]).forEach(add);
     return [...out];
   }
   function basisAmountV50(text="") {
@@ -10277,23 +10443,38 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     const ml=basis.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*ml\b/);
     return {grams:g?Number(g[1].replace(",",".")):null,ml:ml?Number(ml[1].replace(",",".")):null,basis};
   }
+  function safeAliasEqualV51(a,b){
+    const aa=normalizePhraseAccentV51(a), bb=normalizePhraseAccentV51(b);
+    if(!aa||!bb)return false;
+    if(aa===bb)return true;
+    const an=normalizePhrase(a), bn=normalizePhrase(b);
+    const aAccent=aa!==an, bAccent=bb!==bn;
+    return !aAccent&&!bAccent&&an===bn;
+  }
   function catalogItemToParserV50(item) {
     const name=canonicalCatalogName(item), info=basisAmountV50(item.subtitle||""), kcal=Number(item.kcal), protein=Number(item.protein), carbs=Number(item.carb), fat=Number(item.fat);
+    const bilingualAliases=V51_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[];
     const aliases=new Set(aliasVariantsV50(name));
     [item.name,item.originalName].filter(Boolean).forEach((x)=>aliasVariantsV50(x).forEach((a)=>aliases.add(a)));
     const canonical=normalizePhrase(name), base=baseFoodsV50();
     for(const legacy of base){
       const roots=[legacy.name,legacy.en,...(legacy.aliases||[])].filter(Boolean);
-      if(roots.some((x)=>normalizePhrase(x)===canonical || aliasVariantsV50(name).some((a)=>normalizePhrase(a)===normalizePhrase(x)))){
+      if(roots.some((x)=>safeAliasEqualV51(x,name) || aliasVariantsV50(name).some((a)=>safeAliasEqualV51(a,x)))){
         roots.forEach((x)=>aliases.add(x));
       }
     }
+    const blockedAliases=new Set((V51_BLOCKED_ALIASES.get(canonical)||[]).map(normalizePhrase));
+    if(blockedAliases.size) for(const alias of [...aliases]) if(blockedAliases.has(normalizePhrase(alias))) aliases.delete(alias);
     const food={
       id:`authority_v50_${String(item.id||canonical).replace(/[^a-z0-9_]+/gi,"_")}`,
-      name,en:item.originalName||"",aliases:[...aliases],priority:1000000,
+      name,en:item.originalName||bilingualAliases[0]||"",aliases:[...aliases],priority:1000000,
       source:`Nguồn chuẩn V50 · đồng bộ trực tiếp với bảng Thực phẩm · ${item.source||"dữ liệu nội bộ"}`,
       rangePct:/restaurant|snacks|fastfood|sweet-cakes|dessert/.test(item._catalogClass?.group||"")?0.18:0.08,
       authoritativeV50:true,
+      /* V51: giữ nguyên toàn bộ chuỗi tên/alias gốc của chính dòng đang hiển thị để nhận diện song ngữ Excel. */
+      catalogAliasText:[name,item.name,item.originalName,...bilingualAliases,Array.isArray(item.aliases)?item.aliases.join(" "):item.aliases].filter(Boolean).join(" "),
+      catalogCurated:!!(item.curatedV47||item.curatedV44),
+      catalogSourceScore:catalogItemScore(item),
       defaultKcal:kcal,defaultProtein:protein,defaultCarbs:carbs,defaultFat:fat
     };
     const is100ml=/^100\s*ml\b/.test(info.basis), is100g=/^100\s*g\b/.test(info.basis);
@@ -10756,6 +10937,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
   renderUnifiedFoodCatalog(UNIFIED_FOOD_CATALOG);
   window.__foodParserV50={estimateFood,findFood,getAuthoritativeFoodDbV50};
+  window.__foodParserV51={estimateFood,findFood,getAuthoritativeFoodDbV50,parseExplicitCustomNutritionV51,authoritativeCatalogAliasMatchV51};
   /* USDA/Open Food Facts chỉ được gọi khi người dùng chủ động tìm kiếm để trang mặc định luôn gọn. */
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
   nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
