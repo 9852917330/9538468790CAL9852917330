@@ -5703,10 +5703,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     return x;
   }
   const USER_FOOD_DB_V6 = [
-    v6Food100g({"id":"u7_roast_duck","name":"Vịt quay","en":"Chinese-style roast duck","aliases":["vịt quay","vit quay","vịt quay bắc kinh","vit quay bac kinh","roast duck","roasted duck","peking duck","chinese roast duck"],"protein":19,"carbs":4,"fat":28,"kcal":344,"source":"CSDL ưu tiên V7 · thịt vịt quay có da, giá trị trung bình theo 100 g","rangePct":0.18,"defaultGrams":180,"methodClass":"fattyProtein","allowCookingMethod":false}),
-    v6FoodPortion({"id":"u7_mi_vit_quay","name":"Mì vịt quay","en":"Roast duck egg noodle soup","aliases":["mì vịt quay","mỳ vịt quay","mi vit quay","my vit quay","1 bát mì vịt quay","mì trứng vịt quay","roast duck noodles","roast duck noodle soup","duck noodle soup"],"protein":31,"carbs":72,"fat":25,"kcal":637,"source":"CSDL ưu tiên V7 · khẩu phần mì, vịt quay và nước dùng ước tính","rangePct":0.18,"grams":560,"unit":"bowl","allowCookingMethod":false}),
-    v6FoodPortion({"id":"u7_pho_bo_bowl","name":"Phở bò","en":"Beef pho noodle soup","aliases":["1 bát phở bò","một bát phở bò","1 tô phở bò","một tô phở bò","bát phở bò","tô phở bò"],"protein":28,"carbs":58,"fat":14,"kcal":470,"source":"CSDL ưu tiên V7 · khẩu phần phở bò hoàn chỉnh ước tính","rangePct":0.18,"grams":500,"unit":"bowl","allowCookingMethod":false}),
-    v6FoodPortion({"id":"u7_bun_ngan_bowl","name":"Bún ngan","en":"Rice vermicelli soup with Muscovy duck","aliases":["1 bát bún ngan","một bát bún ngan","1 tô bún ngan","một tô bún ngan","bát bún ngan","tô bún ngan"],"protein":29,"carbs":68,"fat":19,"kcal":559,"source":"CSDL ưu tiên V7 · khẩu phần bún ngan hoàn chỉnh ước tính","rangePct":0.18,"grams":540,"unit":"bowl","allowCookingMethod":false}),
     v6FoodPortion({"id":"u6_pho_bo","name":"Phở bò","en":"Beef pho noodle soup","aliases":["phở bò","pho bo","beef pho","beef pho noodle soup"],"protein":28,"carbs":58,"fat":14,"kcal":470,"source":"CSDL ưu tiên V6 · khẩu phần món hoàn chỉnh ước tính","rangePct":0.18,"grams":500,"unit":"bowl","allowCookingMethod":false}),
     v6FoodPortion({"id":"u6_pho_ga","name":"Phở gà","en":"Chicken pho noodle soup","aliases":["phở gà","pho ga","chicken pho","chicken pho noodle soup"],"protein":30,"carbs":55,"fat":10,"kcal":430,"source":"CSDL ưu tiên V6 · khẩu phần món hoàn chỉnh ước tính","rangePct":0.18,"grams":500,"unit":"bowl","allowCookingMethod":false}),
     v6FoodPortion({"id":"u6_bun_bo_hue","name":"Bún bò Huế","en":"Hue spicy beef noodle soup","aliases":["bún bò huế","bun bo hue","hue beef noodle soup"],"protein":30,"carbs":68,"fat":19,"kcal":563,"source":"CSDL ưu tiên V6 · khẩu phần món hoàn chỉnh ước tính","rangePct":0.18,"grams":550,"unit":"bowl","allowCookingMethod":false}),
@@ -6109,15 +6105,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       return [];
     }
   }
-  let FOOD_INDEX_CACHE = null;
-  function invalidateFoodIndex() { FOOD_INDEX_CACHE = null; }
   function saveOnlineFoods(items) {
     try {
       localStorage.setItem(
         ONLINE_FOOD_CACHE_KEY,
         JSON.stringify(items.slice(0, 300)),
       );
-      invalidateFoodIndex();
     } catch {}
   }
   function allFoods() {
@@ -6129,23 +6122,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       ...VI_FOOD_DB_EXTRA,
       ...getOnlineFoods().map((x) => ({ ...x, isOnline: true })),
     ];
-  }
-  function foodIndex() {
-    if (FOOD_INDEX_CACHE) return FOOD_INDEX_CACHE;
-    const exact = new Map(), aliases = [];
-    for (const item of allFoods()) {
-      for (const raw of [item.name, item.en, ...(item.aliases || [])].filter(Boolean)) {
-        const key = normalizePhrase(raw);
-        if (!key) continue;
-        const score = (Number(item.priority) || 0) + key.length * 20 + key.split(" ").length * 100;
-        const current = exact.get(key);
-        if (!current || score > current.baseScore) exact.set(key, { food:item, matchedAlias:raw, baseScore:score });
-        aliases.push({ key, raw, food:item, baseScore:score });
-      }
-    }
-    aliases.sort((a,b)=>b.key.length-a.key.length || b.baseScore-a.baseScore);
-    FOOD_INDEX_CACHE = { exact, aliases };
-    return FOOD_INDEX_CACHE;
   }
   function setLookupText(text) {
     setText("lookupText", text);
@@ -6290,7 +6266,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       Object.assign(f, { per100g: 300, perUnit: 250, defaultKcal: 250 });
     return f;
   }
-  function fetchJsonWithTimeout(url, timeout = 3500) {
+  function fetchJsonWithTimeout(url, timeout = 9000) {
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), timeout);
     return fetch(url, {
@@ -6522,38 +6498,50 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   let onlineLookupBusy = false;
   async function resolveUnknownFoods(rows) {
     if (onlineLookupBusy) return false;
-    const queue = unresolvedQueriesFromRows(rows).slice(0, 3);
+    const queue = unresolvedQueriesFromRows(rows).slice(0, 5);
     if (!queue.length) {
-      setLookupText("Nhận diện nhanh: toàn bộ món đã có dữ liệu nội bộ");
+      setLookupText("Tự động tra món: đã nhận diện hoặc đã có ước lượng");
       return false;
     }
     onlineLookupBusy = true;
-    setLookupText(`Nhận diện nhanh hoàn tất · đang bổ sung nền ${queue.length} món lạ`);
-    let cache = getOnlineFoods(), changed = false, failures = getLookupFailures();
-    try {
-      const results = await Promise.all(queue.map(async (item) => {
-        try { return { item, food: await lookupFoodOnline(item.original) }; }
-        catch { return { item, food:null }; }
-      }));
-      for (const {item:q, food:item} of results) {
-        if (item) {
-          item.aliases = [...new Set([...(item.aliases || []), q.original, q.key])];
-          cache = cache.filter((x) => x.id !== item.id && !item.aliases.some((a) => (x.aliases || []).includes(a)));
-          cache.unshift(item);
-          delete failures[q.key];
-          changed = true;
-        } else failures[q.key] = Date.now();
-      }
-      if (changed) saveOnlineFoods(cache);
-      saveLookupFailures(failures);
-      setLookupText(changed ? "Nhận diện nhanh · dữ liệu món lạ đã được bổ sung" : "Nhận diện nhanh · món lạ dùng ước lượng nội bộ");
-      if (changed) render();
-      return changed;
-    } finally {
-      onlineLookupBusy = false;
+    setLookupText(`Đang tự tra ${queue.length} món chưa có…`);
+    let cache = getOnlineFoods(),
+      changed = false,
+      failures = getLookupFailures();
+    for (let i = 0; i < queue.length; i++) {
+      setLookupText(
+        `Đang tra món ${i + 1}/${queue.length}: ${queue[i].original}`,
+      );
+      const item = await lookupFoodOnline(queue[i].original);
+      if (item) {
+        item.aliases = [
+          ...new Set([
+            ...(item.aliases || []),
+            queue[i].original,
+            queue[i].key,
+          ]),
+        ];
+        cache = cache.filter(
+          (x) =>
+            x.id !== item.id &&
+            !item.aliases.some((a) => (x.aliases || []).includes(a)),
+        );
+        cache.unshift(item);
+        delete failures[queue[i].key];
+        changed = true;
+      } else failures[queue[i].key] = Date.now();
     }
+    if (changed) saveOnlineFoods(cache);
+    saveLookupFailures(failures);
+    onlineLookupBusy = false;
+    setLookupText(
+      changed
+        ? "Tự động tra món: đã cập nhật dữ liệu trực tuyến"
+        : "Tự động tra món: đang dùng ước lượng nội bộ",
+    );
+    if (changed) render();
+    return changed;
   }
-
 
   function foodCoreV6(text = "") {
     return cleanLookupQuery(text)
@@ -6586,23 +6574,26 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       .join(" ");
   }
   function findFood(norm) {
-    const normalized = normalizePhrase(norm);
-    if (!normalized) return null;
-    const idx = foodIndex();
-    for (const variant of [normalized, singularizeEnglish(normalized)]) {
-      const exact = idx.exact.get(variant);
-      if (exact) return { food:exact.food, score:5000 + 2000 + exact.baseScore, matchedAlias:exact.matchedAlias };
-    }
-    let best = null, bestScore = -1;
-    for (const entry of idx.aliases) {
-      const score = foodMatchScore(normalized, entry.key, entry.food);
-      if (score > bestScore) {
-        bestScore = score;
-        best = entry;
+    let best = null,
+      bestScore = -1,
+      matchedAlias = "";
+    const variants = [norm, singularizeEnglish(norm)];
+    for (const item of allFoods()) {
+      const aliases = [item.name, item.en, ...(item.aliases || [])].filter(
+        Boolean,
+      );
+      for (const key of aliases) {
+        for (const variant of variants) {
+          const score = foodMatchScore(variant, key, item);
+          if (score > bestScore) {
+            best = item;
+            bestScore = score;
+            matchedAlias = key;
+          }
+        }
       }
-      if (bestScore >= 7000) break;
     }
-    return best ? { food:best.food, score:bestScore, matchedAlias:best.raw } : null;
+    return best ? { food: best, score: bestScore, matchedAlias } : null;
   }
   const UNIT_GROUPS = {
     unit: [
@@ -9132,12 +9123,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       return await loadGvizRows();
     }
   }
-  let refreshBusy = false;
   async function refreshData() {
-    if (refreshBusy) return;
-    refreshBusy = true;
-    const btn = document.getElementById("refreshBtn");
-    if (btn) btn.disabled = true;
     try {
       const rows = await loadSheet();
       rawRows = rows;
@@ -9157,9 +9143,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       );
       hideBanner();
       render();
-      const runLookup = () => resolveUnknownFoods(rows);
-      if ("requestIdleCallback" in window) requestIdleCallback(runLookup, { timeout: 1200 });
-      else setTimeout(runLookup, 50);
+      resolveUnknownFoods(rows);
     } catch (err) {
       rawRows = [];
       render();
@@ -9169,9 +9153,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         `${err.message} Dashboard đã xóa dữ liệu cũ và không dùng cache để tránh hiển thị sai ngày.`,
       );
       setText("lastSync", "Chưa đồng bộ trực tiếp");
-    } finally {
-      refreshBusy = false;
-      if (btn) btn.disabled = false;
     }
   }
   function showPage(name) {
