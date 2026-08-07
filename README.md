@@ -1,10 +1,16 @@
-# In / Out Calorie PWA — Smart Food Input v19
+# In / Out Calorie PWA — Fast Recognition v18
 
-Bản v19 tập trung vào nhận diện món và ưu tiên dữ liệu người dùng nhập:
+## Đã sửa
 
-- Nếu nhập tổng kcal/protein/carb/fat trực tiếp, các số đó là dữ liệu chuẩn và không bị engine tự thay đổi.
-- `20g đạm` / `50g protein` không còn bị hiểu nhầm là 20 g / 50 g khối lượng món.
-- Tên món được đối chiếu trước với toàn bộ cơ sở dữ liệu thực phẩm nội bộ của web.
-- Bổ sung `Rau / vegetables` và `Cá cơm khô / dried anchovies` vào CSDL ưu tiên offline.
-- Giữ cơ chế lookup nền cho món thực sự chưa có dữ liệu.
-- Service Worker cache: `in-and-out-pwa-2026-08-07-v19`.
+- Bổ sung nhận diện ưu tiên cho: **vịt quay**, **mì vịt quay**, **phở bò**, **bún ngan** và các cách nhập `1 bát`, `1 tô`, có/không dấu.
+- Tạo chỉ mục món ăn một lần thay vì quét lại toàn bộ cơ sở dữ liệu ở từng phép tính; giảm đáng kể độ trễ và tình trạng đơ trên điện thoại.
+- Việc tra món trực tuyến chuyển sang chạy nền, tối đa 3 món song song, timeout ngắn hơn; không còn chặn quá trình đồng bộ và hiển thị số liệu.
+- Chặn nhiều lần cập nhật chạy chồng lên nhau khi bấm nút liên tục.
+- Tăng Service Worker cache lên `in-and-out-pwa-2026-07-27-v18` để thiết bị nhận đúng bản mới.
+
+## Cách cập nhật
+
+1. Giải nén ZIP.
+2. Upload toàn bộ file bên trong vào thư mục gốc repository và ghi đè file cũ.
+3. Đóng hẳn PWA/trình duyệt rồi mở lại.
+4. Nếu vẫn thấy bản cũ, xóa dữ liệu trang hoặc gỡ PWA và cài lại một lần để xóa cache cũ.
