@@ -1,4 +1,4 @@
-const CACHE_NAME = "in-and-out-pwa-2026-07-11-v17";
+const CACHE_NAME = "in-and-out-pwa-2026-08-04-v50";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -36,7 +36,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: "no-store" })
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
