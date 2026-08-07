@@ -1,0 +1,9 @@
+V22 — 2026-08-07
+- Trang Thực phẩm chuyển về CUỐI navigation, sau Lịch sử.
+- Navigation nhóm thực phẩm dạng thanh dọc bên trái, có icon cho từng nhóm.
+- Mỗi món có icon tương ứng (ưu tiên theo tên món, fallback theo nhóm).
+- THỊT/CÁ/TRỨNG/BƠ SỮA: hiển thị lớn Calo + Đạm + tỷ lệ Đạm/Calo; Carb/Fat là ghi chú nhỏ.
+- Các nhóm còn lại: hiển thị lớn Calo + Carb; Đạm/Fat là ghi chú nhỏ; không hiện tỷ lệ.
+- Nút theme chuyển lên góc phải trên cùng.
+- Nút cập nhật dạng icon nổi chuyển xuống góc phải bên dưới, có trạng thái xoay khi đang đồng bộ.
+- Giữ nguyên engine nhận diện món và dữ liệu tép khô/tôm khô từ V21.

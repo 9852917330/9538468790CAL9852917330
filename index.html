@@ -92,7 +92,7 @@ main{max-width:1520px;padding:20px 22px 64px}
 
 /* ===== Light / Dark theme switch ===== */
 .theme-toggle{
-  position:fixed;right:16px;bottom:16px;z-index:99999;
+  position:fixed;right:16px;top:12px;bottom:auto;z-index:99999;
   display:inline-flex;align-items:center;gap:8px;min-height:44px;
   padding:10px 14px;border:1px solid var(--line,rgba(127,127,127,.25));
   border-radius:999px;background:var(--panel,#fff);color:var(--text,#111);
@@ -103,7 +103,13 @@ main{max-width:1520px;padding:20px 22px 64px}
 .theme-toggle:hover{transform:translateY(-2px)}
 .theme-toggle:focus-visible{outline:3px solid color-mix(in srgb,var(--blue,#4dabf7) 35%,transparent);outline-offset:2px}
 .theme-toggle-icon{font-size:17px;line-height:1}
-@media(max-width:620px){.theme-toggle{right:10px;bottom:10px;padding:10px 12px}.theme-toggle-label{display:none}}
+.refresh-fab{position:fixed;right:12px;bottom:14px;z-index:99998;width:52px;height:52px;border:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,var(--mint,#64f2c2),#0fa77d);color:#073529;box-shadow:0 10px 28px rgba(0,0,0,.24);font:1000 24px/1 system-ui;cursor:pointer;transition:transform .16s ease,opacity .16s ease}
+.refresh-fab:hover{transform:translateY(-2px) rotate(8deg)}
+.refresh-fab:disabled{opacity:.55;cursor:wait;transform:none}
+.refresh-fab.spinning{animation:refreshSpin .8s linear infinite}
+@keyframes refreshSpin{to{transform:rotate(360deg)}}
+@media(max-width:620px){.refresh-fab{right:10px;bottom:10px;width:50px;height:50px}}
+@media(max-width:620px){.theme-toggle{right:9px;top:8px;bottom:auto;padding:9px 10px}.theme-toggle-label{display:none}}
 
 html[data-theme="light"]{color-scheme:light}
 html[data-theme="dark"]{color-scheme:dark}
@@ -1104,8 +1110,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </style>
 
 
-<style id="food-database-v21-old-ui">
-/* V21 — khôi phục giao diện trang Thực phẩm kiểu cũ: bảng dữ liệu + header sticky + nhóm 3 cột trên mobile */
+<style id="food-database-v22-sidebar-ui">
+/* V22 — Food page: category rail on the left + high-priority macro hierarchy */
 #page-foods .food-library{overflow:visible}
 #page-foods .section-head{margin-bottom:12px}
 #page-foods .food-old-note{color:var(--muted);font-size:10px;line-height:1.5;margin-top:3px}
@@ -1113,59 +1119,64 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 #page-foods .food-search-old b{font-size:17px;color:var(--muted);line-height:1}
 #page-foods .food-search-old input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:11px;font-weight:750}
 #page-foods .food-search-old input::placeholder{color:var(--muted)}
-#page-foods .food-category-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin-bottom:14px}
-#page-foods .food-cat-old{min-width:0;border:1px solid var(--line);border-radius:11px;padding:9px 6px;background:rgba(255,255,255,.025);color:var(--muted);font:inherit;font-size:9px;font-weight:950;line-height:1.15;cursor:pointer;text-align:center}
-#page-foods .food-cat-old.active{background:linear-gradient(135deg,var(--mint),var(--mint2));border-color:transparent;color:#073529;box-shadow:0 7px 16px rgba(28,196,147,.14)}
-#page-foods .food-table-shell{border:1px solid var(--line);border-radius:15px;overflow:clip;background:rgba(255,255,255,.02)}
-#page-foods .food-table-head{position:sticky;top:69px;z-index:8;display:grid;grid-template-columns:minmax(150px,1.55fr) .65fr .7fr .7fr .7fr .7fr;align-items:center;gap:0;padding:10px 11px;border-bottom:1px solid var(--line);background:var(--surface,#0e1b18);backdrop-filter:blur(14px);box-shadow:0 8px 18px rgba(0,0,0,.08);font-size:8px;font-weight:1000;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
-#page-foods .food-table-head span:not(:first-child){text-align:center}
-#page-foods .food-group-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;background:rgba(101,242,194,.07);border-bottom:1px solid var(--line)}
+#page-foods .food-workspace{display:grid;grid-template-columns:118px minmax(0,1fr);gap:12px;align-items:start}
+#page-foods .food-category-rail{position:sticky;top:76px;display:flex;flex-direction:column;gap:5px;padding:7px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025);max-height:calc(100vh - 96px);overflow:auto;scrollbar-width:none}
+#page-foods .food-category-rail::-webkit-scrollbar{display:none}
+#page-foods .food-cat-old{display:grid;grid-template-columns:25px 1fr;align-items:center;gap:7px;width:100%;min-height:38px;border:0;border-radius:10px;padding:7px 6px;background:transparent;color:var(--muted);font:inherit;font-size:8.5px;font-weight:950;line-height:1.1;cursor:pointer;text-align:left}
+#page-foods .food-cat-old .cat-icon{display:flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:8px;background:rgba(101,242,194,.08);font-size:16px;line-height:1}
+#page-foods .food-cat-old.active{background:linear-gradient(135deg,var(--mint),var(--mint2));color:#073529;box-shadow:0 7px 16px rgba(28,196,147,.14)}
+#page-foods .food-cat-old.active .cat-icon{background:rgba(255,255,255,.42)}
+#page-foods .food-list-shell{min-width:0}
+#page-foods .food-group-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;margin-bottom:6px;background:rgba(101,242,194,.07);border:1px solid var(--line);border-radius:12px}
 #page-foods .food-group-title strong{font-size:10px;letter-spacing:.01em}
 #page-foods .food-group-title small{font-size:8px;color:var(--muted);font-weight:850}
-#page-foods .food-old-row{display:grid;grid-template-columns:minmax(150px,1.55fr) .65fr .7fr .7fr .7fr .7fr;align-items:stretch;border-bottom:1px solid var(--line);min-height:46px}
-#page-foods .food-old-row:last-child{border-bottom:0}
-#page-foods .food-old-cell{display:flex;align-items:center;padding:8px 7px;min-width:0;font-size:9px}
-#page-foods .food-old-cell:not(:first-child){justify-content:center;text-align:center;border-left:1px solid rgba(130,165,155,.12);font-weight:900}
-#page-foods .food-old-name{display:block;min-width:0}
-#page-foods .food-old-name b{display:block;color:var(--text);font-size:10px;line-height:1.25;white-space:normal}
-#page-foods .food-old-name small{display:block;margin-top:3px;color:var(--muted);font-size:7.5px;line-height:1.25;white-space:normal}
-#page-foods .food-old-kcal{color:#ffb84d}.food-old-protein{color:#66bfff}.food-old-carb{color:#ffc86f}.food-old-fat{color:#c7a1ff}
-#page-foods .food-old-ratio{font-size:8.5px!important;color:var(--mint)!important}
+#page-foods .food-card-list{display:grid;gap:7px;margin-bottom:12px}
+#page-foods .food-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 11px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025)}
+#page-foods .food-card-main{display:grid;grid-template-columns:42px minmax(0,1fr);gap:9px;align-items:center;min-width:0}
+#page-foods .food-item-icon{display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;background:linear-gradient(145deg,rgba(101,242,194,.16),rgba(89,184,255,.10));font-size:24px;line-height:1;box-shadow:inset 0 0 0 1px rgba(101,242,194,.10)}
+#page-foods .food-card-name{min-width:0}
+#page-foods .food-card-name b{display:block;color:var(--text);font-size:10.5px;line-height:1.25}
+#page-foods .food-card-name small{display:block;margin-top:3px;color:var(--muted);font-size:7.5px;line-height:1.35}
+#page-foods .food-major{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+#page-foods .food-major-metric{min-width:62px;padding:7px 8px;border-radius:10px;text-align:center;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+#page-foods .food-major-metric span{display:block;color:var(--muted);font-size:6.8px;font-weight:900;text-transform:uppercase;letter-spacing:.02em}
+#page-foods .food-major-metric b{display:block;margin-top:2px;font-size:12px;line-height:1.1}
+#page-foods .food-major-metric.kcal b{color:#ffb84d}
+#page-foods .food-major-metric.protein b{color:#66bfff}
+#page-foods .food-major-metric.carb b{color:#ffc86f}
+#page-foods .food-major-metric.ratio b{color:var(--mint)}
 #page-foods .food-old-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:10px}
 #page-foods .food-total-line{display:flex;justify-content:space-between;gap:10px;margin:10px 2px 0;color:var(--muted);font-size:8.5px}
-html[data-theme="light"] #page-foods .food-search-old,html[data-theme="light"] #page-foods .food-cat-old,html[data-theme="light"] #page-foods .food-table-shell{background:#fff!important;border-color:#cddbd7!important}
-html[data-theme="light"] #page-foods .food-table-head{background:rgba(255,255,255,.96)!important;border-color:#cddbd7!important;color:#647b73!important}
+html[data-theme="light"] #page-foods .food-search-old,html[data-theme="light"] #page-foods .food-category-rail,html[data-theme="light"] #page-foods .food-card{background:#fff!important;border-color:#cddbd7!important}
 html[data-theme="light"] #page-foods .food-group-title{background:#eefbf6!important;border-color:#d6e8e2!important}
-html[data-theme="dark"] #page-foods .food-search-old,html[data-theme="dark"] #page-foods .food-cat-old,html[data-theme="dark"] #page-foods .food-table-shell{background:#172b41!important;border-color:#405f7d!important}
-html[data-theme="dark"] #page-foods .food-table-head{background:rgba(20,37,56,.96)!important;border-color:#405f7d!important}
-html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!important}
-@media(max-width:760px){
-  #page-foods .food-category-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-  #page-foods .food-cat-old{padding:9px 4px;font-size:8.5px}
-  #page-foods .food-table-shell{border-radius:12px;overflow:visible}
-  #page-foods .food-table-head,#page-foods .food-old-row{grid-template-columns:minmax(110px,1.55fr) .58fr .62fr .62fr .62fr .64fr}
-  #page-foods .food-table-head{top:62px;padding:9px 4px;font-size:7px;border-radius:10px 10px 0 0}
-  #page-foods .food-table-head span:first-child{padding-left:5px}
-  #page-foods .food-old-row{min-height:44px}
-  #page-foods .food-old-cell{padding:7px 3px;font-size:8px}
-  #page-foods .food-old-cell:first-child{padding-left:7px}
-  #page-foods .food-old-name b{font-size:9px}
-  #page-foods .food-old-name small{font-size:6.7px}
-  #page-foods .food-old-ratio{font-size:7.4px!important}
-  #page-foods .food-group-title{padding:9px 8px}
-}
-@media(max-width:390px){
-  #page-foods .food-table-head,#page-foods .food-old-row{grid-template-columns:minmax(96px,1.45fr) .58fr .62fr .62fr .62fr .66fr}
-  #page-foods .food-table-head{font-size:6.5px}
-  #page-foods .food-old-cell{font-size:7.4px;padding-left:2px;padding-right:2px}
-  #page-foods .food-old-name b{font-size:8.4px}
-  #page-foods .food-old-name small{display:none}
+html[data-theme="dark"] #page-foods .food-search-old,html[data-theme="dark"] #page-foods .food-category-rail,html[data-theme="dark"] #page-foods .food-card{background:#172b41!important;border-color:#405f7d!important}
+html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!important;border-color:#405f7d!important}
+@media(max-width:620px){
+ #page-foods .section{padding:10px 8px}
+ #page-foods .food-workspace{grid-template-columns:82px minmax(0,1fr);gap:7px}
+ #page-foods .food-category-rail{top:63px;padding:5px 4px;border-radius:12px;gap:3px;max-height:calc(100vh - 78px)}
+ #page-foods .food-cat-old{grid-template-columns:22px 1fr;gap:4px;min-height:34px;padding:5px 3px;font-size:7.2px;border-radius:8px}
+ #page-foods .food-cat-old .cat-icon{width:22px;height:22px;font-size:14px;border-radius:7px}
+ #page-foods .food-card{grid-template-columns:1fr;padding:8px 7px;gap:7px;border-radius:12px}
+ #page-foods .food-card-main{grid-template-columns:36px minmax(0,1fr);gap:7px}
+ #page-foods .food-item-icon{width:36px;height:36px;font-size:21px;border-radius:10px}
+ #page-foods .food-card-name b{font-size:9px}
+ #page-foods .food-card-name small{font-size:6.6px}
+ #page-foods .food-major{justify-content:stretch;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ #page-foods .food-card.protein-focus .food-major{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #page-foods .food-card.carb-focus .food-major{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #page-foods .food-major-metric{min-width:0;padding:6px 3px;border-radius:8px}
+ #page-foods .food-major-metric span{font-size:6px}
+ #page-foods .food-major-metric b{font-size:10px}
+ #page-foods .food-group-title{padding:8px;margin-bottom:5px}
+ #page-foods .food-total-line{font-size:7px;flex-direction:column;gap:3px}
 }
 </style>
 </head>
 
 <body>
 <button id="themeToggle" class="theme-toggle" type="button" aria-label="Chuyển theme" aria-pressed="false"><span class="theme-toggle-icon" aria-hidden="true">◐</span><span class="theme-toggle-label">Theme</span></button>
+<button id="refreshBtn" class="refresh-fab" type="button" aria-label="Cập nhật dữ liệu ngay" title="Cập nhật dữ liệu ngay">↻</button>
 <header class="topbar"><div class="topbar-inner">
   <div class="brand"><div class="brand-logo" aria-label="In-N-Out style logo">
 <svg class="brand-svg" viewBox="0 0 420 150" role="img" aria-label="IN-N-OUT">
@@ -1176,12 +1187,12 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
   <text x="211" y="125" text-anchor="middle" fill="#e3262e" font-family="Arial Black,Arial,sans-serif" font-style="italic" font-size="27" font-weight="900" letter-spacing="3">BURGER</text>
 </svg>
 </div><div class="brand-copy"><strong>In and Out</strong><span>Calories · Training · Body Fat</span></div></div>
-  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="foods">Thực phẩm</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button></nav>
+  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button><button class="nav-btn" data-page="foods">Thực phẩm</button></nav>
   <div class="status-wrap"><div class="status"><span id="syncDot" class="status-dot"></span><span id="syncText">Đang kết nối Sheet…</span></div><span id="lookupText" class="lookup-state">Tự động tra món: CSDL Việt/Tây V4 + USDA + Open Food Facts</span></div>
 </div></header>
 <main>
 <section id="page-overview" class="page active">
-  <section class="dashboard-strip"><div class="strip-copy"><div class="eyebrow">IN / OUT ENERGY CONTROL</div><h1>Cân bằng năng lượng hôm nay</h1><p>Google Sheet được đồng bộ tự động. Web nhận diện món Việt, món Tây và alias tiếng Anh/không dấu; tính calo ăn vào, calo tập và mức thâm hụt thực tế.</p><div class="actions"><button id="refreshBtn" class="btn primary">↻ Cập nhật ngay</button><button id="openSheetBtn" class="btn">↗ Mở Google Sheet</button></div><div id="dataBanner" class="banner"></div></div><div class="strip-stats"><div class="strip-stat"><span>Dữ liệu mới nhất</span><strong id="latestDate">—</strong></div><div class="strip-stat"><span>Cập nhật dashboard</span><strong id="lastSync">—</strong></div><div class="strip-stat wide"><span>Trạng thái hôm gần nhất</span><strong id="latestStatus">—</strong></div></div></section>
+  <section class="dashboard-strip"><div class="strip-copy"><div class="eyebrow">IN / OUT ENERGY CONTROL</div><h1>Cân bằng năng lượng hôm nay</h1><p>Google Sheet được đồng bộ tự động. Web nhận diện món Việt, món Tây và alias tiếng Anh/không dấu; tính calo ăn vào, calo tập và mức thâm hụt thực tế.</p><div class="actions"><button id="openSheetBtn" class="btn">↗ Mở Google Sheet</button></div><div id="dataBanner" class="banner"></div></div><div class="strip-stats"><div class="strip-stat"><span>Dữ liệu mới nhất</span><strong id="latestDate">—</strong></div><div class="strip-stat"><span>Cập nhật dashboard</span><strong id="lastSync">—</strong></div><div class="strip-stat wide"><span>Trạng thái hôm gần nhất</span><strong id="latestStatus">—</strong></div></div></section>
   <section class="section"><div class="section-head"><div><h2>Tổng quan</h2><p>Các chỉ số mới nhất từ cân nặng, vòng eo, calo và vận động.</p></div><span class="tag">LIVE METRICS</span></div><div class="target-burn-hero" aria-live="polite">
       <article class="target-burn-main">
         <div class="target-burn-eyebrow">🔥 Ưu tiên số 1 · Mục tiêu 15% mỡ</div>
@@ -1218,31 +1229,6 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
     <aside class="panel forecast-panel"><div class="forecast-list" id="targetDates"></div></aside>
   </div></section>
 </section>
-<section id="page-foods" class="page"><section class="section food-library" style="margin-top:0">
-  <div class="section-head"><div><h2>Thực phẩm</h2><p class="food-old-note">Bảng thực phẩm thường dùng · dữ liệu theo 100g nếu không ghi đơn vị khác.</p></div><span class="tag">THỰC PHẨM</span></div>
-  <label class="food-search-old" for="foodDbSearch"><b>⌕</b><input id="foodDbSearch" type="search" autocomplete="off" placeholder="Tìm món trong bảng thực phẩm…"></label>
-  <div id="foodDbCategories" class="food-category-grid" role="tablist" aria-label="Nhóm thực phẩm">
-    <button type="button" class="food-cat-old active" data-food-cat="all">Tất cả</button>
-    <button type="button" class="food-cat-old" data-food-cat="meat">Thịt</button>
-    <button type="button" class="food-cat-old" data-food-cat="fish">Cá</button>
-    <button type="button" class="food-cat-old" data-food-cat="egg">Trứng</button>
-    <button type="button" class="food-cat-old" data-food-cat="dairy">Bơ sữa</button>
-    <button type="button" class="food-cat-old" data-food-cat="starch">Tinh bột</button>
-    <button type="button" class="food-cat-old" data-food-cat="vegetable">Rau củ</button>
-    <button type="button" class="food-cat-old" data-food-cat="fruit">Hoa quả</button>
-    <button type="button" class="food-cat-old" data-food-cat="nuts">Hạt</button>
-    <button type="button" class="food-cat-old" data-food-cat="bakery">Bánh</button>
-    <button type="button" class="food-cat-old" data-food-cat="outside">Ăn ngoài</button>
-    <button type="button" class="food-cat-old" data-food-cat="snack">Ăn vặt</button>
-    <button type="button" class="food-cat-old" data-food-cat="seasoning">Gia vị</button>
-    <button type="button" class="food-cat-old" data-food-cat="drink">Đồ uống</button>
-  </div>
-  <div class="food-table-shell">
-    <div class="food-table-head"><span>Thực phẩm</span><span>Kcal</span><span>Đạm</span><span>Carb</span><span>Fat</span><span>Tỷ lệ</span></div>
-    <div id="foodDbList"></div>
-  </div>
-  <div class="food-total-line"><span id="foodDbCount">—</span><span>Dữ liệu trang này cũng được dùng để nhận diện món khi nhập nhật ký.</span></div>
-</section></section>
 <section id="page-calendar" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2 id="calendarTitle">Lịch năm</h2><p>Tự động hiển thị năm hiện tại. Ô mint là ngày thâm hụt; ô đỏ là ngày dư thừa.</p></div><div class="calendar-summary"><span class="summary-chip"><i class="key good"></i>Ngày thâm hụt <b id="calendarGood">0</b></span><span class="summary-chip"><i class="key bad"></i>Ngày dư thừa <b id="calendarBad">0</b></span><span class="summary-chip"><i class="key empty"></i>Chưa đủ dữ liệu <b id="calendarEmpty">0</b></span></div></div><div id="yearCalendar" class="year-calendar"></div></section></section>
 <section id="page-charts" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Biểu đồ tiến độ</h2><p>Bốn biểu đồ có kích thước cân đối và cùng nhịp hiển thị.</p></div><span class="tag">DAILY TREND</span></div><div class="grid chart-grid">
   <article class="panel chart-card"><div class="chart-title"><div><h3>Calo ròng sau tập</h3><p>Calo ăn vào − calo đốt do tập luyện; không trừ TDEE.</p></div><div class="legend"><span><i style="background:#ff6b6b"></i>kcal ròng</span></div></div><canvas id="calorieChart"></canvas></article>
@@ -1251,6 +1237,30 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
   <article class="panel chart-card"><div class="chart-title"><div><h3>Tỷ lệ mỡ ước tính</h3><p>Ước tính từ cân nặng, vòng eo và khối nạc nền.</p></div><div class="legend"><span><i style="background:#845ef7"></i>% mỡ</span><span><i style="background:#ff4d6d"></i>Mục tiêu 15%</span></div></div><canvas id="bodyFatChart"></canvas></article>
 </div></section></section>
 <section id="page-history" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Lịch sử calo In / Out</h2><p>Mỗi ngày hiển thị calo ăn, calo tập, tổng đạm, TDEE và kết quả năng lượng.</p></div><span class="tag">FULL HISTORY</span></div><div class="history-toolbar"><strong>Toàn bộ ngày trong Sheet</strong><span id="historyCount">0 ngày</span></div><div id="historyList" class="history-list"></div></section></section>
+<section id="page-foods" class="page"><section class="section food-library" style="margin-top:0">
+  <div class="section-head"><div><h2>Thực phẩm</h2><p class="food-old-note">Bảng thực phẩm thường dùng · dữ liệu theo 100g nếu không ghi đơn vị khác.</p></div><span class="tag">THỰC PHẨM</span></div>
+  <label class="food-search-old" for="foodDbSearch"><b>⌕</b><input id="foodDbSearch" type="search" autocomplete="off" placeholder="Tìm món trong bảng thực phẩm…"></label>
+  <div class="food-workspace">
+    <nav id="foodDbCategories" class="food-category-rail" aria-label="Nhóm thực phẩm">
+      <button type="button" class="food-cat-old active" data-food-cat="all"><span class="cat-icon">🍽️</span><span>Tất cả</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="meat"><span class="cat-icon">🥩</span><span>Thịt</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="fish"><span class="cat-icon">🐟</span><span>Cá</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="egg"><span class="cat-icon">🥚</span><span>Trứng</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="dairy"><span class="cat-icon">🥛</span><span>Bơ sữa</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="starch"><span class="cat-icon">🍚</span><span>Tinh bột</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="vegetable"><span class="cat-icon">🥬</span><span>Rau củ</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="fruit"><span class="cat-icon">🍎</span><span>Hoa quả</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="nuts"><span class="cat-icon">🥜</span><span>Hạt</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="bakery"><span class="cat-icon">🥖</span><span>Bánh</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="outside"><span class="cat-icon">🍜</span><span>Ăn ngoài</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="snack"><span class="cat-icon">🍿</span><span>Ăn vặt</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="seasoning"><span class="cat-icon">🧂</span><span>Gia vị</span></button>
+      <button type="button" class="food-cat-old" data-food-cat="drink"><span class="cat-icon">🥤</span><span>Đồ uống</span></button>
+    </nav>
+    <div class="food-list-shell"><div id="foodDbList"></div></div>
+  </div>
+  <div class="food-total-line"><span id="foodDbCount">—</span><span>Dữ liệu trang này cũng được dùng để nhận diện món khi nhập nhật ký.</span></div>
+</section></section>
 <div class="footer">Calo, Protein, Carb và Fat được lấy từ cùng một hồ sơ dinh dưỡng và được kiểm tra chéo tự động. Dữ liệu ưu tiên CSDL nội bộ, USDA FoodData Central và Open Food Facts. Sản phẩm đóng gói vẫn nên ưu tiên nhãn thực tế của hãng.</div>
 </main>
 <script>
@@ -8229,6 +8239,25 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
     if(k==="dui ga") return "Đùi gà phi lê không da";
     return f.name||"";
   }
+  const FOOD_CATEGORY_ICONS = {meat:"🥩",fish:"🐟",egg:"🥚",dairy:"🥛",starch:"🍚",vegetable:"🥬",fruit:"🍎",nuts:"🥜",bakery:"🥖",outside:"🍜",snack:"🍿",seasoning:"🧂",drink:"🥤"};
+  const PROTEIN_FOCUS_CATS = new Set(["meat","fish","egg","dairy"]);
+  function foodItemIcon(f){
+    const t=normalizePhrase(`${f.name||""} ${f.en||""}`);
+    const pairs=[
+      [/uc ga|chicken breast/,"🍗"],[/dui ga|chicken thigh/,"🍗"],[/bo |beef|steak/,"🥩"],[/heo|pork/,"🥩"],[/vit|duck/,"🦆"],[/ngan/,"🦆"],
+      [/ca lang/,"🐟"],[/salmon|ca hoi/,"🐟"],[/tuna|ca ngu/,"🐟"],[/anchov|ca com/,"🐟"],[/tep|tom|shrimp|prawn/,"🦐"],[/muc|squid/,"🦑"],
+      [/trung|egg/,"🥚"],[/sua chua|yogurt/,"🥣"],[/sua |milk/,"🥛"],[/pho mai|cheese/,"🧀"],[/whey/,"🥤"],
+      [/com |rice/,"🍚"],[/yen mach|oat/,"🥣"],[/khoai lang|sweet potato/,"🍠"],[/khoai|potato/,"🥔"],[/bun|noodle|mi |mien|pho /,"🍜"],
+      [/rau|vegetable|cai |spinach|broccoli/,"🥬"],[/ca chua|tomato/,"🍅"],[/ca rot|carrot/,"🥕"],[/ngo |corn/,"🌽"],[/nam |mushroom/,"🍄"],
+      [/chuoi|banana/,"🍌"],[/tao |apple/,"🍎"],[/cam |orange/,"🍊"],[/xoai|mango/,"🥭"],[/dua hau|watermelon/,"🍉"],[/nho |grape/,"🍇"],[/bo trai|avocado/,"🥑"],
+      [/hat dieu|cashew/,"🥜"],[/hanh nhan|almond/,"🌰"],[/lac |peanut/,"🥜"],
+      [/banh mi|baguette|bread/,"🥖"],[/pancake/,"🥞"],[/cake|banh /,"🍰"],[/pizza/,"🍕"],[/burger/,"🍔"],[/nem ran|cha gio/,"🥟"],
+      [/dau |oil/,"🫗"],[/duong|sugar|honey|mat ong/,"🍯"],[/muoi|salt|nuoc mam|fish sauce|sauce|sot /,"🧂"],[/matcha/,"🍵"],
+      [/coffee|cafe/,"☕"],[/tra |tea/,"🍵"],[/nuoc ep|juice/,"🧃"],[/nuoc dua|coconut water/,"🥥"],[/soft drink|coca|pepsi/,"🥤"]
+    ];
+    for(const [re,icon] of pairs) if(re.test(t)) return icon;
+    return FOOD_CATEGORY_ICONS[f._cat]||"🍽️";
+  }
   function renderFoodDatabase() {
     const list=document.getElementById("foodDbList"), count=document.getElementById("foodDbCount"), input=document.getElementById("foodDbSearch");
     if(!list) return;
@@ -8245,11 +8274,18 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
     for(const cat of groups){
       const groupItems=items.filter(f=>f._cat===cat);
       if(!groupItems.length) continue;
-      html += `<div class="food-group-title"><strong>${FOOD_CATEGORY_LABELS[cat]||cat}</strong><small>${groupItems.length} món</small></div>`;
+      html += `<div class="food-group-title"><strong>${FOOD_CATEGORY_ICONS[cat]||"🍽️"} ${FOOD_CATEGORY_LABELS[cat]||cat}</strong><small>${groupItems.length} món</small></div><div class="food-card-list">`;
       html += groupItems.map(f=>{
-        const d=f._display;
-        return `<article class="food-old-row"><div class="food-old-cell"><div class="food-old-name"><b>${escapeHtml(preferredFoodDisplayName(f))}</b><small>${escapeHtml(d.label)}${f.en?` · ${escapeHtml(f.en)}`:""}</small></div></div><div class="food-old-cell food-old-kcal">${fmt(d.kcal)}</div><div class="food-old-cell food-old-protein">${fmt(d.protein,1)}g</div><div class="food-old-cell food-old-carb">${fmt(d.carbs,1)}g</div><div class="food-old-cell food-old-fat">${fmt(d.fat,1)}g</div><div class="food-old-cell food-old-ratio">${foodProteinRatio(d)}</div></article>`;
+        const d=f._display, proteinFocus=PROTEIN_FOCUS_CATS.has(cat);
+        const note=proteinFocus
+          ? `${escapeHtml(d.label)} · Carb ${fmt(d.carbs,1)}g · Fat ${fmt(d.fat,1)}g${f.en?` · ${escapeHtml(f.en)}`:""}`
+          : `${escapeHtml(d.label)} · Đạm ${fmt(d.protein,1)}g · Fat ${fmt(d.fat,1)}g${f.en?` · ${escapeHtml(f.en)}`:""}`;
+        const major=proteinFocus
+          ? `<div class="food-major-metric kcal"><span>Calo</span><b>${fmt(d.kcal)}</b></div><div class="food-major-metric protein"><span>Đạm</span><b>${fmt(d.protein,1)}g</b></div><div class="food-major-metric ratio"><span>Đạm/Calo</span><b>${foodProteinRatio(d)}</b></div>`
+          : `<div class="food-major-metric kcal"><span>Calo</span><b>${fmt(d.kcal)}</b></div><div class="food-major-metric carb"><span>Carb</span><b>${fmt(d.carbs,1)}g</b></div>`;
+        return `<article class="food-card ${proteinFocus?'protein-focus':'carb-focus'}"><div class="food-card-main"><div class="food-item-icon" aria-hidden="true">${foodItemIcon(f)}</div><div class="food-card-name"><b>${escapeHtml(preferredFoodDisplayName(f))}</b><small>${note}</small></div></div><div class="food-major">${major}</div></article>`;
       }).join("");
+      html += `</div>`;
     }
     list.innerHTML=html||`<div class="food-old-empty">Không tìm thấy món phù hợp.</div>`;
   }
@@ -9364,7 +9400,7 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
     if (refreshBusy) return;
     refreshBusy = true;
     const btn = document.getElementById("refreshBtn");
-    if (btn) btn.disabled = true;
+    if (btn) { btn.disabled = true; btn.classList.add("spinning"); }
     try {
       const rows = await loadSheet();
       rawRows = rows;
@@ -9398,7 +9434,7 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
       setText("lastSync", "Chưa đồng bộ trực tiếp");
     } finally {
       refreshBusy = false;
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.classList.remove("spinning"); }
     }
   }
   function showPage(name) {
