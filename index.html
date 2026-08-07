@@ -1103,6 +1103,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
 </style>
 
+
+<style id="food-database-v20">
+.food-db-section{overflow:hidden}.food-db-toolbar{display:flex;align-items:center;gap:10px;margin:14px 0 10px}.food-search-wrap{flex:1;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.04);min-height:46px}.food-search-wrap span{font-size:20px;color:var(--muted)}.food-search-wrap input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:12px;font-weight:750}.food-search-wrap input::placeholder{color:var(--muted);font-weight:650}.food-db-count{white-space:nowrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:10px;font-weight:900}.food-db-categories{display:flex;gap:7px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}.food-db-categories::-webkit-scrollbar{display:none}.food-cat{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.03);color:var(--muted);font-size:10px;font-weight:950}.food-cat.active{background:linear-gradient(135deg,var(--mint),var(--mint2));border-color:transparent;color:#073529}.food-db-head{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;color:var(--muted);font-size:9px}.food-db-head strong{color:var(--text);font-size:11px}.food-db-list{display:grid;gap:8px}.food-db-row{display:grid;grid-template-columns:minmax(170px,1.4fr) minmax(230px,1fr) auto;gap:12px;align-items:center;padding:12px 13px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.025)}.food-db-name{min-width:0}.food-db-name strong{display:block;font-size:12px;line-height:1.3}.food-db-name small{display:block;margin-top:4px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.food-db-macros{display:flex;gap:6px;flex-wrap:wrap}.food-db-metric{padding:5px 7px;border-radius:999px;border:1px solid var(--line);font-size:9px;font-weight:900;white-space:nowrap}.food-db-kcal{font-size:13px;font-weight:1000;text-align:right}.food-db-kcal small{display:block;margin-top:2px;color:var(--muted);font-size:8px;font-weight:800}.food-db-empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:15px;font-size:11px}
+html[data-theme="light"] .food-search-wrap,html[data-theme="light"] .food-db-row,html[data-theme="light"] .food-cat{background:#fff!important;border-color:#cddbd7!important}html[data-theme="dark"] .food-search-wrap,html[data-theme="dark"] .food-db-row,html[data-theme="dark"] .food-cat{background:#172b41!important;border-color:#405f7d!important}
+@media(max-width:620px){.food-db-toolbar{align-items:stretch;flex-direction:column}.food-db-count{align-self:flex-start}.food-db-row{grid-template-columns:1fr auto;gap:8px}.food-db-macros{grid-column:1/-1;grid-row:2}.food-db-kcal{grid-column:2;grid-row:1}.food-db-head span{display:none}}
+</style>
 </head>
 
 <body>
@@ -1117,7 +1123,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   <text x="211" y="125" text-anchor="middle" fill="#e3262e" font-family="Arial Black,Arial,sans-serif" font-style="italic" font-size="27" font-weight="900" letter-spacing="3">BURGER</text>
 </svg>
 </div><div class="brand-copy"><strong>In and Out</strong><span>Calories · Training · Body Fat</span></div></div>
-  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button></nav>
+  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="foods">Thực phẩm</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button></nav>
   <div class="status-wrap"><div class="status"><span id="syncDot" class="status-dot"></span><span id="syncText">Đang kết nối Sheet…</span></div><span id="lookupText" class="lookup-state">Tự động tra món: CSDL Việt/Tây V4 + USDA + Open Food Facts</span></div>
 </div></header>
 <main>
@@ -1159,6 +1165,23 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     <aside class="panel forecast-panel"><div class="forecast-list" id="targetDates"></div></aside>
   </div></section>
 </section>
+<section id="page-foods" class="page"><section class="section food-db-section" style="margin-top:0">
+  <div class="section-head"><div><h2>Thực phẩm</h2><p>Danh sách món ưu tiên của web. Khi nhập đúng tên hoặc alias của món, dữ liệu ở đây được dùng trước nguồn trực tuyến.</p></div><span class="tag">FOOD DATABASE</span></div>
+  <div class="food-db-toolbar">
+    <label class="food-search-wrap" for="foodDbSearch"><span>⌕</span><input id="foodDbSearch" type="search" autocomplete="off" placeholder="Tìm thực phẩm, ví dụ: cá lăng, tép khô, phở bò…"></label>
+    <div id="foodDbCount" class="food-db-count">—</div>
+  </div>
+  <div id="foodDbCategories" class="food-db-categories" role="tablist" aria-label="Nhóm thực phẩm">
+    <button type="button" class="food-cat active" data-food-cat="all">Tất cả</button>
+    <button type="button" class="food-cat" data-food-cat="home">Ăn trong</button>
+    <button type="button" class="food-cat" data-food-cat="outside">Ăn ngoài</button>
+    <button type="button" class="food-cat" data-food-cat="snack">Ăn vặt</button>
+    <button type="button" class="food-cat" data-food-cat="seasoning">Gia vị</button>
+    <button type="button" class="food-cat" data-food-cat="drink">Đồ uống</button>
+  </div>
+  <div class="food-db-head"><strong>Danh sách thực phẩm</strong><span>Kcal · Protein · Carb · Fat</span></div>
+  <div id="foodDbList" class="food-db-list"></div>
+</section></section>
 <section id="page-calendar" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2 id="calendarTitle">Lịch năm</h2><p>Tự động hiển thị năm hiện tại. Ô mint là ngày thâm hụt; ô đỏ là ngày dư thừa.</p></div><div class="calendar-summary"><span class="summary-chip"><i class="key good"></i>Ngày thâm hụt <b id="calendarGood">0</b></span><span class="summary-chip"><i class="key bad"></i>Ngày dư thừa <b id="calendarBad">0</b></span><span class="summary-chip"><i class="key empty"></i>Chưa đủ dữ liệu <b id="calendarEmpty">0</b></span></div></div><div id="yearCalendar" class="year-calendar"></div></section></section>
 <section id="page-charts" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Biểu đồ tiến độ</h2><p>Bốn biểu đồ có kích thước cân đối và cùng nhịp hiển thị.</p></div><span class="tag">DAILY TREND</span></div><div class="grid chart-grid">
   <article class="panel chart-card"><div class="chart-title"><div><h3>Calo ròng sau tập</h3><p>Calo ăn vào − calo đốt do tập luyện; không trừ TDEE.</p></div><div class="legend"><span><i style="background:#ff6b6b"></i>kcal ròng</span></div></div><canvas id="calorieChart"></canvas></article>
@@ -5703,6 +5726,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     return x;
   }
   const USER_FOOD_DB_V6 = [
+    v6Food100g({"id":"u9_dried_tiny_shrimp","name":"Tép khô","en":"Dried tiny shrimp","aliases":["tép khô","tep kho","tép khô nhỏ","tep kho nho","dried tiny shrimp","dried small shrimp","tiny dried shrimp"],"protein":51.0,"carbs":0,"fat":3.4,"kcal":250,"source":"CSDL ưu tiên V9 · tép/tôm nhỏ phơi sấy · tham chiếu 250 kcal, 51 g protein/100 g","rangePct":0.10,"defaultGrams":30,"methodClass":"seafood","allowCookingMethod":false}),
+    v6Food100g({"id":"u9_dried_shrimp","name":"Tôm khô","en":"Dried shrimp","aliases":["tôm khô","tom kho","dried shrimp","dry shrimp","dehydrated shrimp"],"protein":51.0,"carbs":0,"fat":3.4,"kcal":250,"source":"USDA-derived reference · dried shrimp · 250 kcal, 51 g protein, 3.4 g fat/100 g","rangePct":0.10,"defaultGrams":30,"methodClass":"seafood","allowCookingMethod":false}),
     v6Food100g({"id":"u8_generic_vegetables","name":"Rau","en":"Vegetables","aliases":["rau","rau xanh","rau củ","rau cu","vegetable","vegetables","mixed vegetables","green vegetables"],"protein":2.0,"carbs":5.0,"fat":0.3,"kcal":30,"source":"CSDL ưu tiên V8 · rau hỗn hợp không thêm dầu, giá trị tham chiếu trung bình theo 100 g","rangePct":0.18,"defaultGrams":200,"methodClass":"vegetable","allowCookingMethod":true}),
     v6Food100g({"id":"u8_dried_anchovies","name":"Cá cơm khô","en":"Dried anchovies","aliases":["cá cơm khô","ca com kho","cá cơm sấy","ca com say","dried anchovy","dried anchovies","anchovy dried","anchovies dried","dried small anchovies"],"protein":60,"carbs":0,"fat":6,"kcal":294,"source":"CSDL ưu tiên V8 · cá cơm khô/sấy, giá trị tham chiếu trung bình theo 100 g","rangePct":0.12,"defaultGrams":30,"methodClass":"seafood","allowCookingMethod":false}),
     v6Food100g({"id":"u7_roast_duck","name":"Vịt quay","en":"Chinese-style roast duck","aliases":["vịt quay","vit quay","vịt quay bắc kinh","vit quay bac kinh","roast duck","roasted duck","peking duck","chinese roast duck"],"protein":19,"carbs":4,"fat":28,"kcal":344,"source":"CSDL ưu tiên V7 · thịt vịt quay có da, giá trị trung bình theo 100 g","rangePct":0.18,"defaultGrams":180,"methodClass":"fattyProtein","allowCookingMethod":false}),
@@ -7844,7 +7869,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         isBiteSize =
           /\b(?:bite[ -]?size(?:d)?|small bites?|mieng nho|nho vua an|hat luu)\b/.test(
             norm,
-          );
+          ),
+        implicitGramQty = (!weight && !volume && !actualCount && leading && food && Number.isFinite(Number(food.per100g)) && !Number.isFinite(Number(food.gramsPerUnit)) && !Number.isFinite(Number(food.perUnit)) && !Number.isFinite(Number(food.perPortion)) && !Number.isFinite(Number(food.perBowl)) && !Number.isFinite(Number(food.perCup)))
+          ? +leading[1].replace(",", ".") : null,
+        weightForCalc = weight || (Number.isFinite(implicitGramQty) ? [null, String(implicitGramQty), "g"] : null);
       const per100 = norm.match(
         /(\d+(?:[.,]\d+)?)\s*kcal\s*(?:\/|per)\s*100\s*(g|gram|grams|ml)\b/,
       );
@@ -7877,9 +7905,9 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         kcal = +direct[1].replace(",", ".");
         basis = "Tổng calo nhập trực tiếp";
         confidence = "exact";
-      } else if (weight) {
-        let qty = +weight[1].replace(",", "."),
-          u = weight[2];
+      } else if (weightForCalc) {
+        let qty = +weightForCalc[1].replace(",", "."),
+          u = weightForCalc[2];
         if (["kg", "kilogram", "kilograms"].includes(u)) qty *= 1000;
         const resolvedRate = directPer100gRate(food, norm);
         if (resolvedRate) {
@@ -7996,7 +8024,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
             food,
             original,
             norm: quantityNorm,
-            weight,
+            weight: weightForCalc,
             volume,
             quantity,
             kind,
@@ -8008,7 +8036,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
           food,
           original,
           norm: quantityNorm,
-          weight,
+          weight: weightForCalc,
           volume,
           quantity,
           kind,
@@ -8024,7 +8052,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         confidence = "exact";
       } else {
         const cooked = applyCookingMethodV6({
-          food, norm: quantityNorm, match, weight, quantity, kind, isBiteSize,
+          food, norm: quantityNorm, match, weight: weightForCalc, quantity, kind, isBiteSize,
           kcal, carbs, fat, basis, confidence
         });
         kcal = cooked.kcal; carbs = cooked.carbs; fat = cooked.fat;
@@ -8073,8 +8101,57 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       warningCount,
     };
   }
-  function renderFoodDatabase() {}
-  function previewFoodText() {}
+  let foodDbCategory = "all";
+  function foodDisplayCategory(food) {
+    const t = normalizePhrase(`${food.name || ""} ${food.en || ""} ${(food.aliases || []).join(" ")} ${food.id || ""}`);
+    if (/(coffee|cafe|tea|tra |matcha drink|milk tea|sua tuoi|milk$|soft drink|coca|pepsi|juice|nuoc ep|beer|bia|wine|smoothie|sinh to|coconut water|nuoc dua)/.test(t)) return "drink";
+    if (/(oil|dau |sesame|me |olive|butter|bo |sugar|duong|honey|mat ong|salt|muoi|fish sauce|nuoc mam|soy sauce|xi dau|sauce|sot |mayonnaise|ketchup|mustard|seasoning|gia vi|pepper|tieu|matcha powder|bot matcha)/.test(t)) return "seasoning";
+    if (/(banh chuoi chien|banana fritter|banh ran|donut|pate|khoai chien|french fries|potato fries|snack|chips|cookie|biscuit|chocolate|ice cream|kem |che |popcorn|nuts|hat |croissant|cake|brownie|muffin)/.test(t)) return "snack";
+    if (/(pho |bun |mien |hu tieu|noodle soup|mi vit quay|mi van than|mi quang|pasta|spaghetti|long ran|fried intestine|chim quay|roast bird|ngan chay toi|vit quay|roast duck|banh canh|nem ran|cha gio|fried spring roll|banh cuon|com rang|fried rice|pizza|burger|kfc|lotteria|restaurant)/.test(t)) return "outside";
+    return "home";
+  }
+  function foodDisplayBasis(food) {
+    if (Number.isFinite(Number(food.perPortion)) && Number(food.perPortion) > 0) {
+      return { kcal:Number(food.perPortion), protein:Number(food.defaultProtein)||0, carbs:Number(food.defaultCarbs)||0, fat:Number(food.defaultFat)||0, label:"1 phần" };
+    }
+    const kcal = Number(food.per100g);
+    if (Number.isFinite(kcal) && kcal > 0) {
+      const pm = proteinProfile(food, normalizePhrase(food.name || ""));
+      const mm = macroProfile(food, normalizePhrase(food.name || ""));
+      return { kcal, protein:Number(pm.per100g)||0, carbs:Number(mm.carbs100g)||0, fat:Number(mm.fat100g)||0, label:"100g" };
+    }
+    const unitKcal = Number(food.perUnit || food.perBowl || food.perCup || food.defaultKcal);
+    return { kcal:Number.isFinite(unitKcal)?unitKcal:0, protein:Number(food.defaultProtein)||0, carbs:Number(food.defaultCarbs)||0, fat:Number(food.defaultFat)||0, label:"1 phần" };
+  }
+  function foodDbUniqueItems() {
+    const out=[], seen=new Set();
+    for (const f of allFoods()) {
+      if (!f || f.isOnline || f.isHeuristic || !f.name) continue;
+      const key=normalizePhrase(f.name);
+      if (!key || seen.has(key)) continue;
+      const d=foodDisplayBasis(f);
+      if (!(d.kcal>0)) continue;
+      seen.add(key); out.push({...f,_display:d,_cat:foodDisplayCategory(f)});
+    }
+    return out.sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
+  }
+  function renderFoodDatabase() {
+    const list=document.getElementById("foodDbList"), count=document.getElementById("foodDbCount"), input=document.getElementById("foodDbSearch");
+    if(!list) return;
+    const q=normalizePhrase(input?.value||"");
+    const items=foodDbUniqueItems().filter(f=>{
+      if(foodDbCategory!=="all" && f._cat!==foodDbCategory) return false;
+      if(!q) return true;
+      const hay=normalizePhrase(`${f.name||""} ${f.en||""} ${(f.aliases||[]).join(" ")}`);
+      return hay.includes(q) || q.split(/\s+/).every(x=>hay.includes(x));
+    });
+    if(count) count.textContent=`${items.length} món`;
+    list.innerHTML=items.length?items.map(f=>{
+      const d=f._display, src=String(f.source||"").replace(/·/g," · ");
+      return `<article class="food-db-row"><div class="food-db-name"><strong>${escapeHtml(f.name)}</strong><small>${escapeHtml(f.en||src||"")}</small></div><div class="food-db-macros"><span class="food-db-metric">Protein ${fmt(d.protein,1)}g</span><span class="food-db-metric">Carb ${fmt(d.carbs,1)}g</span><span class="food-db-metric">Fat ${fmt(d.fat,1)}g</span></div><div class="food-db-kcal">${fmt(d.kcal)} kcal<small>${d.label}</small></div></article>`;
+    }).join(""):`<div class="food-db-empty">Không tìm thấy món phù hợp.</div>`;
+  }
+  function previewFoodText() { renderFoodDatabase(); }
   function parseDurationMinutes(text, type) {
     if (text === null || text === undefined || text === "") return 0;
     if (Array.isArray(text)) {
@@ -9232,12 +9309,21 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       .forEach((b) => b.classList.toggle("active", b.dataset.page === name));
     history.replaceState(null, "", `#${name}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (name === "foods") renderFoodDatabase();
     if (name === "charts")
       setTimeout(
         () => renderCharts(computedDays.filter((d) => d.complete)),
         40,
       );
   }
+  const foodDbSearch = document.getElementById("foodDbSearch");
+  if (foodDbSearch) foodDbSearch.addEventListener("input", renderFoodDatabase);
+  document.querySelectorAll(".food-cat").forEach((b)=>b.addEventListener("click",()=>{
+    foodDbCategory=b.dataset.foodCat||"all";
+    document.querySelectorAll(".food-cat").forEach(x=>x.classList.toggle("active",x===b));
+    renderFoodDatabase();
+  }));
+  renderFoodDatabase();
   document
     .querySelectorAll(".nav-btn")
     .forEach((b) =>

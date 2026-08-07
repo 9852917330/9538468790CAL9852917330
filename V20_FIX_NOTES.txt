@@ -1,0 +1,11 @@
+IN-OUT CALORIE PWA v20
+- Restored Thực phẩm page in main navigation.
+- Restored categories: Tất cả / Ăn trong / Ăn ngoài / Ăn vặt / Gia vị / Đồ uống.
+- Food page reads directly from the same internal database used by the parser.
+- Added fast local search; online cached/heuristic foods are excluded from the food reference page.
+- Added Tép khô and Tôm khô as first-priority internal foods.
+- Dried shrimp reference: 250 kcal, 51 g protein, 3.4 g fat per 100 g.
+- Fixed bare-number gram inference for solid foods that are defined per 100 g and have no piece/portion unit; e.g. '100 tép khô' is treated as 100 g instead of 100 portions.
+- Kept v19 explicit kcal/macro parsing and food-name preservation.
+- Service worker cache bumped to v20.
+- JavaScript syntax checked with Node.
