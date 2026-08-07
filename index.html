@@ -1110,8 +1110,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </style>
 
 
-<style id="food-database-v22-sidebar-ui">
-/* V22 — Food page: category rail on the left + high-priority macro hierarchy */
+<style id="food-database-v23-sidebar-ui">
+/* V23 — Food page: category rail on the left + high-priority macro hierarchy */
 #page-foods .food-library{overflow:visible}
 #page-foods .section-head{margin-bottom:12px}
 #page-foods .food-old-note{color:var(--muted);font-size:10px;line-height:1.5;margin-top:3px}
@@ -8210,21 +8210,22 @@ html[data-theme="dark"] #page-foods .food-group-title{background:#183b3a!importa
   }
   function foodDbUniqueItems() {
     const out=[], seen=new Set();
-    // allFoods() giữ nguyên engine nhận diện V20; trang Thực phẩm chỉ là lớp trình bày.
-    for (const f of allFoods()) {
-      if (!f || f.isOnline || f.isHeuristic || !f.name) continue;
+    // QUAN TRỌNG: Trang Thực phẩm chỉ dùng đúng danh sách món ưu tiên của người dùng.
+    // Không trộn FOOD_DB/PRO_FOOD_DB/online DB vào đây vì sẽ làm thay/chen món cũ.
+    // Engine nhận diện vẫn dùng allFoods(); đây chỉ là nguồn hiển thị của trang Thực phẩm.
+    for (const f of USER_FOOD_DB_V6) {
+      if (!f || !f.name) continue;
       const key=normalizePhrase(f.name);
       if (!key || seen.has(key)) continue;
       const d=foodDisplayBasis(f);
       if (!(d.kcal>0)) continue;
-      // Ẩn món quá chung chung theo layout cũ.
-      if (/^(lau cac loai|lau|hotpot)$/i.test(key)) continue;
-      seen.add(key); out.push({...f,_display:d,_cat:foodDisplayCategory(f)});
+      seen.add(key);
+      out.push({...f,_display:d,_cat:foodDisplayCategory(f),_oldOrder:out.length});
     }
+    // Giữ nguyên thứ tự gốc trong từng nhóm; chỉ nhóm theo thanh điều hướng.
     return out.sort((a,b)=>{
       const ca=FOOD_CATEGORY_ORDER.indexOf(a._cat), cb=FOOD_CATEGORY_ORDER.indexOf(b._cat);
-      if(ca!==cb) return ca-cb;
-      return String(a.name).localeCompare(String(b.name),'vi');
+      return ca===cb ? a._oldOrder-b._oldOrder : ca-cb;
     });
   }
   function foodProteinRatio(d){

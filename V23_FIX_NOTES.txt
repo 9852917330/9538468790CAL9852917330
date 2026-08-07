@@ -1,0 +1,6 @@
+V23
+- Trang Thực phẩm chỉ hiển thị đúng danh sách USER_FOOD_DB_V6, không trộn các database phụ/online.
+- Giữ nguyên tên và thứ tự món gốc trong từng nhóm.
+- Giữ Tép khô, Tôm khô, Rau, Cá cơm khô đã bổ sung theo yêu cầu gần nhất.
+- Giữ UI sidebar/icon, quy tắc macro, vị trí tab Thực phẩm, nút cập nhật và theme của V22.
+- Engine nhận diện vẫn dùng toàn bộ allFoods() để nhận món tốt; thay đổi này chỉ khóa nguồn hiển thị trang Thực phẩm.
