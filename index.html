@@ -1799,10 +1799,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-13-v52-generic-produce-compact-sidebar";
+  const APP_BUILD = "2026-08-13-v53-generic-produce-hardfix-bitter-melon";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
+      /* V53: xóa cache tra cứu online cũ vì alias có cả số gram từng có thể chiếm nhầm tên món nội bộ (vd. “300g hoa quả”). */
+      localStorage.removeItem("inAndOutOnlineFoodCacheV4");
       if ("caches" in window) caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
       if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((reg) => reg.update()));
     }
@@ -6795,6 +6797,26 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     }
   ];
 
+  /* V53 · Khóa nhận diện trực tiếp cho “rau / hoa quả / rau củ quả”.
+     Chạy trước mọi fuzzy-match để cache online cũ hoặc tên gần giống không thể chiếm kết quả. */
+  function findGenericProduceV53(text="") {
+    const cleaned = normalizePhrase(cleanLookupQuery(String(text||"")))
+      .replace(/\b(?:tuoi|fresh|song|raw)\b/g," ")
+      .replace(/\s+/g," ").trim();
+    if(!cleaned) return null;
+    let best=null;
+    for(const food of GENERIC_PRODUCE_PARSER_V52){
+      for(const raw of [food.name,food.en,...(food.aliases||[])].filter(Boolean)){
+        const alias=normalizePhrase(raw);
+        if(cleaned===alias){
+          const score=(Number(food.priority)||0)+alias.length*20;
+          if(!best||score>best.score) best={food,score:9500000+score,matchedAlias:raw,genericExactV53:true};
+        }
+      }
+    }
+    return best;
+  }
+
   function baseFoodsV50() {
     return [
       ...USER_FOOD_DB_V6,
@@ -6810,7 +6832,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       ...GENERIC_PRODUCE_PARSER_V52,
       ...getAuthoritativeFoodDbV50(),
       ...baseFoodsV50(),
-      ...getOnlineFoods().map((x) => ({ ...x, isOnline: true })),
+      /* V53: Excel chỉ nhận diện từ danh mục nội bộ + hồ sơ chung.
+         Dữ liệu USDA/OFF online chỉ phục vụ ô tìm kiếm, tuyệt đối không được chiếm alias món đã nhập trong Sheet. */
     ];
   }
   function foodIndex() {
@@ -8534,7 +8557,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     };
   }
   function splitFoodSegmentsV51(source) {
-    const hard = String(source||"").split(/\s*(?:\+|;|\n)\s*/i).map((s)=>s.trim()).filter(Boolean);
+    const hard = String(source||"").split(/\s*(?:\+|;|•|·|\n)\s*/i).map((s)=>s.trim()).filter(Boolean);
     return hard.flatMap((part)=>{
       /* Nếu có kcal + ít nhất một macro tự nhập, “và/and” thuộc cùng một món, không phải dấu tách món. */
       if (parseExplicitCustomNutritionV51(part)) return [part];
@@ -8596,7 +8619,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         continue;
       }
       const norm = normalizePhrase(original),
-        match = findFood(original);
+        match = findGenericProduceV53(original) || findFood(original);
       if (!match?.food) {
         unresolvedCount++;
         warningCount++;
@@ -10344,6 +10367,9 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     curatedCatalogFood("tortilla","Tortilla","starch",160,4,27,4,"1 cái · 50 g","🫓","tortilla wrap","bread"),
     curatedCatalogFood("naan","Bánh mì naan","starch",310,9,50,8,"1 cái · 100 g","🫓","naan bread","bread"),
 
+    /* Rau củ */
+    curatedCatalogFood("muop_dang","Mướp đắng","vegetables",17,1.0,3.7,0.2,"100 g · sống","🥒","khổ qua kho qua bitter melon bitter gourd balsam pear","vegetables"),
+
     /* Cá và hải sản khô */
     curatedCatalogFood("ca_bo_kho","Cá bò khô","fish",290,55,5,4.5,"100 g","🐟","dried leatherjacket fish","fish-dried"),
     curatedCatalogFood("ca_chi_vang_kho","Cá chỉ vàng khô","fish",290,58,2,5,"100 g","🐟","dried yellow stripe scad","fish-dried"),
@@ -11039,6 +11065,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   window.__foodParserV50={estimateFood,findFood,getAuthoritativeFoodDbV50};
   window.__foodParserV51={estimateFood,findFood,getAuthoritativeFoodDbV50,parseExplicitCustomNutritionV51,authoritativeCatalogAliasMatchV51};
   window.__foodParserV52={estimateFood,findFood,genericProduce:GENERIC_PRODUCE_PARSER_V52};
+  window.__foodParserV53={estimateFood,findFood,findGenericProduceV53,genericProduce:GENERIC_PRODUCE_PARSER_V52};
   /* USDA/Open Food Facts chỉ được gọi khi người dùng chủ động tìm kiếm để trang mặc định luôn gọn. */
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
   nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
