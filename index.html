@@ -1649,6 +1649,71 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .food-secondary-macros{font-variant-numeric:tabular-nums}
 </style>
 
+<style id="food-sidebar-v52-no-scroll">
+  /* V52 · Mobile: giữ sidebar trái nhưng ép toàn bộ danh mục vừa một màn hình, không có thanh cuộn riêng. */
+  @media(max-width:560px){
+    .catalog-browser{grid-template-columns:82px minmax(0,1fr)!important;gap:6px!important}
+    .catalog-category-picker{
+      top:132px!important;
+      height:calc(100dvh - 140px)!important;
+      max-height:none!important;
+      overflow:visible!important;
+      overscroll-behavior:auto!important;
+      display:flex!important;
+      flex-direction:column!important;
+      padding:4px!important;
+      scrollbar-width:none!important;
+    }
+    .catalog-category-picker::-webkit-scrollbar{display:none!important}
+    .catalog-picker-head{
+      position:static!important;
+      flex:0 0 24px!important;
+      min-height:24px!important;
+      margin:-4px -4px 2px!important;
+      padding:5px 4px 3px!important;
+    }
+    .catalog-picker-head strong{font-size:6.1px!important}
+    .catalog-picker-head>b{min-width:18px!important;height:16px!important;font-size:5px!important}
+    .catalog-category-grid{
+      flex:1 1 auto!important;
+      min-height:0!important;
+      display:grid!important;
+      grid-template-columns:1fr!important;
+      grid-template-rows:repeat(16,minmax(0,1fr))!important;
+      gap:2px!important;
+      overflow:visible!important;
+    }
+    .catalog-main-tab{
+      display:grid!important;
+      grid-template-columns:18px minmax(0,1fr)!important;
+      align-items:center!important;
+      justify-content:initial!important;
+      min-height:0!important;
+      height:auto!important;
+      gap:3px!important;
+      padding:1px 14px 1px 2px!important;
+      text-align:left!important;
+      border-radius:8px!important;
+    }
+    .catalog-main-icon{width:18px!important;height:18px!important;border-radius:6px!important;font-size:11px!important}
+    .catalog-main-label{font-size:5.7px!important;line-height:1.03!important;text-align:left!important;white-space:normal!important}
+    .catalog-main-tab small{top:2px!important;right:2px!important;min-width:12px!important;height:12px!important;padding:0 2px!important;font-size:4.3px!important}
+  }
+  @media(max-width:355px){
+    .catalog-browser{grid-template-columns:75px minmax(0,1fr)!important;gap:4px!important}
+    .catalog-main-label{font-size:5.2px!important}
+    .catalog-main-icon{width:16px!important;height:16px!important;font-size:10px!important}
+  }
+  @media(max-height:620px) and (max-width:560px){
+    .catalog-category-picker{height:calc(100dvh - 136px)!important;padding:3px!important}
+    .catalog-picker-head{flex-basis:20px!important;min-height:20px!important;margin:-3px -3px 1px!important;padding:3px!important}
+    .catalog-main-tab{padding-top:0!important;padding-bottom:0!important}
+    .catalog-main-icon{width:15px!important;height:15px!important;font-size:9px!important}
+    .catalog-main-label{font-size:5px!important;line-height:1!important}
+    .catalog-main-tab small{min-width:11px!important;height:11px!important;font-size:4px!important}
+  }
+</style>
+
 </head>
 
 <body>
@@ -1734,7 +1799,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-07-v51-bilingual-food-parser-custom-macros";
+  const APP_BUILD = "2026-08-13-v52-generic-produce-compact-sidebar";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -6700,6 +6765,36 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       invalidateFoodIndex();
     } catch {}
   }
+  /* V52 · Hồ sơ parser-only cho cách nhập chung chung trong Excel.
+     Không đưa các dòng này vào trang Thực phẩm để giữ nguyên danh sách hiển thị.
+     Đây là giá trị trung bình tham chiếu, dùng khi người dùng chỉ ghi “rau”, “hoa quả” hoặc “rau củ quả”. */
+  const GENERIC_PRODUCE_PARSER_V52 = [
+    {
+      id:"generic_vegetables_v52", name:"Rau (ước tính chung)", en:"Generic vegetables",
+      aliases:["rau","rau củ","rau cu","rau xanh","các loại rau","cac loai rau","vegetable","vegetables","mixed vegetables","fresh vegetables","greens"],
+      per100g:30, protein100g:1.8, carbs100g:5.2, fat100g:0.3,
+      defaultKcal:30, defaultProtein:1.8, defaultCarbs:5.2, defaultFat:0.3, defaultGrams:100,
+      priority:2000000, rangePct:0.30, rangeNote:"vì loại rau cụ thể có thể khác đáng kể",
+      genericEstimateV52:true, genericNote:"ước tính chung cho rau không xác định loại", source:"Hồ sơ ước tính chung V52"
+    },
+    {
+      id:"generic_fruit_v52", name:"Hoa quả (ước tính chung)", en:"Generic fruit",
+      aliases:["hoa quả","hoa qua","trái cây","trai cay","các loại hoa quả","cac loai hoa qua","fruit","fruits","mixed fruit","fresh fruit","mixed fruits"],
+      per100g:55, protein100g:0.7, carbs100g:13.0, fat100g:0.2,
+      defaultKcal:55, defaultProtein:0.7, defaultCarbs:13.0, defaultFat:0.2, defaultGrams:100,
+      priority:2000000, rangePct:0.30, rangeNote:"vì loại hoa quả cụ thể có thể khác đáng kể",
+      genericEstimateV52:true, genericNote:"ước tính chung cho hoa quả không xác định loại", source:"Hồ sơ ước tính chung V52"
+    },
+    {
+      id:"generic_produce_mix_v52", name:"Rau củ quả (ước tính chung)", en:"Generic fruit and vegetables",
+      aliases:["rau củ quả","rau cu qua","rau củ và hoa quả","rau cu va hoa qua","rau và hoa quả","rau va hoa qua","rau hoa quả","rau hoa qua","vegetables and fruit","vegetables and fruits","fruit and vegetables","fruits and vegetables","mixed fruit and vegetables","mixed fruits and vegetables"],
+      per100g:44, protein100g:1.2, carbs100g:9.1, fat100g:0.3,
+      defaultKcal:44, defaultProtein:1.2, defaultCarbs:9.1, defaultFat:0.3, defaultGrams:100,
+      priority:2100000, rangePct:0.35, rangeNote:"vì tỉ lệ rau/hoa quả và loại thực phẩm thực tế không được ghi rõ",
+      genericEstimateV52:true, genericNote:"ước tính chung cho hỗn hợp rau củ và hoa quả không xác định loại", source:"Hồ sơ ước tính chung V52"
+    }
+  ];
+
   function baseFoodsV50() {
     return [
       ...USER_FOOD_DB_V6,
@@ -6712,6 +6807,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   function allFoods() {
     /* V50: dữ liệu đang hiển thị trên trang Thực phẩm là nguồn chuẩn cao nhất cho bộ nhận diện Excel. */
     return [
+      ...GENERIC_PRODUCE_PARSER_V52,
       ...getAuthoritativeFoodDbV50(),
       ...baseFoodsV50(),
       ...getOnlineFoods().map((x) => ({ ...x, isOnline: true })),
@@ -8687,6 +8783,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
           : food.isOnline
             ? "medium"
             : "low";
+      }
+      if (food.genericEstimateV52 && confidence !== "exact") {
+        confidence = "medium";
+        basis += ` · ${food.genericNote || "ước tính chung do không ghi rõ loại thực phẩm"}`;
       }
       if (food.isHeuristic) {
         basis += " · sẽ tự tra lại khi có kết nối";
@@ -10938,6 +11038,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   renderUnifiedFoodCatalog(UNIFIED_FOOD_CATALOG);
   window.__foodParserV50={estimateFood,findFood,getAuthoritativeFoodDbV50};
   window.__foodParserV51={estimateFood,findFood,getAuthoritativeFoodDbV50,parseExplicitCustomNutritionV51,authoritativeCatalogAliasMatchV51};
+  window.__foodParserV52={estimateFood,findFood,genericProduce:GENERIC_PRODUCE_PARSER_V52};
   /* USDA/Open Food Facts chỉ được gọi khi người dùng chủ động tìm kiếm để trang mặc định luôn gọn. */
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
   nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
