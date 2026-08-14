@@ -1737,13 +1737,13 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   <section class="section"><div class="section-head"><div><h2>Tổng quan</h2><p>Các chỉ số mới nhất từ cân nặng, vòng eo, calo và vận động.</p></div><span class="tag">LIVE METRICS</span></div><div class="target-burn-hero" aria-live="polite">
       <article class="target-burn-main">
         <div class="target-burn-eyebrow">🔥 Ưu tiên số 1 · Mục tiêu 12% mỡ</div>
-        <h3 class="target-burn-title">Tổng calo còn phải đốt tính từ trạng thái hiện tại</h3>
+        <h3 class="target-burn-title">Tổng calo còn phải thâm hụt để đạt mục tiêu</h3>
         <div id="targetBurnKcal" class="target-burn-kcal">—</div>
         <div id="targetBurnSub" class="target-burn-sub">—</div>
         <div class="target-burn-grid">
-          <div class="target-burn-mini"><span>Cân mục tiêu hiện tại</span><b id="targetBurnWeight">—</b></div>
+          <div class="target-burn-mini"><span>Cân mục tiêu</span><b id="targetBurnWeight">—</b></div>
           <div class="target-burn-mini"><span>Mỡ cần giảm</span><b id="targetBurnFatKg">—</b></div>
-          <div class="target-burn-mini"><span>Độ chính xác</span><b>Khối nạc hiện tại</b></div>
+          <div class="target-burn-mini"><span>Cách tính</span><b>Baseline + thâm hụt tích lũy</b></div>
         </div>
       </article>
       <article class="target-burn-walk">
@@ -1799,7 +1799,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-13-v53-generic-produce-hardfix-bitter-melon";
+  const APP_BUILD = "2026-08-14-v54-unified-calorie-goal";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -9326,7 +9326,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
             : "Chưa tạo thâm hụt"
         : "Chưa đủ dữ liệu",
     );
-    updateTargetBurnHighlight(currentWeight, currentBf);
+    updateTargetBurnHighlight(currentWeight, currentBf, cumulative, totalGoal, targetWeight);
     updateSlope(progress, cumulative, totalGoal, targetWeight);
     const todayData =
       computedDays.find((d) => dateKey(d.date) === dateKey(today)) || null;
@@ -9435,26 +9435,25 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     if (hours > 0) return `${fmt(hours)} giờ ${mins ? `${mins} phút` : ""}`.trim();
     return `${fmt(mins)} phút`;
   }
-  function calculateTargetBurnPlan(currentWeight, currentBodyFat) {
-    const targetRatio = PROFILE.targetBodyFat / 100;
-    const currentFatRatio = currentBodyFat / 100;
-    const leanMass = currentWeight * (1 - currentFatRatio);
-    const targetWeightNow = leanMass / (1 - targetRatio);
-    const fatKgToLose = Math.max(0, currentWeight - targetWeightNow);
-    const kcalToBurn = fatKgToLose * 7700;
+  /* V54 · The target-burn hero and the progress panel MUST use one identical goal ledger.
+     Baseline target = start weight + PROFILE.startBodyFat, then only cumulative energy balance
+     advances/regresses progress. Current scale/BF readings remain informational and are NOT
+     allowed to silently reset the calorie goal. */
+  function calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight) {
+    const remainingKcal = Math.max(0, totalGoal - cumulative);
+    const fatKgToLose = remainingKcal / 7700;
 
     const treadmillSpeedKmh = 3.3;
     const treadmillGrade = 0.15;
     const speedMetersPerMinute = treadmillSpeedKmh * 1000 / 60;
     const vo2 = 0.1 * speedMetersPerMinute + 1.8 * speedMetersPerMinute * treadmillGrade + 3.5;
     const kcalPerMinute = vo2 * currentWeight * 5 / 1000;
-    const walkMinutes = kcalPerMinute > 0 ? kcalToBurn / kcalPerMinute : 0;
+    const walkMinutes = kcalPerMinute > 0 ? remainingKcal / kcalPerMinute : 0;
 
     return {
-      leanMass,
-      targetWeightNow,
+      targetWeightNow: targetWeight,
       fatKgToLose,
-      kcalToBurn,
+      kcalToBurn: remainingKcal,
       treadmillSpeedKmh,
       treadmillGrade,
       vo2,
@@ -9462,17 +9461,17 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       walkMinutes,
     };
   }
-  function updateTargetBurnHighlight(currentWeight, currentBodyFat) {
-    const plan = calculateTargetBurnPlan(currentWeight, currentBodyFat);
-    const achieved = currentBodyFat <= PROFILE.targetBodyFat || plan.kcalToBurn <= 1;
+  function updateTargetBurnHighlight(currentWeight, currentBodyFat, cumulative, totalGoal, targetWeight) {
+    const plan = calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight);
+    const achieved = plan.kcalToBurn <= 1;
     setText("targetBurnKcal", achieved ? "0 kcal" : `${fmt(plan.kcalToBurn)} kcal`);
     setText("targetBurnWeight", `${fmt(plan.targetWeightNow, 1)} kg`);
     setText("targetBurnFatKg", achieved ? "Đã đạt" : `${fmt(plan.fatKgToLose, 2)} kg mỡ`);
     setText(
       "targetBurnSub",
       achieved
-        ? `Mỡ ước tính hiện tại ${fmt(currentBodyFat, 1)}%, đã ở ngưỡng mục tiêu ${fmt(PROFILE.targetBodyFat, 0)}%.`
-        : `Tính từ ${fmt(currentWeight, 1)} kg và ${fmt(currentBodyFat, 1)}% mỡ hiện tại. Cần tạo thâm hụt tương đương ${fmt(plan.fatKgToLose, 2)} kg mỡ để xuống ${fmt(PROFILE.targetBodyFat, 0)}%.`,
+        ? `Đã hoàn thành mục tiêu năng lượng tích lũy để tiến tới ${fmt(PROFILE.targetBodyFat, 0)}% mỡ. Cân hiện tại ${fmt(currentWeight, 1)} kg, mỡ ước tính ${fmt(currentBodyFat, 1)}%.`
+        : `Cùng một mốc với “Tiến độ thực tế”: còn ${fmt(plan.kcalToBurn)} kcal sau khi tính thâm hụt/dư thừa tích lũy. Mục tiêu khoảng ${fmt(targetWeight, 1)} kg nếu giữ khối nạc baseline; cân hiện tại ${fmt(currentWeight, 1)} kg, mỡ ước tính ${fmt(currentBodyFat, 1)}%.`,
     );
     setText(
       "targetBurnWalkTime",
@@ -9481,8 +9480,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     setText(
       "targetBurnWalkSub",
       achieved
-        ? "Không cần quy đổi thêm sang đi bộ dốc vì mục tiêu đã đạt theo dữ liệu hiện tại."
-        : `Nếu chỉ quy đổi sang đi bộ dốc 15 với vận tốc 3,3 km/h, cần khoảng ${fmt(Math.ceil(plan.walkMinutes / 60))} giờ tập thực tế.`,
+        ? "Không cần quy đổi thêm sang đi bộ dốc vì mục tiêu năng lượng tích lũy đã đạt."
+        : `Nếu chỉ quy đổi ${fmt(plan.kcalToBurn)} kcal còn lại sang đi bộ dốc 15 với vận tốc 3,3 km/h ở cân nặng hiện tại, cần khoảng ${fmt(Math.ceil(plan.walkMinutes / 60))} giờ tập thực tế.`,
     );
     setText("targetBurnRate", `${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
     setText("targetBurnSessions60", `${fmt(Math.ceil(plan.walkMinutes / 60))} buổi`);
