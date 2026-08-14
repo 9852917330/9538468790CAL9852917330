@@ -1799,7 +1799,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-14-v54-unified-calorie-goal";
+  const APP_BUILD = "2026-08-14-v55-custom-kcal-parser";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -8519,39 +8519,43 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       return `${fraction[1]}/${fraction[2]}`;
     return Number.isInteger(q) ? String(q) : fmt(q, 2);
   }
+  /* V55 · Dữ liệu tự nhập: chỉ cần có kcal là đã là một món hợp lệ.
+     Macro là tùy chọn. Ví dụ: “Buffet 3000kcal” hoặc “Bánh 2000kcal 30g đạm”. */
   function parseExplicitMacroValueV51(text, labels) {
     const raw = String(text || "");
     const label = labels.map(escapeRegExp).join("|");
-    const numberFirst = new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*g(?:ram|rams)?\\s*(?:${label})\\b`, "i");
-    const labelFirst = new RegExp(`\\b(?:${label})\\s*[:=]?\\s*(\\d+(?:[.,]\\d+)?)\\s*g(?:ram|rams)?\\b`, "i");
+    /* Cho phép: “30g đạm”, “30 đạm”, “protein 30g”, “protein 30”. */
+    const numberFirst = new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:g(?:ram|rams)?)?\\s*(?:${label})\\b`, "i");
+    const labelFirst = new RegExp(`\\b(?:${label})\\s*[:=]?\\s*(\\d+(?:[.,]\\d+)?)\\s*(?:g(?:ram|rams)?)?\\b`, "i");
     const m = raw.match(numberFirst) || raw.match(labelFirst);
     return m ? Number(String(m[1]).replace(",", ".")) : null;
   }
   function parseExplicitCustomNutritionV51(text) {
     const raw = String(text || "").trim();
     if (!raw) return null;
-    const kcalMatch = raw.match(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calories?)\b/i);
+    const kcalMatch = raw.match(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calorie|calories)\b/i);
     if (!kcalMatch) return null;
     const protein = parseExplicitMacroValueV51(raw,["đạm","dam","protein","proteins"]);
     const carbs = parseExplicitMacroValueV51(raw,["carb","carbs","carbohydrate","carbohydrates","tinh bột","tinh bot"]);
     const fat = parseExplicitMacroValueV51(raw,["fat","fats","chất béo","chat beo"]);
-    if (![protein,carbs,fat].some((v)=>Number.isFinite(v))) return null;
     const kcal = Number(String(kcalMatch[1]).replace(",","."));
-    if (!(kcal>=0) || kcal>10000) return null;
+    if (!(kcal>=0) || kcal>20000) return null;
     const stripMacroPairs = (value) => String(value)
-      .replace(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calories?)\b/ig," ")
-      .replace(/(\d+(?:[.,]\d+)?)\s*g(?:ram|rams)?\s*(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\b/ig," ")
-      .replace(/\b(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*g(?:ram|rams)?\b/ig," ")
+      .replace(/(?:^|[^a-z0-9])(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calorie|calories)\b/ig," ")
+      .replace(/(\d+(?:[.,]\d+)?)\s*(?:g(?:ram|rams)?)?\s*(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\b/ig," ")
+      .replace(/\b(?:đạm|dam|protein|proteins|carb|carbs|carbohydrate|carbohydrates|tinh bột|tinh bot|fat|fats|chất béo|chat beo)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:g(?:ram|rams)?)?\b/ig," ")
       .replace(/(?:^|\s)(?:và|and)(?=\s|$)/ig," ")
       .replace(/[=,:;|]+/g," ")
+      .replace(/[.!?…]+$/g," ")
       .replace(/\s+/g," ").trim();
-    const name = stripMacroPairs(raw) || "Món tự chế biến";
+    const name = stripMacroPairs(raw) || "Món tự nhập";
     const missing = [protein===null?"Đạm":null,carbs===null?"Carb":null,fat===null?"Fat":null].filter(Boolean);
     return {
       name,kcal,
       protein:protein??0,
       carbs:carbs??0,
       fat:fat??0,
+      hasAnyMacro:[protein,carbs,fat].some((v)=>Number.isFinite(v)),
       missingMacros:missing,
       completeMacros:missing.length===0
     };
@@ -8559,7 +8563,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   function splitFoodSegmentsV51(source) {
     const hard = String(source||"").split(/\s*(?:\+|;|•|·|\n)\s*/i).map((s)=>s.trim()).filter(Boolean);
     return hard.flatMap((part)=>{
-      /* Nếu có kcal + ít nhất một macro tự nhập, “và/and” thuộc cùng một món, không phải dấu tách món. */
+      /* Hai món tự nhập nối bằng “và/and” được tách; nhưng
+         “Bánh 2000kcal và 30g đạm” vẫn là một món duy nhất. */
+      const connectorParts = part.split(/\s+(?:và|and)\s+/i).map((s)=>s.trim()).filter(Boolean);
+      if (connectorParts.length > 1 && connectorParts.every((s)=>!!parseExplicitCustomNutritionV51(s)))
+        return connectorParts;
+      /* Nếu có kcal tự nhập, giữ nguyên cả cụm để parser lấy các macro đi kèm. */
       if (parseExplicitCustomNutritionV51(part)) return [part];
       const viParts = part.split(/\s+và\s+/i).map((s)=>s.trim()).filter(Boolean);
       return viParts.flatMap((viPart)=>{
@@ -8608,12 +8617,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
           protein: explicitCustom.protein,
           carbs: explicitCustom.carbs,
           fat: explicitCustom.fat,
-          basis: `Calo và macro nhập trực tiếp${missingNote}`,
+          basis: `${explicitCustom.hasAnyMacro ? "Calo và macro nhập trực tiếp" : "Calo nhập trực tiếp"}${missingNote}`,
           confidence: "exact",
           confidenceText: confidenceLabel("exact"),
           source: "Dữ liệu tự nhập trong Excel",
           resolved: true,
-          foodId: "custom_explicit_v51",
+          foodId: "custom_explicit_v55",
           customNutrition: true
         });
         continue;
