@@ -1,0 +1,7 @@
+V60 - Instant last-data hydration
+
+- Luu du lieu Google Sheet thanh cong gan nhat vao localStorage (inAndOutSheetCacheV2).
+- Moi lan mo app: doc cache va render ngay, sau do moi dong bo Google Sheet o nen.
+- Khi du lieu moi ve: cap nhat dashboard va ghi de cache.
+- Neu Google Sheet/mang loi: giu nguyen du lieu lan truoc, khong reset ve 0/—.
+- Tang APP_BUILD va Service Worker cache len V60 de PWA nhan cap nhat.

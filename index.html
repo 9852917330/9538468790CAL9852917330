@@ -20,7 +20,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4f8fb">
-<title>In and Out — Energy Dashboard V58</title>
+<title>In and Out — Energy Dashboard V59</title>
 <script id="theme-bootstrap">
 (()=>{'use strict';let t='light';try{const s=localStorage.getItem('dienWebThemeV4');if(s==='light'||s==='dark')t=s;}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;})();
 </script>
@@ -1841,6 +1841,71 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
 </style>
 
+
+<style id="overview-viewport-fill-v59">
+  /* V59 · Tổng quan dùng hết chiều cao màn hình, không để nửa dưới trống. */
+  #page-overview .overview-compact{
+    min-height:calc(100dvh - 136px);
+    grid-template-rows:auto minmax(150px,1.35fr) auto auto minmax(105px,.85fr);
+  }
+  #page-overview .overview-primary-card{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  #page-overview .overview-metrics article{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  #page-overview .overview-progress{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+  }
+  #page-overview .overview-forecast{
+    display:flex;
+    min-height:0;
+    flex-direction:column;
+    justify-content:center;
+  }
+  #page-overview .overview-forecast-grid{align-items:stretch}
+  #page-overview .forecast-compact{display:flex;flex-direction:column;justify-content:center}
+
+  @media(max-width:620px){
+    body:has(#page-overview.active) main{padding-bottom:8px!important}
+    #page-overview .overview-compact{
+      min-height:calc(100dvh - 150px);
+      grid-template-rows:36px minmax(145px,1.45fr) 48px 52px minmax(108px,.95fr);
+      gap:7px;
+    }
+    #page-overview .overview-primary-card{padding:12px 10px 10px}
+    #page-overview .overview-primary-label{font-size:7.4px}
+    #page-overview .overview-primary-value{font-size:clamp(29px,9.2vw,40px)}
+    #page-overview .overview-primary-sub{font-size:7.1px}
+    #page-overview .overview-mini-line span{padding:5px 6px;font-size:6.2px}
+    #page-overview .overview-mini-line b{font-size:7.5px}
+    #page-overview .overview-metrics article{padding:7px 4px}
+    #page-overview .overview-metrics span{font-size:6.2px}
+    #page-overview .overview-metrics b{font-size:10px}
+    #page-overview .overview-progress{padding:7px 9px 8px}
+    #page-overview .overview-progress-head{font-size:7.4px}
+    #page-overview .overview-progress-head b{font-size:12px}
+    #page-overview .overview-forecast{padding:7px 8px 8px}
+    #page-overview .overview-forecast-head strong{font-size:9px}
+    #page-overview .overview-forecast-head span{font-size:6.3px}
+    #page-overview .forecast-compact{padding:6px 5px}
+    #page-overview .forecast-compact span{font-size:5.8px}
+    #page-overview .forecast-compact strong{font-size:6.8px}
+    #page-overview .forecast-compact b{font-size:9.5px}
+    #page-overview .forecast-compact small{font-size:5.3px}
+  }
+
+  @media(max-width:620px) and (max-height:650px){
+    #page-overview .overview-compact{min-height:0;grid-template-rows:auto}
+  }
+</style>
+
 </head>
 
 <body>
@@ -1954,7 +2019,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-15-v57-complete-menu-recognition";
+  const APP_BUILD = "2026-08-31-v60-instant-last-data";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -1967,7 +2032,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   const SHEET_ID = "1oiraviDfjkyPk3cC9On76bvCyUloNI9UVFalCeI0ZQg",
     SHEET_NAME = "Sheet1",
     SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-  const CACHE_KEY = "inAndOutSheetCacheV1";
+  const CACHE_KEY = "inAndOutSheetCacheV2";
   const PROFILE = {
     sex: "male",
     age: 35,
@@ -10159,8 +10224,34 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       document.head.appendChild(script);
     });
   }
+  function readSheetCache() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (!cached || cached.version !== 1 || !Array.isArray(cached.rows) || !cached.rows.length) return null;
+      const rows = cached.rows.filter((row) => row && typeof row.date === "string");
+      if (!rows.length) return null;
+      return { rows, savedAt: cached.savedAt || null };
+    } catch (_) {
+      return null;
+    }
+  }
+  function writeSheetCache(rows) {
+    try {
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ version: 1, savedAt: new Date().toISOString(), rows }),
+      );
+    } catch (_) {}
+  }
+  function hydrateSheetCache() {
+    const cached = readSheetCache();
+    if (!cached) return false;
+    rawRows = cached.rows;
+    setSync("loading", "Đang cập nhật · hiển thị dữ liệu lần trước");
+    return true;
+  }
   async function loadSheet() {
-    setSync("loading", "Đang cập nhật Sheet…");
+    setSync("loading", rawRows.length ? "Đang cập nhật · giữ dữ liệu hiện tại" : "Đang cập nhật Sheet…");
     hideBanner();
     try {
       return await loadCsvRows();
@@ -10182,6 +10273,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     try {
       const rows = await loadSheet();
       rawRows = rows;
+      writeSheetCache(rows);
       setSync("ok", "Sheet đã đồng bộ");
       setText(
         "lastSync",
@@ -10202,14 +10294,23 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       if ("requestIdleCallback" in window) requestIdleCallback(runLookup, { timeout: 1200 });
       else setTimeout(runLookup, 50);
     } catch (err) {
-      rawRows = [];
+      const hasFallback = rawRows.length > 0;
       render();
-      setSync("error", "Chưa đọc được dữ liệu Sheet");
-      setLookupText("Tự động tra món tạm dừng vì chưa có dữ liệu Sheet");
-      showBanner(
-        `${err.message} Dashboard đã xóa dữ liệu cũ và không dùng cache để tránh hiển thị sai ngày.`,
+      setSync(
+        "error",
+        hasFallback ? "Chưa cập nhật được · đang dùng dữ liệu lần trước" : "Chưa đọc được dữ liệu Sheet",
       );
-      setText("lastSync", "Chưa đồng bộ trực tiếp");
+      setLookupText(
+        hasFallback
+          ? "Dữ liệu lần trước vẫn được giữ nguyên; sẽ thử đồng bộ lại tự động"
+          : "Tự động tra món tạm dừng vì chưa có dữ liệu Sheet",
+      );
+      showBanner(
+        hasFallback
+          ? `${err.message} Đang giữ nguyên dữ liệu của lần truy cập gần nhất.`
+          : `${err.message} Chưa có dữ liệu đã lưu trên thiết bị này.`,
+      );
+      setText("lastSync", hasFallback ? "Đang dùng dữ liệu lần trước" : "Chưa đồng bộ trực tiếp");
     } finally {
       refreshBusy = false;
       refreshButtons.forEach((button) => {
@@ -11304,6 +11405,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   const hash = rawHash === "foods" ? "lookup" : rawHash;
   if (["overview", "calendar", "charts", "history", "lookup"].includes(hash))
     showPage(hash);
+  hydrateSheetCache();
   render();
   refreshData();
   refreshTimer = setInterval(refreshData, PROFILE.refreshSeconds * 1000);
