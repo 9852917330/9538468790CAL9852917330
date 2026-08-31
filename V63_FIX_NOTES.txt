@@ -1,0 +1,7 @@
+V63 - Wider calorie card, smarter forecast, calorie money jar
+
+- Left KPI card widened so the main calorie value and unit no longer get clipped.
+- Main KPI typography increased again; the empty space inside both hero cards is used better.
+- Today card in the forecast area now shows: total calories eaten today + whether today is a deficit or surplus and by how many kcal.
+- Added a compact "Hũ tiền $": every 1 kcal cumulative deficit = +$1; surplus reduces the jar balance back down.
+- Service Worker cache name bumped to V63 and root URL is now precached too.

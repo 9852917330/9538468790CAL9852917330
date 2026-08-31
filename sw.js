@@ -1,7 +1,9 @@
-const CACHE_NAME = "in-and-out-pwa-2026-08-31-v62-instant-paint";
+const CACHE_NAME = "in-and-out-pwa-2026-08-31-v63-balance-jar";
 const INDEX_URL = new URL("./index.html", self.registration.scope).href;
 const APP_URL = new URL("./app.js", self.registration.scope).href;
+const ROOT_URL = new URL("./", self.registration.scope).href;
 const OPTIONAL_SHELL = [
+  ROOT_URL,
   APP_URL,
   new URL("./manifest.webmanifest", self.registration.scope).href,
   new URL("./icon-192.png", self.registration.scope).href,

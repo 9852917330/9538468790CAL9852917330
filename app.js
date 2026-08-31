@@ -7518,6 +7518,7 @@
         : "Chưa đủ dữ liệu",
     );
     updateTargetBurnHighlight(currentWeight, currentBf, cumulative, totalGoal, targetWeight);
+    updateCalorieJar(cumulative, totalGoal);
     updateSlope(progress, cumulative, totalGoal, targetWeight);
     const todayData =
       computedDays.find((d) => dateKey(d.date) === dateKey(today)) || null;
@@ -7696,6 +7697,20 @@
     setText("targetBurnSessions90", `${fmt(Math.ceil(plan.walkMinutes / 90))} buổi`);
   }
 
+  function updateCalorieJar(cumulative, totalGoal) {
+    const saved = Math.max(0, Math.round(cumulative));
+    const percent = totalGoal > 0 ? clamp(saved / totalGoal, 0, 1) * 100 : 0;
+    setText("calorieJarValue", `$${fmt(saved)}`);
+    setText(
+      "calorieJarSub",
+      cumulative > 0
+        ? `Đã tích ${fmt(percent, 1)}% mục tiêu · còn ${fmt(Math.max(0, totalGoal - cumulative))} kcal`
+        : cumulative < 0
+          ? `Hũ về $0 · đang dư lũy kế ${fmt(Math.abs(cumulative))} kcal`
+          : "Chưa tích được tiền kcal nào",
+    );
+  }
+
   function renderTargetDates(
     cumulative,
     totalGoal,
@@ -7714,15 +7729,28 @@
 
     let todayCard = "";
     if (projection.state === "missing") {
-      todayCard = `<article class="forecast-compact today"><span>Nhịp hôm nay</span><strong>Chưa đủ dữ liệu</strong><b>—</b><small>Nhập đồ ăn hôm nay để dự báo</small></article>`;
-    } else if (projection.state === "neutral") {
-      todayCard = `<article class="forecast-compact today"><span>Nhịp hôm nay</span><strong>Đang cân bằng</strong><b>—</b><small>Không có mốc nếu giữ nguyên</small></article>`;
-    } else if (projection.state === "stalled") {
-      const isDef = projection.direction === "deficit";
-      todayCard = `<article class="forecast-compact today ${isDef ? "" : "surplus"}"><span>Nhịp hôm nay</span><strong>${isDef ? "Thâm hụt chưa đủ" : "Đang dư thừa"}</strong><b>—</b><small>Không chạm mốc theo mô phỏng</small></article>`;
+      todayCard = `<article class="forecast-compact today"><span>Hôm nay</span><strong>Ăn hôm nay —</strong><b>—</b><small>Chưa đủ dữ liệu để tính Hụt/Dư</small></article>`;
     } else {
-      const isDef = projection.direction === "deficit";
-      todayCard = `<article class="forecast-compact today ${isDef ? "" : "surplus"}"><span>Nhịp hôm nay</span><strong>${isDef ? `Thâm hụt ${fmt(projection.firstBalance)} kcal` : `Dư ${fmt(Math.abs(projection.firstBalance))} kcal`}</strong><b>${fmt(projection.days)} ngày</b><small>${formatDateVi(projection.date)}</small></article>`;
+      const intakeText = `Ăn hôm nay ${fmt(projection.intake)} kcal`;
+      const balance = Number(projection.firstBalance) || 0;
+      const sign = balance > 0 ? "deficit" : balance < 0 ? "surplus" : "neutral";
+      const toneClass = sign === "surplus" ? " surplus" : "";
+      const balanceText = sign === "deficit"
+        ? `✓ Hụt ${fmt(balance)} kcal`
+        : sign === "surplus"
+          ? `✕ Dư ${fmt(Math.abs(balance))} kcal`
+          : "• Cân bằng 0 kcal";
+      let foot = "";
+      if (sign === "deficit" && projection.state === "projected") {
+        foot = `Nếu giữ nhịp này: ${fmt(projection.days)} ngày · ${formatDateVi(projection.date)}`;
+      } else if (sign === "deficit") {
+        foot = "Thâm hụt hiện tại chưa đủ để chạm mốc 12% mỡ.";
+      } else if (sign === "surplus") {
+        foot = "Giữ nhịp này sẽ xa mục tiêu hơn.";
+      } else {
+        foot = "Không có mốc mới nếu giữ nguyên hôm nay.";
+      }
+      todayCard = `<article class="forecast-compact today${toneClass}"><span>Hôm nay</span><strong>${intakeText}</strong><b>${balanceText}</b><small>${foot}</small></article>`;
     }
 
     const fixedCards = rates
@@ -8220,7 +8248,8 @@
         "latestDate", "latestStatus",
         "targetBurnKcal", "targetBurnSub", "targetBurnWeight", "targetBurnFatKg",
         "targetBurnWalkTime", "targetBurnWalkSub", "targetBurnRate",
-        "kpiWeight", "kpiBodyFat", "kpiWaist", "kpiTdee", "progressPercent"
+        "kpiWeight", "kpiBodyFat", "kpiWaist", "kpiTdee", "progressPercent",
+        "calorieJarValue", "calorieJarSub"
       ];
       const text = {};
       ids.forEach((id) => {
