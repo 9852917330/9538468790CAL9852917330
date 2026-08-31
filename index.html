@@ -1715,60 +1715,64 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </style>
 
 
-<style id="overview-compact-v58">
-  /* V58 · Tổng quan tối giản: 2 chỉ số chính + tiến độ + dự báo, gói trong một viewport khi có thể. */
+<style id="overview-compact-v61">
+  /* V61 · Tổng quan cân đối, chữ dễ đọc, 2 số chính nổi bật. */
   #page-overview{min-height:0}
-  #page-overview .overview-compact{display:grid;gap:9px;max-width:1180px;margin:0 auto}
-  #page-overview .overview-bar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:7px 10px;border:1px solid rgba(25,93,77,.12);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(45,94,81,.07)}
-  #page-overview .overview-status{display:flex;align-items:center;gap:7px;min-width:0;color:#607a72;font-size:9px;white-space:nowrap;overflow:hidden}
-  #page-overview .overview-status strong{color:#173d32;font-size:13px;letter-spacing:-.2px}
+  #page-overview .overview-compact{
+    display:grid;gap:9px;max-width:1180px;margin:0 auto;
+    min-height:calc(100dvh - 136px);
+    grid-template-rows:auto minmax(180px,.95fr) auto auto minmax(160px,1.05fr);
+  }
+  #page-overview .overview-bar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:7px 10px;border:1px solid rgba(25,93,77,.12);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(45,94,81,.07)}
+  #page-overview .overview-status{display:flex;align-items:center;gap:7px;min-width:0;color:#607a72;font-size:10px;white-space:nowrap;overflow:hidden}
+  #page-overview .overview-status strong{color:#173d32;font-size:14px;letter-spacing:-.2px}
   #page-overview .overview-status #latestStatus{overflow:hidden;text-overflow:ellipsis}
   #page-overview .overview-dot{opacity:.45}
   #page-overview .overview-actions{display:flex;gap:6px;flex:0 0 auto}
-  #page-overview .overview-icon-btn,#page-overview .overview-sheet-btn{height:29px;border:1px solid rgba(25,93,77,.13);border-radius:9px;background:#f4fbf8;color:#173d32;font:900 10px/1 Poppins,sans-serif;cursor:pointer}
-  #page-overview .overview-icon-btn{width:31px;font-size:16px}
-  #page-overview .overview-sheet-btn{padding:0 9px}
+  #page-overview .overview-icon-btn,#page-overview .overview-sheet-btn{height:30px;border:1px solid rgba(25,93,77,.13);border-radius:10px;background:#f4fbf8;color:#173d32;font:900 10px/1 ui-sans-serif,system-ui,sans-serif;cursor:pointer}
+  #page-overview .overview-icon-btn{width:32px;font-size:16px}
+  #page-overview .overview-sheet-btn{padding:0 10px}
   #page-overview .overview-icon-btn:hover,#page-overview .overview-sheet-btn:hover{filter:brightness(.98);transform:translateY(-1px)}
-  #page-overview .overview-bar .banner{position:absolute;z-index:4;top:46px;left:0;right:0;margin:0}
+  #page-overview .overview-bar .banner{position:absolute;z-index:4;top:47px;left:0;right:0;margin:0}
 
-  #page-overview .overview-primary-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  #page-overview .overview-primary-card{min-width:0;padding:14px 15px 12px;border:1px solid rgba(255,255,255,.12);border-radius:18px;color:#fff;box-shadow:0 12px 28px rgba(28,70,57,.12);overflow:hidden}
-  #page-overview .deficit-card{background:linear-gradient(135deg,#153d34,#1b6857)}
-  #page-overview .walk-card{background:linear-gradient(135deg,#153447,#17625a)}
-  #page-overview .overview-primary-label{font-size:9px;font-weight:1000;letter-spacing:.065em;color:#bfffe8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .overview-primary-value{margin-top:5px;font-size:clamp(34px,5vw,56px);line-height:.98;font-weight:1100;letter-spacing:-2px;color:#fff}
-  #page-overview .deficit-card .overview-primary-value{color:#ffd582}
-  #page-overview .walk-card .overview-primary-value{color:#78f2c9}
-  #page-overview .overview-primary-sub{margin-top:5px;min-height:15px;color:#d9eee7;font-size:9px;line-height:1.35;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .overview-mini-line{display:flex;gap:7px;margin-top:8px}
-  #page-overview .overview-mini-line span{flex:1;min-width:0;padding:6px 8px;border:1px solid rgba(255,255,255,.10);border-radius:9px;background:rgba(255,255,255,.055);color:#a9c9bf;font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .overview-mini-line b{margin-left:3px;color:#fff;font-size:9px}
+  #page-overview .overview-primary-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;min-height:0}
+  #page-overview .overview-primary-card{min-width:0;padding:16px 16px 14px;border:1px solid rgba(255,255,255,.12);border-radius:19px;color:#fff;box-shadow:0 12px 28px rgba(28,70,57,.12);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start}
+  #page-overview .deficit-card{background:linear-gradient(145deg,#16483a,#176956)}
+  #page-overview .walk-card{background:linear-gradient(145deg,#123b46,#17635b)}
+  #page-overview .overview-primary-label{font-size:10.5px;font-weight:900;letter-spacing:.045em;color:#c7ffec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-primary-value{display:flex;align-items:baseline;gap:8px;margin-top:12px;font-size:clamp(48px,6.2vw,76px);line-height:.92;font-weight:900;letter-spacing:-2.4px;color:#fff;white-space:nowrap}
+  #page-overview .overview-primary-value small{font-size:.42em;font-weight:900;letter-spacing:-.5px}
+  #page-overview .deficit-card .overview-primary-value{color:#ffd37c}
+  #page-overview .walk-card .overview-primary-value{color:#72f2c7}
+  #page-overview .overview-primary-sub{margin-top:12px;color:#e6f4ef;font-size:10.5px;line-height:1.38;font-weight:750;white-space:normal}
+  #page-overview .overview-mini-line{display:flex;gap:8px;margin-top:auto;padding-top:12px}
+  #page-overview .overview-mini-line span{flex:1;min-width:0;padding:7px 9px;border:1px solid rgba(255,255,255,.11);border-radius:10px;background:rgba(255,255,255,.06);color:#c5ddd6;font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-mini-line b{margin-left:4px;color:#fff;font-size:10.5px}
   #page-overview .overview-mini-line.single span{flex:0 1 auto}
 
-  #page-overview .overview-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-  #page-overview .overview-metrics article{min-width:0;padding:8px 7px;border:1px solid rgba(25,93,77,.10);border-radius:11px;background:#fff;text-align:center;box-shadow:0 6px 16px rgba(45,94,81,.055)}
-  #page-overview .overview-metrics span{display:block;color:#7a9089;font-size:7.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
-  #page-overview .overview-metrics b{display:block;margin-top:3px;color:#183a31;font-size:12px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .overview-metrics .green{color:#0a9d74!important}#page-overview .overview-metrics .red{color:#db4660!important}#page-overview .overview-metrics .blue{color:#397fd6!important}
+  #page-overview .overview-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  #page-overview .overview-metrics article{min-width:0;min-height:58px;padding:8px 6px;border:1px solid rgba(25,93,77,.10);border-radius:11px;background:#fff;text-align:center;box-shadow:0 6px 16px rgba(45,94,81,.055);display:flex;flex-direction:column;justify-content:center}
+  #page-overview .overview-metrics span{display:block;color:#748b83;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+  #page-overview .overview-metrics b{display:block;margin-top:4px;color:#17392f;font-size:14px;line-height:1.1;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  #page-overview .overview-progress{padding:9px 11px 10px;border:1px solid rgba(25,93,77,.10);border-radius:13px;background:#fff}
-  #page-overview .overview-progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:#617a72;font-size:8.5px;font-weight:850}
-  #page-overview .overview-progress-head b{color:#0a9d74;font-size:14px}
+  #page-overview .overview-progress{min-height:59px;padding:9px 11px 10px;border:1px solid rgba(25,93,77,.10);border-radius:13px;background:#fff;display:flex;flex-direction:column;justify-content:center}
+  #page-overview .overview-progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:#5f786f;font-size:9.5px;font-weight:850}
+  #page-overview .overview-progress-head b{color:#0a9d74;font-size:15px;font-weight:900}
   #page-overview .fat-progress-track{height:12px;margin:0;border:0;background:#e9f3ef;box-shadow:inset 0 2px 7px rgba(30,81,67,.12)}
   #page-overview .fat-progress-marker{width:14px;height:14px;border-width:3px;box-shadow:0 0 0 4px rgba(32,201,151,.12),0 4px 10px rgba(43,84,73,.14)}
 
-  #page-overview .overview-forecast{padding:9px 10px 10px;border:1px solid rgba(25,93,77,.10);border-radius:14px;background:#fff}
-  #page-overview .overview-forecast-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:7px}
-  #page-overview .overview-forecast-head strong{color:#173d32;font-size:10.5px}
-  #page-overview .overview-forecast-head span{color:#81948e;font-size:7.5px}
-  #page-overview .overview-forecast-grid{display:grid;grid-template-columns:1.45fr repeat(4,1fr);gap:6px}
-  #page-overview .forecast-compact{min-width:0;padding:7px 8px;border-radius:10px;background:#f3faf7;border:1px solid rgba(25,93,77,.08)}
+  #page-overview .overview-forecast{min-height:0;padding:11px;border:1px solid rgba(25,93,77,.10);border-radius:14px;background:#fff;display:flex;flex-direction:column;justify-content:flex-start}
+  #page-overview .overview-forecast-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px}
+  #page-overview .overview-forecast-head strong{color:#173d32;font-size:12px;font-weight:900}
+  #page-overview .overview-forecast-head span{color:#81948e;font-size:8.5px}
+  #page-overview .overview-forecast-grid{display:grid;grid-template-columns:1.35fr repeat(4,1fr);gap:7px;flex:1;align-items:stretch}
+  #page-overview .forecast-compact{min-width:0;padding:8px;border-radius:10px;background:#f3faf7;border:1px solid rgba(25,93,77,.08);display:flex;flex-direction:column;justify-content:center}
   #page-overview .forecast-compact.today{background:#eafff6;border-color:rgba(32,201,151,.20)}
   #page-overview .forecast-compact.today.surplus{background:#fff0f3;border-color:rgba(255,95,116,.18)}
-  #page-overview .forecast-compact span{display:block;color:#71877f;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .forecast-compact strong{display:block;margin-top:2px;color:#17372f;font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #page-overview .forecast-compact b{display:block;margin-top:2px;color:#0a9d74;font-size:12px;line-height:1.05;white-space:nowrap}
-  #page-overview .forecast-compact small{display:block;margin-top:2px;color:#8aa09a;font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .forecast-compact span{display:block;color:#71877f;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .forecast-compact strong{display:block;margin-top:3px;color:#17372f;font-size:10px;line-height:1.2;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .forecast-compact b{display:block;margin-top:4px;color:#0a9d74;font-size:14px;line-height:1.05;font-weight:900;white-space:nowrap}
+  #page-overview .forecast-compact small{display:block;margin-top:3px;color:#8aa09a;font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   html[data-theme="dark"] #page-overview .overview-bar,
   html[data-theme="dark"] #page-overview .overview-metrics article,
@@ -1793,112 +1797,66 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
   @media(max-width:620px){
     main{padding-top:8px!important}
-    #page-overview .overview-compact{gap:6px}
-    #page-overview .overview-bar{min-height:36px;padding:5px 7px;border-radius:11px}
-    #page-overview .overview-status{gap:5px;font-size:7px}
-    #page-overview .overview-status strong{font-size:11px}
+    body:has(#page-overview.active) main{padding-bottom:8px!important}
+    #page-overview .overview-compact{
+      min-height:calc(100dvh - 150px);
+      grid-template-rows:37px minmax(196px,.95fr) 58px 59px minmax(205px,1.05fr);
+      gap:7px;
+    }
+    #page-overview .overview-bar{min-height:37px;padding:5px 8px;border-radius:11px}
+    #page-overview .overview-status{gap:5px;font-size:7.8px}
+    #page-overview .overview-status strong{font-size:12px}
     #page-overview .overview-status #latestStatus{display:none}
     #page-overview .overview-icon-btn,#page-overview .overview-sheet-btn{height:25px;border-radius:8px}
     #page-overview .overview-icon-btn{width:27px;font-size:14px}
     #page-overview .overview-sheet-btn{padding:0 7px;font-size:8.5px}
-    #page-overview .overview-primary-grid{gap:6px}
-    #page-overview .overview-primary-card{padding:10px 9px 8px;border-radius:14px}
-    #page-overview .overview-primary-label{font-size:6.8px;letter-spacing:.035em}
-    #page-overview .overview-primary-value{margin-top:4px;font-size:clamp(25px,8.4vw,34px);letter-spacing:-1.4px}
-    #page-overview .overview-primary-sub{margin-top:4px;min-height:11px;font-size:6.5px}
-    #page-overview .overview-mini-line{gap:4px;margin-top:5px}
-    #page-overview .overview-mini-line span{padding:4px 5px;border-radius:7px;font-size:5.8px}
-    #page-overview .overview-mini-line b{font-size:6.8px}
-    #page-overview .overview-metrics{gap:4px}
-    #page-overview .overview-metrics article{padding:6px 3px;border-radius:8px}
-    #page-overview .overview-metrics span{font-size:5.8px}
-    #page-overview .overview-metrics b{font-size:8.7px}
-    #page-overview .overview-progress{padding:6px 8px 7px;border-radius:10px}
-    #page-overview .overview-progress-head{margin-bottom:5px;font-size:7px}
-    #page-overview .overview-progress-head b{font-size:11px}
-    #page-overview .fat-progress-track{height:9px}
-    #page-overview .fat-progress-marker{width:11px;height:11px;border-width:2px}
-    #page-overview .overview-forecast{padding:6px 7px 7px;border-radius:11px}
-    #page-overview .overview-forecast-head{margin-bottom:5px}
-    #page-overview .overview-forecast-head strong{font-size:8.5px}
-    #page-overview .overview-forecast-head span{font-size:6px}
-    #page-overview .overview-forecast-grid{grid-template-columns:repeat(4,1fr);gap:3px}
-    #page-overview .forecast-compact{padding:5px 4px;border-radius:7px;text-align:center}
-    #page-overview .forecast-compact span{font-size:5.4px}
-    #page-overview .forecast-compact strong{font-size:6.2px}
-    #page-overview .forecast-compact b{font-size:8.5px}
-    #page-overview .forecast-compact small{font-size:5px}
-    #page-overview .forecast-compact.today{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:5px;text-align:left;padding:5px 7px}
-    #page-overview .forecast-compact.today span,#page-overview .forecast-compact.today strong,#page-overview .forecast-compact.today b,#page-overview .forecast-compact.today small{margin:0}
-    #page-overview .forecast-compact.today strong{flex:1}
+
+    #page-overview .overview-primary-grid{gap:7px}
+    #page-overview .overview-primary-card{padding:13px 10px 11px;border-radius:15px}
+    #page-overview .overview-primary-label{font-size:8.2px;letter-spacing:.025em}
+    #page-overview .overview-primary-value{gap:5px;margin-top:10px;font-size:clamp(36px,10vw,43px);line-height:.94;letter-spacing:-1.8px}
+    #page-overview .overview-primary-value small{font-size:.42em;letter-spacing:-.2px}
+    #page-overview .overview-primary-sub{margin-top:9px;font-size:8.5px;line-height:1.35;font-weight:750}
+    #page-overview .overview-mini-line{gap:5px;padding-top:9px}
+    #page-overview .overview-mini-line span{padding:5px 5px;border-radius:8px;font-size:6.7px}
+    #page-overview .overview-mini-line b{font-size:8.2px;margin-left:2px}
+
+    #page-overview .overview-metrics{gap:5px}
+    #page-overview .overview-metrics article{min-height:58px;padding:7px 3px;border-radius:9px}
+    #page-overview .overview-metrics span{font-size:7px}
+    #page-overview .overview-metrics b{font-size:12px;margin-top:4px}
+
+    #page-overview .overview-progress{min-height:59px;padding:7px 9px 8px;border-radius:11px}
+    #page-overview .overview-progress-head{margin-bottom:6px;font-size:8.2px}
+    #page-overview .overview-progress-head b{font-size:13px}
+    #page-overview .fat-progress-track{height:10px}
+    #page-overview .fat-progress-marker{width:12px;height:12px;border-width:2px}
+
+    #page-overview .overview-forecast{padding:9px 9px 10px;border-radius:12px}
+    #page-overview .overview-forecast-head{margin-bottom:7px}
+    #page-overview .overview-forecast-head strong{font-size:10.5px}
+    #page-overview .overview-forecast-head span{font-size:7px}
+    #page-overview .overview-forecast-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto 1fr 1fr;gap:6px}
+    #page-overview .forecast-compact{padding:6px 7px;border-radius:8px;text-align:center}
+    #page-overview .forecast-compact span{font-size:7px}
+    #page-overview .forecast-compact strong{font-size:8px}
+    #page-overview .forecast-compact b{font-size:12px;margin-top:2px}
+    #page-overview .forecast-compact small{font-size:6.5px;margin-top:2px}
+    #page-overview .forecast-compact.today{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:5px 8px;text-align:left;padding:7px 8px}
+    #page-overview .forecast-compact.today span,#page-overview .forecast-compact.today strong,#page-overview .forecast-compact.today b{margin:0}
+    #page-overview .forecast-compact.today strong{min-width:0;text-align:center}
+    #page-overview .forecast-compact.today small{grid-column:2/4;margin:0;text-align:right}
   }
+
   @media(max-width:390px){
     #page-overview .overview-status .overview-dot{display:none}
-    #page-overview .overview-status #latestDate{font-size:6.2px}
-    #page-overview .overview-primary-card{padding-left:7px;padding-right:7px}
-    #page-overview .overview-primary-value{font-size:24px}
-    #page-overview .overview-mini-line span{padding-left:4px;padding-right:4px}
-  }
-</style>
-
-
-<style id="overview-viewport-fill-v59">
-  /* V59 · Tổng quan dùng hết chiều cao màn hình, không để nửa dưới trống. */
-  #page-overview .overview-compact{
-    min-height:calc(100dvh - 136px);
-    grid-template-rows:auto minmax(150px,1.35fr) auto auto minmax(105px,.85fr);
-  }
-  #page-overview .overview-primary-card{
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-  }
-  #page-overview .overview-metrics article{
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-  }
-  #page-overview .overview-progress{
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-  }
-  #page-overview .overview-forecast{
-    display:flex;
-    min-height:0;
-    flex-direction:column;
-    justify-content:center;
-  }
-  #page-overview .overview-forecast-grid{align-items:stretch}
-  #page-overview .forecast-compact{display:flex;flex-direction:column;justify-content:center}
-
-  @media(max-width:620px){
-    body:has(#page-overview.active) main{padding-bottom:8px!important}
-    #page-overview .overview-compact{
-      min-height:calc(100dvh - 150px);
-      grid-template-rows:36px minmax(145px,1.45fr) 48px 52px minmax(108px,.95fr);
-      gap:7px;
-    }
-    #page-overview .overview-primary-card{padding:12px 10px 10px}
-    #page-overview .overview-primary-label{font-size:7.4px}
-    #page-overview .overview-primary-value{font-size:clamp(29px,9.2vw,40px)}
-    #page-overview .overview-primary-sub{font-size:7.1px}
-    #page-overview .overview-mini-line span{padding:5px 6px;font-size:6.2px}
-    #page-overview .overview-mini-line b{font-size:7.5px}
-    #page-overview .overview-metrics article{padding:7px 4px}
-    #page-overview .overview-metrics span{font-size:6.2px}
-    #page-overview .overview-metrics b{font-size:10px}
-    #page-overview .overview-progress{padding:7px 9px 8px}
-    #page-overview .overview-progress-head{font-size:7.4px}
-    #page-overview .overview-progress-head b{font-size:12px}
-    #page-overview .overview-forecast{padding:7px 8px 8px}
-    #page-overview .overview-forecast-head strong{font-size:9px}
-    #page-overview .overview-forecast-head span{font-size:6.3px}
-    #page-overview .forecast-compact{padding:6px 5px}
-    #page-overview .forecast-compact span{font-size:5.8px}
-    #page-overview .forecast-compact strong{font-size:6.8px}
-    #page-overview .forecast-compact b{font-size:9.5px}
-    #page-overview .forecast-compact small{font-size:5.3px}
+    #page-overview .overview-status #latestDate{font-size:6.8px}
+    #page-overview .overview-primary-card{padding-left:9px;padding-right:9px}
+    #page-overview .overview-primary-value{font-size:35px;gap:4px}
+    #page-overview .overview-primary-sub{font-size:8px}
+    #page-overview .overview-mini-line span{padding-left:4px;padding-right:4px;font-size:6.3px}
+    #page-overview .overview-mini-line b{font-size:7.7px}
+    #page-overview .overview-metrics b{font-size:11.2px}
   }
 
   @media(max-width:620px) and (max-height:650px){
@@ -1943,7 +1901,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     <section class="overview-primary-grid">
       <article class="overview-primary-card deficit-card">
         <div class="overview-primary-label">🔥 CALO CẦN THÂM HỤT</div>
-        <div id="targetBurnKcal" class="overview-primary-value">—</div>
+        <div class="overview-primary-value"><span id="targetBurnKcal">—</span><small>kcal</small></div>
         <div id="targetBurnSub" class="overview-primary-sub">—</div>
         <div class="overview-mini-line">
           <span>Mục tiêu <b id="targetBurnWeight">—</b></span>
@@ -1953,7 +1911,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
       <article class="overview-primary-card walk-card">
         <div class="overview-primary-label">🚶 GIỜ ĐI BỘ DỐC 15 · 3,3 KM/H</div>
-        <div id="targetBurnWalkTime" class="overview-primary-value">—</div>
+        <div class="overview-primary-value"><span id="targetBurnWalkTime">—</span><small>giờ</small></div>
         <div id="targetBurnWalkSub" class="overview-primary-sub">—</div>
         <div class="overview-mini-line single">
           <span>Tốc độ đốt <b id="targetBurnRate">—</b></span>
@@ -1966,7 +1924,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       <article><span>Mỡ</span><b id="kpiBodyFat">—</b></article>
       <article><span>Eo</span><b id="kpiWaist">—</b></article>
       <article><span>TDEE</span><b id="kpiTdee">—</b></article>
-      <article><span>Lũy kế</span><b id="kpiCumulative">—</b></article>
     </section>
 
     <section class="overview-progress">
@@ -2019,13 +1976,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <script>
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-31-v60-instant-last-data";
+  const APP_BUILD = "2026-08-31-v61-fast-open-better-overview";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
       /* V53: xóa cache tra cứu online cũ vì alias có cả số gram từng có thể chiếm nhầm tên món nội bộ (vd. “300g hoa quả”). */
       localStorage.removeItem("inAndOutOnlineFoodCacheV4");
-      if ("caches" in window) caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
       if ("serviceWorker" in navigator) navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((reg) => reg.update()));
     }
   } catch (_) {}
@@ -2033,6 +1989,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     SHEET_NAME = "Sheet1",
     SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
   const CACHE_KEY = "inAndOutSheetCacheV2";
+  const OVERVIEW_SNAPSHOT_KEY = "inAndOutOverviewSnapshotV1";
   const PROFILE = {
     sex: "male",
     age: 35,
@@ -9490,8 +9447,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       initialMeasured =
         computedDays.find((d) => d.measuredWeight !== null)?.measuredWeight ??
         startWeight,
-      initialWaist = computedDays.find((d) => d.waist !== null)?.waist ?? null,
-      theoreticalFatChange = Math.abs(cumulative) / 7700;
+      initialWaist = computedDays.find((d) => d.waist !== null)?.waist ?? null;
     setText(
       "latestDate",
       latest
@@ -9521,24 +9477,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       latest
         ? `TDEE nền hệ số 1,20; calo tập gần nhất ${fmt(latest.exerciseBurn)} kcal`
         : "—",
-    );
-    const cum = document.getElementById("kpiCumulative");
-    if (cum) {
-      cum.textContent =
-        cumulative > 0
-          ? `TH ${fmt(cumulative)}`
-          : cumulative < 0
-            ? `Dư ${fmt(Math.abs(cumulative))}`
-            : "0 kcal";
-      cum.className = `kpi-value ${cumulative > 0 ? "green" : cumulative < 0 ? "red" : "blue"}`;
-    }
-    setText(
-      "kpiCumulativeSub",
-      cumulative > 0
-        ? `Mỡ giảm lý thuyết ${fmt(theoreticalFatChange, 2)} kg`
-        : cumulative < 0
-          ? `Mỡ tăng lý thuyết ${fmt(theoreticalFatChange, 2)} kg`
-          : "Mỡ thay đổi lý thuyết 0,00 kg",
     );
     setText("kpiTargetWeight", `${fmt(targetWeight, 1)} kg`);
     setText(
@@ -9593,18 +9531,35 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       currentWeight,
       currentBf,
     );
-    const historyPreviewDays = compute(rowsThroughTomorrowForHistory(rawRows)),
-      tomorrowPreviewCount = Math.max(0, historyPreviewDays.length - computedDays.length);
-    renderCalendar(computedDays, today.getFullYear());
-    renderHistory(historyPreviewDays, today);
-    renderCharts(completeDays);
-    setText(
-      "historyCount",
-      tomorrowPreviewCount
-        ? `${computedDays.length} ngày đã tính · +${tomorrowPreviewCount} ngày mai dự kiến`
-        : `${computedDays.length} ngày`,
-    );
+    writeOverviewSnapshot();
+    /* V61: overview paints first. Calendar/history/charts are rendered only when opened. */
+    if (currentPage !== "overview" && currentPage !== "lookup") {
+      renderActiveSecondaryView(currentPage, today);
+    }
   }
+  function renderActiveSecondaryView(name, today = getVietnamToday()) {
+    if (name === "calendar") {
+      renderCalendar(computedDays, today.getFullYear());
+      return;
+    }
+    if (name === "history") {
+      const historyPreviewDays = compute(rowsThroughTomorrowForHistory(rawRows));
+      const tomorrowPreviewCount = Math.max(0, historyPreviewDays.length - computedDays.length);
+      renderHistory(historyPreviewDays, today);
+      setText(
+        "historyCount",
+        tomorrowPreviewCount
+          ? `${computedDays.length} ngày đã tính · +${tomorrowPreviewCount} ngày mai dự kiến`
+          : `${computedDays.length} ngày`,
+      );
+      return;
+    }
+    if (name === "charts") {
+      const completeDays = computedDays.filter((d) => d.complete);
+      requestAnimationFrame(() => renderCharts(completeDays));
+    }
+  }
+
   function updateSlope(progressRaw, cumulative, totalGoal, targetWeight) {
     const p = clamp(progressRaw, 0, 1),
       percent = p * 100,
@@ -9693,18 +9648,18 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   function updateTargetBurnHighlight(currentWeight, currentBodyFat, cumulative, totalGoal, targetWeight) {
     const plan = calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight);
     const achieved = plan.kcalToBurn <= 1;
-    setText("targetBurnKcal", achieved ? "0 kcal" : `${fmt(plan.kcalToBurn)} kcal`);
+    setText("targetBurnKcal", achieved ? "0" : fmt(plan.kcalToBurn));
     setText("targetBurnWeight", `${fmt(plan.targetWeightNow, 1)} kg`);
     setText("targetBurnFatKg", achieved ? "Đã đạt" : `${fmt(plan.fatKgToLose, 2)} kg mỡ`);
     setText(
       "targetBurnSub",
       achieved
         ? `Đã đạt mục tiêu năng lượng tích lũy.`
-        : `Đã tính cả thâm hụt/dư thừa lũy kế · mỡ hiện tại ${fmt(currentBodyFat, 1)}%.`,
+        : `Mỡ hiện tại ${fmt(currentBodyFat, 1)}% · đã tính toàn bộ lịch sử ăn và tập.`,
     );
     setText(
       "targetBurnWalkTime",
-      achieved ? "0 giờ" : `${fmt(Math.ceil(plan.walkMinutes / 60))} giờ`,
+      achieved ? "0" : fmt(Math.ceil(plan.walkMinutes / 60)),
     );
     setText(
       "targetBurnWalkSub",
@@ -10235,6 +10190,57 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       return null;
     }
   }
+  function writeOverviewSnapshot() {
+    try {
+      const ids = [
+        "latestDate", "latestStatus",
+        "targetBurnKcal", "targetBurnSub", "targetBurnWeight", "targetBurnFatKg",
+        "targetBurnWalkTime", "targetBurnWalkSub", "targetBurnRate",
+        "kpiWeight", "kpiBodyFat", "kpiWaist", "kpiTdee", "progressPercent"
+      ];
+      const text = {};
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) text[id] = el.textContent;
+      });
+      const fill = document.getElementById("fatProgressFill");
+      const marker = document.getElementById("fatProgressMarker");
+      const track = document.getElementById("fatProgressTrack");
+      const targetDates = document.getElementById("targetDates");
+      localStorage.setItem(
+        OVERVIEW_SNAPSHOT_KEY,
+        JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          text,
+          targetDatesHtml: targetDates?.innerHTML || "",
+          progressWidth: fill?.style.width || "0%",
+          markerLeft: marker?.style.left || "0%",
+          progressSurplus: !!track?.classList.contains("surplus")
+        })
+      );
+    } catch (_) {}
+  }
+
+  function hydrateOverviewSnapshot() {
+    try {
+      const snap = JSON.parse(localStorage.getItem(OVERVIEW_SNAPSHOT_KEY) || "null");
+      if (!snap || snap.version !== 1 || !snap.text) return false;
+      Object.entries(snap.text).forEach(([id, value]) => setText(id, value));
+      const targetDates = document.getElementById("targetDates");
+      if (targetDates && snap.targetDatesHtml) targetDates.innerHTML = snap.targetDatesHtml;
+      const fill = document.getElementById("fatProgressFill");
+      const marker = document.getElementById("fatProgressMarker");
+      const track = document.getElementById("fatProgressTrack");
+      if (fill) fill.style.width = snap.progressWidth || "0%";
+      if (marker) marker.style.left = snap.markerLeft || "0%";
+      if (track) track.classList.toggle("surplus", !!snap.progressSurplus);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function writeSheetCache(rows) {
     try {
       localStorage.setItem(
@@ -10329,11 +10335,11 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       .forEach((b) => b.classList.toggle("active", b.dataset.page === name));
     history.replaceState(null, "", `#${name}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (name === "charts")
-      setTimeout(
-        () => renderCharts(computedDays.filter((d) => d.complete)),
-        40,
-      );
+    if (name === "lookup") {
+      setTimeout(ensureNutritionCatalogRendered, 0);
+    } else if (name !== "overview") {
+      setTimeout(() => renderActiveSecondaryView(name, getVietnamToday()), 0);
+    }
   }
   document
     .querySelectorAll(".nav-btn")
@@ -11360,7 +11366,12 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     const total=lastCatalogItems.length;
     nutritionLookupStatus.textContent=total?`Hiển thị ${total} kết quả đã lọc; dữ liệu nội bộ được ưu tiên, sau đó mới bổ sung nguồn trực tuyến.`:(errors?"Không kết nối được nguồn trực tuyến và không có kết quả nội bộ phù hợp.":"Không tìm thấy thực phẩm phù hợp.");
   }
-  renderUnifiedFoodCatalog(UNIFIED_FOOD_CATALOG);
+  let nutritionCatalogPrimed = false;
+  function ensureNutritionCatalogRendered() {
+    if (nutritionCatalogPrimed) return;
+    nutritionCatalogPrimed = true;
+    renderUnifiedFoodCatalog(UNIFIED_FOOD_CATALOG);
+  }
   window.__foodParserV50={estimateFood,findFood,getAuthoritativeFoodDbV50};
   window.__foodParserV51={estimateFood,findFood,getAuthoritativeFoodDbV50,parseExplicitCustomNutritionV51,authoritativeCatalogAliasMatchV51};
   window.__foodParserV52={estimateFood,findFood,genericProduce:GENERIC_PRODUCE_PARSER_V52};
@@ -11405,9 +11416,18 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   const hash = rawHash === "foods" ? "lookup" : rawHash;
   if (["overview", "calendar", "charts", "history", "lookup"].includes(hash))
     showPage(hash);
-  hydrateSheetCache();
-  render();
-  refreshData();
+  const hasCachedRows = hydrateSheetCache();
+  const hasOverviewSnapshot = hydrateOverviewSnapshot();
+  const boot = () => {
+    render();
+    refreshData();
+  };
+  if (currentPage === "overview" && hasCachedRows && hasOverviewSnapshot) {
+    /* Let the browser paint the last dashboard first, then recompute/update in the next task. */
+    setTimeout(boot, 0);
+  } else {
+    boot();
+  }
   refreshTimer = setInterval(refreshData, PROFILE.refreshSeconds * 1000);
 
   /* theme-redraw-v6 · nutrition-integrity · priority-foods · cooking-engine */
@@ -11464,7 +11484,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   "use strict";
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=56", { scope: "./" })
+      navigator.serviceWorker.register("./sw.js?v=61", { scope: "./" })
         .then((registration) => registration.update())
         .catch((error) => console.warn("Không thể đăng ký Service Worker:", error));
     });

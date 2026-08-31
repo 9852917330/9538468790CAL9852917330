@@ -1,6 +1,6 @@
 {
   "id": "./",
-  "name": "In and Out — Energy Dashboard V6",
+  "name": "In and Out",
   "short_name": "In and Out",
   "description": "Theo dõi calories và macro với CSDL ưu tiên song ngữ, nhận diện cách chế biến và kiểm tra chéo năng lượng.",
   "lang": "vi",
@@ -12,8 +12,8 @@
     "minimal-ui"
   ],
   "orientation": "any",
-  "background_color": "#ffffff",
-  "theme_color": "#e3262e",
+  "background_color": "#081a2a",
+  "theme_color": "#081a2a",
   "icons": [
     {
       "src": "./icon-192.png",

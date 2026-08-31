@@ -1,0 +1,19 @@
+V61 — TỔNG QUAN DỄ ĐỌC + MỞ APP TỨC THÌ
+31/08/2026
+
+1. Bỏ hoàn toàn ô Calo lũy kế khỏi Tổng quan.
+2. Hai chỉ số chính Calo cần thâm hụt / Giờ đi bộ:
+   - số lớn hơn, font-weight 900;
+   - tách đơn vị kcal/giờ nhỏ hơn để số chính nổi bật và không vỡ bố cục.
+3. Chỉ số phụ còn 4 ô: Cân, Mỡ, Eo, TDEE; tăng cỡ chữ.
+4. Phần dự báo mobile đổi sang bố cục 2 cột để chữ lớn và dễ đọc hơn.
+5. Cân lại tỷ lệ chiều cao các khối, bỏ cảm giác card rỗng/không hài hòa.
+6. Mở app nhanh:
+   - Service Worker dùng cache-first cho navigation/app shell;
+   - dữ liệu Google Sheet lần cuối vẫn được giữ bằng localStorage;
+   - thêm snapshot Tổng quan để lần mở sau có thể hiện số liệu cũ trước khi tính lại;
+   - không xóa toàn bộ cache app khi đổi build nữa;
+   - Lịch năm/Lịch sử/Biểu đồ chỉ render khi người dùng mở trang;
+   - kho Thực phẩm chỉ render khi mở tab Thực phẩm;
+   - dữ liệu mới được tải ở nền và thay thế số cũ sau khi đồng bộ xong.
+7. Splash PWA đổi nền sang màu tối để không còn màn trắng chói khi Android buộc hiển thị splash hệ thống.
