@@ -20,7 +20,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4f8fb">
-<title>In and Out — Energy Dashboard V7</title>
+<title>In and Out — Energy Dashboard V58</title>
 <script id="theme-bootstrap">
 (()=>{'use strict';let t='light';try{const s=localStorage.getItem('dienWebThemeV4');if(s==='light'||s==='dark')t=s;}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;})();
 </script>
@@ -1714,6 +1714,133 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
 </style>
 
+
+<style id="overview-compact-v58">
+  /* V58 · Tổng quan tối giản: 2 chỉ số chính + tiến độ + dự báo, gói trong một viewport khi có thể. */
+  #page-overview{min-height:0}
+  #page-overview .overview-compact{display:grid;gap:9px;max-width:1180px;margin:0 auto}
+  #page-overview .overview-bar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:7px 10px;border:1px solid rgba(25,93,77,.12);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(45,94,81,.07)}
+  #page-overview .overview-status{display:flex;align-items:center;gap:7px;min-width:0;color:#607a72;font-size:9px;white-space:nowrap;overflow:hidden}
+  #page-overview .overview-status strong{color:#173d32;font-size:13px;letter-spacing:-.2px}
+  #page-overview .overview-status #latestStatus{overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-dot{opacity:.45}
+  #page-overview .overview-actions{display:flex;gap:6px;flex:0 0 auto}
+  #page-overview .overview-icon-btn,#page-overview .overview-sheet-btn{height:29px;border:1px solid rgba(25,93,77,.13);border-radius:9px;background:#f4fbf8;color:#173d32;font:900 10px/1 Poppins,sans-serif;cursor:pointer}
+  #page-overview .overview-icon-btn{width:31px;font-size:16px}
+  #page-overview .overview-sheet-btn{padding:0 9px}
+  #page-overview .overview-icon-btn:hover,#page-overview .overview-sheet-btn:hover{filter:brightness(.98);transform:translateY(-1px)}
+  #page-overview .overview-bar .banner{position:absolute;z-index:4;top:46px;left:0;right:0;margin:0}
+
+  #page-overview .overview-primary-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  #page-overview .overview-primary-card{min-width:0;padding:14px 15px 12px;border:1px solid rgba(255,255,255,.12);border-radius:18px;color:#fff;box-shadow:0 12px 28px rgba(28,70,57,.12);overflow:hidden}
+  #page-overview .deficit-card{background:linear-gradient(135deg,#153d34,#1b6857)}
+  #page-overview .walk-card{background:linear-gradient(135deg,#153447,#17625a)}
+  #page-overview .overview-primary-label{font-size:9px;font-weight:1000;letter-spacing:.065em;color:#bfffe8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-primary-value{margin-top:5px;font-size:clamp(34px,5vw,56px);line-height:.98;font-weight:1100;letter-spacing:-2px;color:#fff}
+  #page-overview .deficit-card .overview-primary-value{color:#ffd582}
+  #page-overview .walk-card .overview-primary-value{color:#78f2c9}
+  #page-overview .overview-primary-sub{margin-top:5px;min-height:15px;color:#d9eee7;font-size:9px;line-height:1.35;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-mini-line{display:flex;gap:7px;margin-top:8px}
+  #page-overview .overview-mini-line span{flex:1;min-width:0;padding:6px 8px;border:1px solid rgba(255,255,255,.10);border-radius:9px;background:rgba(255,255,255,.055);color:#a9c9bf;font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-mini-line b{margin-left:3px;color:#fff;font-size:9px}
+  #page-overview .overview-mini-line.single span{flex:0 1 auto}
+
+  #page-overview .overview-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+  #page-overview .overview-metrics article{min-width:0;padding:8px 7px;border:1px solid rgba(25,93,77,.10);border-radius:11px;background:#fff;text-align:center;box-shadow:0 6px 16px rgba(45,94,81,.055)}
+  #page-overview .overview-metrics span{display:block;color:#7a9089;font-size:7.5px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+  #page-overview .overview-metrics b{display:block;margin-top:3px;color:#183a31;font-size:12px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .overview-metrics .green{color:#0a9d74!important}#page-overview .overview-metrics .red{color:#db4660!important}#page-overview .overview-metrics .blue{color:#397fd6!important}
+
+  #page-overview .overview-progress{padding:9px 11px 10px;border:1px solid rgba(25,93,77,.10);border-radius:13px;background:#fff}
+  #page-overview .overview-progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;color:#617a72;font-size:8.5px;font-weight:850}
+  #page-overview .overview-progress-head b{color:#0a9d74;font-size:14px}
+  #page-overview .fat-progress-track{height:12px;margin:0;border:0;background:#e9f3ef;box-shadow:inset 0 2px 7px rgba(30,81,67,.12)}
+  #page-overview .fat-progress-marker{width:14px;height:14px;border-width:3px;box-shadow:0 0 0 4px rgba(32,201,151,.12),0 4px 10px rgba(43,84,73,.14)}
+
+  #page-overview .overview-forecast{padding:9px 10px 10px;border:1px solid rgba(25,93,77,.10);border-radius:14px;background:#fff}
+  #page-overview .overview-forecast-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:7px}
+  #page-overview .overview-forecast-head strong{color:#173d32;font-size:10.5px}
+  #page-overview .overview-forecast-head span{color:#81948e;font-size:7.5px}
+  #page-overview .overview-forecast-grid{display:grid;grid-template-columns:1.45fr repeat(4,1fr);gap:6px}
+  #page-overview .forecast-compact{min-width:0;padding:7px 8px;border-radius:10px;background:#f3faf7;border:1px solid rgba(25,93,77,.08)}
+  #page-overview .forecast-compact.today{background:#eafff6;border-color:rgba(32,201,151,.20)}
+  #page-overview .forecast-compact.today.surplus{background:#fff0f3;border-color:rgba(255,95,116,.18)}
+  #page-overview .forecast-compact span{display:block;color:#71877f;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .forecast-compact strong{display:block;margin-top:2px;color:#17372f;font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #page-overview .forecast-compact b{display:block;margin-top:2px;color:#0a9d74;font-size:12px;line-height:1.05;white-space:nowrap}
+  #page-overview .forecast-compact small{display:block;margin-top:2px;color:#8aa09a;font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  html[data-theme="dark"] #page-overview .overview-bar,
+  html[data-theme="dark"] #page-overview .overview-metrics article,
+  html[data-theme="dark"] #page-overview .overview-progress,
+  html[data-theme="dark"] #page-overview .overview-forecast{background:#14243a!important;border-color:#3e5d7b!important;box-shadow:0 8px 22px rgba(0,0,0,.16)!important}
+  html[data-theme="dark"] #page-overview .overview-status strong,
+  html[data-theme="dark"] #page-overview .overview-metrics b,
+  html[data-theme="dark"] #page-overview .overview-forecast-head strong,
+  html[data-theme="dark"] #page-overview .forecast-compact strong{color:#f4fbff!important}
+  html[data-theme="dark"] #page-overview .overview-status,
+  html[data-theme="dark"] #page-overview .overview-metrics span,
+  html[data-theme="dark"] #page-overview .overview-progress-head,
+  html[data-theme="dark"] #page-overview .overview-forecast-head span,
+  html[data-theme="dark"] #page-overview .forecast-compact span,
+  html[data-theme="dark"] #page-overview .forecast-compact small{color:#b8c9d8!important}
+  html[data-theme="dark"] #page-overview .overview-icon-btn,
+  html[data-theme="dark"] #page-overview .overview-sheet-btn{background:#1b334b;color:#eafff7;border-color:#45647f}
+  html[data-theme="dark"] #page-overview .forecast-compact{background:#193047;border-color:#405f7d}
+  html[data-theme="dark"] #page-overview .forecast-compact.today{background:#173d36;border-color:#3b856f}
+  html[data-theme="dark"] #page-overview .forecast-compact.today.surplus{background:#442735;border-color:#7e475b}
+  html[data-theme="dark"] #page-overview .fat-progress-track{background:#0b1725}
+
+  @media(max-width:620px){
+    main{padding-top:8px!important}
+    #page-overview .overview-compact{gap:6px}
+    #page-overview .overview-bar{min-height:36px;padding:5px 7px;border-radius:11px}
+    #page-overview .overview-status{gap:5px;font-size:7px}
+    #page-overview .overview-status strong{font-size:11px}
+    #page-overview .overview-status #latestStatus{display:none}
+    #page-overview .overview-icon-btn,#page-overview .overview-sheet-btn{height:25px;border-radius:8px}
+    #page-overview .overview-icon-btn{width:27px;font-size:14px}
+    #page-overview .overview-sheet-btn{padding:0 7px;font-size:8.5px}
+    #page-overview .overview-primary-grid{gap:6px}
+    #page-overview .overview-primary-card{padding:10px 9px 8px;border-radius:14px}
+    #page-overview .overview-primary-label{font-size:6.8px;letter-spacing:.035em}
+    #page-overview .overview-primary-value{margin-top:4px;font-size:clamp(25px,8.4vw,34px);letter-spacing:-1.4px}
+    #page-overview .overview-primary-sub{margin-top:4px;min-height:11px;font-size:6.5px}
+    #page-overview .overview-mini-line{gap:4px;margin-top:5px}
+    #page-overview .overview-mini-line span{padding:4px 5px;border-radius:7px;font-size:5.8px}
+    #page-overview .overview-mini-line b{font-size:6.8px}
+    #page-overview .overview-metrics{gap:4px}
+    #page-overview .overview-metrics article{padding:6px 3px;border-radius:8px}
+    #page-overview .overview-metrics span{font-size:5.8px}
+    #page-overview .overview-metrics b{font-size:8.7px}
+    #page-overview .overview-progress{padding:6px 8px 7px;border-radius:10px}
+    #page-overview .overview-progress-head{margin-bottom:5px;font-size:7px}
+    #page-overview .overview-progress-head b{font-size:11px}
+    #page-overview .fat-progress-track{height:9px}
+    #page-overview .fat-progress-marker{width:11px;height:11px;border-width:2px}
+    #page-overview .overview-forecast{padding:6px 7px 7px;border-radius:11px}
+    #page-overview .overview-forecast-head{margin-bottom:5px}
+    #page-overview .overview-forecast-head strong{font-size:8.5px}
+    #page-overview .overview-forecast-head span{font-size:6px}
+    #page-overview .overview-forecast-grid{grid-template-columns:repeat(4,1fr);gap:3px}
+    #page-overview .forecast-compact{padding:5px 4px;border-radius:7px;text-align:center}
+    #page-overview .forecast-compact span{font-size:5.4px}
+    #page-overview .forecast-compact strong{font-size:6.2px}
+    #page-overview .forecast-compact b{font-size:8.5px}
+    #page-overview .forecast-compact small{font-size:5px}
+    #page-overview .forecast-compact.today{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:5px;text-align:left;padding:5px 7px}
+    #page-overview .forecast-compact.today span,#page-overview .forecast-compact.today strong,#page-overview .forecast-compact.today b,#page-overview .forecast-compact.today small{margin:0}
+    #page-overview .forecast-compact.today strong{flex:1}
+  }
+  @media(max-width:390px){
+    #page-overview .overview-status .overview-dot{display:none}
+    #page-overview .overview-status #latestDate{font-size:6.2px}
+    #page-overview .overview-primary-card{padding-left:7px;padding-right:7px}
+    #page-overview .overview-primary-value{font-size:24px}
+    #page-overview .overview-mini-line span{padding-left:4px;padding-right:4px}
+  }
+</style>
+
 </head>
 
 <body>
@@ -1733,41 +1860,69 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </div></header>
 <main>
 <section id="page-overview" class="page active">
-  <section class="dashboard-strip"><div class="strip-copy"><div class="eyebrow">IN / OUT ENERGY CONTROL</div><h1>Cân bằng năng lượng hôm nay</h1><p>Google Sheet được đồng bộ tự động. Web nhận diện món Việt, món Tây và alias tiếng Anh/không dấu; tính calo ăn vào, calo tập và mức thâm hụt thực tế.</p><div class="actions"><button id="refreshBtn" class="btn primary">↻ Cập nhật ngay</button><button id="openSheetBtn" class="btn">↗ Mở Google Sheet</button></div><div id="dataBanner" class="banner"></div></div><div class="strip-stats"><div class="strip-stat"><span>Dữ liệu mới nhất</span><strong id="latestDate">—</strong></div><div class="strip-stat"><span>Cập nhật dashboard</span><strong id="lastSync">—</strong></div><div class="strip-stat wide"><span>Trạng thái hôm gần nhất</span><strong id="latestStatus">—</strong></div></div></section>
-  <section class="section"><div class="section-head"><div><h2>Tổng quan</h2><p>Các chỉ số mới nhất từ cân nặng, vòng eo, calo và vận động.</p></div><span class="tag">LIVE METRICS</span></div><div class="target-burn-hero" aria-live="polite">
-      <article class="target-burn-main">
-        <div class="target-burn-eyebrow">🔥 Ưu tiên số 1 · Mục tiêu 12% mỡ</div>
-        <h3 class="target-burn-title">Tổng calo còn phải thâm hụt để đạt mục tiêu</h3>
-        <div id="targetBurnKcal" class="target-burn-kcal">—</div>
-        <div id="targetBurnSub" class="target-burn-sub">—</div>
-        <div class="target-burn-grid">
-          <div class="target-burn-mini"><span>Cân mục tiêu</span><b id="targetBurnWeight">—</b></div>
-          <div class="target-burn-mini"><span>Mỡ cần giảm</span><b id="targetBurnFatKg">—</b></div>
-          <div class="target-burn-mini"><span>Cách tính</span><b>Baseline + thâm hụt tích lũy</b></div>
+  <div class="overview-compact" aria-live="polite">
+    <section class="overview-bar">
+      <div class="overview-status">
+        <strong>Tổng quan</strong>
+        <span id="latestDate">—</span>
+        <span class="overview-dot">•</span>
+        <span id="latestStatus">—</span>
+      </div>
+      <div class="overview-actions">
+        <button id="refreshBtn" class="overview-icon-btn" type="button" aria-label="Cập nhật dữ liệu" title="Cập nhật dữ liệu">↻</button>
+        <button id="openSheetBtn" class="overview-sheet-btn" type="button">Sheet ↗</button>
+      </div>
+      <div id="dataBanner" class="banner"></div>
+    </section>
+
+    <section class="overview-primary-grid">
+      <article class="overview-primary-card deficit-card">
+        <div class="overview-primary-label">🔥 CALO CẦN THÂM HỤT</div>
+        <div id="targetBurnKcal" class="overview-primary-value">—</div>
+        <div id="targetBurnSub" class="overview-primary-sub">—</div>
+        <div class="overview-mini-line">
+          <span>Mục tiêu <b id="targetBurnWeight">—</b></span>
+          <span>Mỡ còn lại <b id="targetBurnFatKg">—</b></span>
         </div>
       </article>
-      <article class="target-burn-walk">
-        <div class="target-burn-walk-label">Tương đương đi bộ dốc 15 · 3,3 km/h</div>
-        <div id="targetBurnWalkTime" class="target-burn-time">—</div>
-        <div id="targetBurnWalkSub" class="target-burn-walk-sub">—</div>
-        <div class="target-burn-grid">
-          <div class="target-burn-mini"><span>Tốc độ đốt ước tính</span><b id="targetBurnRate">—</b></div>
-          <div class="target-burn-mini"><span>Buổi 60 phút</span><b id="targetBurnSessions60">—</b></div>
-          <div class="target-burn-mini"><span>Buổi 90 phút</span><b id="targetBurnSessions90">—</b></div>
+
+      <article class="overview-primary-card walk-card">
+        <div class="overview-primary-label">🚶 GIỜ ĐI BỘ DỐC 15 · 3,3 KM/H</div>
+        <div id="targetBurnWalkTime" class="overview-primary-value">—</div>
+        <div id="targetBurnWalkSub" class="overview-primary-sub">—</div>
+        <div class="overview-mini-line single">
+          <span>Tốc độ đốt <b id="targetBurnRate">—</b></span>
         </div>
       </article>
-    </div><div class="grid kpi-grid">
-    <article class="kpi green"><div class="kpi-label">Cân nặng hiện tại</div><div id="kpiWeight" class="kpi-value">—</div><div id="kpiWeightSub" class="kpi-sub">—</div></article>
-    <article class="kpi cyan"><div class="kpi-label">Vòng eo</div><div id="kpiWaist" class="kpi-value">—</div><div id="kpiWaistSub" class="kpi-sub">—</div></article>
-    <article class="kpi purple"><div class="kpi-label">Mỡ ước tính</div><div id="kpiBodyFat" class="kpi-value">—</div><div id="kpiBodyFatSub" class="kpi-sub">—</div></article>
-    <article class="kpi blue"><div class="kpi-label">TDEE nền hiện tại</div><div id="kpiTdee" class="kpi-value">—</div><div id="kpiTdeeSub" class="kpi-sub">—</div></article>
-    <article class="kpi orange"><div class="kpi-label">Calo lũy kế</div><div id="kpiCumulative" class="kpi-value">—</div><div id="kpiCumulativeSub" class="kpi-sub">—</div></article>
-    <article class="kpi red"><div class="kpi-label">Cân mục tiêu 12%</div><div id="kpiTargetWeight" class="kpi-value">—</div><div id="kpiTargetSub" class="kpi-sub">—</div></article>
-  </div></section>
-  <section class="section"><div class="section-head"><div><h2>Tiến độ tới 12% mỡ</h2><p>Tiến độ dựa trên tổng thâm hụt năng lượng tích lũy. Dư thừa sẽ kéo tiến độ lùi lại.</p></div><span class="tag">CALORIE BASED</span></div><div class="progress-layout">
-    <article class="panel progress-panel"><div class="progress-top"><div><h3>Tiến độ thực tế</h3><p id="slopeDescription">—</p></div><b id="progressPercent" class="progress-percent">0%</b></div><div class="fat-progress-wrap"><div id="fatProgressTrack" class="fat-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="fatProgressFill" class="fat-progress-fill"></div><div id="fatProgressMarker" class="fat-progress-marker"></div></div><div class="fat-progress-labels"><span id="fatProgressStartLabel">28% mỡ ban đầu</span><span>12% mỡ mục tiêu</span></div></div><div class="progress-note"><div><span>Đã tích lũy</span><b id="slopeDone">—</b></div><div><span>Còn lại</span><b id="slopeRemaining">—</b></div><div><span>Thay đổi mỡ lý thuyết</span><b id="slopeFatEquivalent">—</b></div></div><div class="insight-grid"><div class="insight"><span>Thâm hụt TB 7 ngày</span><b id="avg7Deficit">—</b></div><div class="insight"><span>Chuỗi ngày đạt</span><b id="streakDays">—</b></div><div class="insight"><span>Ngày đã ghi dữ liệu</span><b id="loggedDays">—</b></div><div class="insight"><span>Calo ròng hôm nay</span><b id="todayNet">—</b></div></div></article>
-    <aside class="panel forecast-panel"><div class="forecast-list" id="targetDates"></div></aside>
-  </div></section>
+    </section>
+
+    <section class="overview-metrics" aria-label="Chỉ số cơ thể và năng lượng">
+      <article><span>Cân</span><b id="kpiWeight">—</b></article>
+      <article><span>Mỡ</span><b id="kpiBodyFat">—</b></article>
+      <article><span>Eo</span><b id="kpiWaist">—</b></article>
+      <article><span>TDEE</span><b id="kpiTdee">—</b></article>
+      <article><span>Lũy kế</span><b id="kpiCumulative">—</b></article>
+    </section>
+
+    <section class="overview-progress">
+      <div class="overview-progress-head">
+        <span>Tiến độ 28% → 12% mỡ</span>
+        <b id="progressPercent">0%</b>
+      </div>
+      <div id="fatProgressTrack" class="fat-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="fatProgressFill" class="fat-progress-fill"></div>
+        <div id="fatProgressMarker" class="fat-progress-marker"></div>
+      </div>
+    </section>
+
+    <section class="overview-forecast">
+      <div class="overview-forecast-head">
+        <strong>Ước lượng số ngày đạt 12% mỡ</strong>
+        <span>theo mức thâm hụt/ngày</span>
+      </div>
+      <div id="targetDates" class="overview-forecast-grid"></div>
+    </section>
+  </div>
 </section>
 <section id="page-calendar" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2 id="calendarTitle">Lịch năm</h2><p>Tự động hiển thị năm hiện tại. Ô mint là ngày thâm hụt; ô đỏ là ngày dư thừa.</p></div><div class="calendar-summary"><span class="summary-chip"><i class="key good"></i>Ngày thâm hụt <b id="calendarGood">0</b></span><span class="summary-chip"><i class="key bad"></i>Ngày dư thừa <b id="calendarBad">0</b></span><span class="summary-chip"><i class="key empty"></i>Chưa đủ dữ liệu <b id="calendarEmpty">0</b></span></div></div><div id="yearCalendar" class="year-calendar"></div></section></section>
 <section id="page-charts" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Biểu đồ tiến độ</h2><p>Bốn biểu đồ có kích thước cân đối và cùng nhịp hiển thị.</p></div><span class="tag">DAILY TREND</span></div><div class="grid chart-grid">
@@ -9306,10 +9461,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     if (cum) {
       cum.textContent =
         cumulative > 0
-          ? `Thâm hụt ${fmt(cumulative)} kcal`
+          ? `TH ${fmt(cumulative)}`
           : cumulative < 0
-            ? `Dư thừa ${fmt(Math.abs(cumulative))} kcal`
-            : "Cân bằng 0 kcal";
+            ? `Dư ${fmt(Math.abs(cumulative))}`
+            : "0 kcal";
       cum.className = `kpi-value ${cumulative > 0 ? "green" : cumulative < 0 ? "red" : "blue"}`;
     }
     setText(
@@ -9479,18 +9634,18 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     setText(
       "targetBurnSub",
       achieved
-        ? `Đã hoàn thành mục tiêu năng lượng tích lũy để tiến tới ${fmt(PROFILE.targetBodyFat, 0)}% mỡ. Cân hiện tại ${fmt(currentWeight, 1)} kg, mỡ ước tính ${fmt(currentBodyFat, 1)}%.`
-        : `Cùng một mốc với “Tiến độ thực tế”: còn ${fmt(plan.kcalToBurn)} kcal sau khi tính thâm hụt/dư thừa tích lũy. Mục tiêu khoảng ${fmt(targetWeight, 1)} kg nếu giữ khối nạc baseline; cân hiện tại ${fmt(currentWeight, 1)} kg, mỡ ước tính ${fmt(currentBodyFat, 1)}%.`,
+        ? `Đã đạt mục tiêu năng lượng tích lũy.`
+        : `Đã tính cả thâm hụt/dư thừa lũy kế · mỡ hiện tại ${fmt(currentBodyFat, 1)}%.`,
     );
     setText(
       "targetBurnWalkTime",
-      achieved ? "0 giờ" : formatTargetBurnDuration(plan.walkMinutes),
+      achieved ? "0 giờ" : `${fmt(Math.ceil(plan.walkMinutes / 60))} giờ`,
     );
     setText(
       "targetBurnWalkSub",
       achieved
-        ? "Không cần quy đổi thêm sang đi bộ dốc vì mục tiêu năng lượng tích lũy đã đạt."
-        : `Nếu chỉ quy đổi ${fmt(plan.kcalToBurn)} kcal còn lại sang đi bộ dốc 15 với vận tốc 3,3 km/h ở cân nặng hiện tại, cần khoảng ${fmt(Math.ceil(plan.walkMinutes / 60))} giờ tập thực tế.`,
+        ? "Đã đạt mục tiêu."
+        : `Quy đổi toàn bộ calo còn lại ở cân nặng ${fmt(currentWeight, 1)} kg.`,
     );
     setText("targetBurnRate", `${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
     setText("targetBurnSessions60", `${fmt(Math.ceil(plan.walkMinutes / 60))} buổi`);
@@ -9512,30 +9667,25 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         currentWeight,
         currentBodyFat,
       );
+
     let todayCard = "";
     if (projection.state === "missing") {
-      todayCard = `<article class="forecast-card forecast-today neutral"><span class="today-label">Theo đúng ngày hôm nay</span><div class="forecast-card-head"><strong>Chưa có dữ liệu để dự báo</strong><span class="days">—</span></div><p>Hãy nhập đồ ăn của hôm nay. Web sẽ tự xác định hôm nay đang thâm hụt hay dư thừa rồi dự báo mốc 12% hoặc 40% mỡ.</p></article>`;
+      todayCard = `<article class="forecast-compact today"><span>Nhịp hôm nay</span><strong>Chưa đủ dữ liệu</strong><b>—</b><small>Nhập đồ ăn hôm nay để dự báo</small></article>`;
     } else if (projection.state === "neutral") {
-      todayCard = `<article class="forecast-card forecast-today neutral"><span class="today-label">Theo đúng ngày hôm nay</span><div class="forecast-card-head"><strong>Hôm nay đang cân bằng năng lượng</strong><span class="days">0 kcal</span></div><p>Nếu ngày nào cũng ăn và tập như hôm nay, tỷ lệ mỡ lý thuyết gần như không đổi nên không có ngày đạt 12% hoặc 40% mỡ.</p><div class="forecast-details"><span>Calo vào<b>${fmt(projection.intake)} kcal</b></span><span>Tổng calo ra<b>${fmt(projection.firstTotalOut)} kcal</b></span></div></article>`;
+      todayCard = `<article class="forecast-compact today"><span>Nhịp hôm nay</span><strong>Đang cân bằng</strong><b>—</b><small>Không có mốc nếu giữ nguyên</small></article>`;
     } else if (projection.state === "stalled") {
-      const isDef = projection.direction === "deficit",
-        balance = isDef
-          ? `Thâm hụt ${fmt(projection.firstBalance)} kcal`
-          : `Dư thừa ${fmt(Math.abs(projection.firstBalance))} kcal`;
-      todayCard = `<article class="forecast-card forecast-today ${isDef ? "deficit" : "surplus"}"><span class="today-label">Theo đúng ngày hôm nay</span><div class="forecast-card-head"><strong>${isDef ? "Không thể duy trì tới 12% mỡ" : "Không thể duy trì tới 40% mỡ"}</strong><span class="days">Không có mốc</span></div><p>${balance} trong ngày đầu, nhưng khi cân nặng thay đổi, TDEE tiến tới điểm cân bằng trước khi chạm mục tiêu. Web đã tính lại TDEE và calo tập theo từng ngày.</p></article>`;
+      const isDef = projection.direction === "deficit";
+      todayCard = `<article class="forecast-compact today ${isDef ? "" : "surplus"}"><span>Nhịp hôm nay</span><strong>${isDef ? "Thâm hụt chưa đủ" : "Đang dư thừa"}</strong><b>—</b><small>Không chạm mốc theo mô phỏng</small></article>`;
     } else {
-      const isDef = projection.direction === "deficit",
-        balance = isDef
-          ? `Thâm hụt ${fmt(projection.firstBalance)} kcal`
-          : `Dư thừa ${fmt(Math.abs(projection.firstBalance))} kcal`,
-        goal = isDef ? "12% mỡ" : "40% mỡ";
-      todayCard = `<article class="forecast-card forecast-today ${isDef ? "deficit" : "surplus"}"><span class="today-label">Nếu ngày nào cũng giống hôm nay</span><div class="forecast-card-head"><strong>${isDef ? "Dự báo đạt 12% mỡ" : "Cảnh báo chạm 40% mỡ"}</strong><span class="days">${fmt(projection.days)} ngày</span></div><p>Hôm nay ${balance.toLowerCase()}. Nếu giữ nguyên lượng ăn và lịch tập hôm nay, dự kiến ${isDef ? "đạt" : "chạm"} <b>${goal}</b> vào <b>${formatDateVi(projection.date)}</b>.</p><div class="forecast-details"><span>Calo vào mỗi ngày<b>${fmt(projection.intake)} kcal</b></span><span>Cân nặng lý thuyết tại mốc<b>${fmt(projection.finalWeight, 1)} kg</b></span></div><p>TDEE và calo tập được tính lại theo cân nặng thay đổi từng ngày; khối nạc được giả định giữ nguyên.</p></article>`;
+      const isDef = projection.direction === "deficit";
+      todayCard = `<article class="forecast-compact today ${isDef ? "" : "surplus"}"><span>Nhịp hôm nay</span><strong>${isDef ? `Thâm hụt ${fmt(projection.firstBalance)} kcal` : `Dư ${fmt(Math.abs(projection.firstBalance))} kcal`}</strong><b>${fmt(projection.days)} ngày</b><small>${formatDateVi(projection.date)}</small></article>`;
     }
+
     const fixedCards = rates
       .map((rate) => {
         const days = Math.ceil(remaining / rate),
           date = addCalendarDays(now, days);
-        return `<article class="forecast-card"><div class="forecast-card-head"><strong>Thâm hụt ${fmt(rate)} kcal/ngày</strong><span class="days">${fmt(days)} ngày</span></div><p>Dự kiến đạt 12% mỡ vào <b>${formatDateVi(date)}</b> nếu duy trì đều từ hôm nay.</p></article>`;
+        return `<article class="forecast-compact"><span>${fmt(rate)} kcal/ngày</span><b>${fmt(days)} ngày</b><small>${formatDateVi(date)}</small></article>`;
       })
       .join("");
     document.getElementById("targetDates").innerHTML = todayCard + fixedCards;
