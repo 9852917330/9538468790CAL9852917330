@@ -1,0 +1,14 @@
+V62 — INSTANT PAINT + 2 KPI KHỔNG LỒ
+31/08/2026
+
+1. Hai chỉ số Calo cần thâm hụt / Giờ đi bộ được tăng mạnh kích thước và font-weight; phần số được căn giữa theo chiều cao card để dùng hết vùng trống.
+2. Chữ mô tả và các chip phụ cũng tăng để dễ đọc trên điện thoại.
+3. Tối ưu mở PWA tận gốc:
+   - tách ~468 KB JavaScript/FOOD_DB khỏi index.html thành app.js;
+   - hydrate snapshot Tổng quan bằng một script cực nhỏ trước;
+   - bắt buộc browser paint dashboard lần gần nhất trước rồi mới nạp app.js;
+   - dữ liệu Google Sheet vẫn tải ngầm và cập nhật sau.
+4. Service Worker V62 luôn trả index.html từ Cache Storage trước, mạng chỉ revalidate nền.
+5. Đăng ký/cập nhật Service Worker ngay khi HTML đã parse, không chờ window.load.
+6. Bỏ meta no-cache/no-store để browser cache có thể hỗ trợ nếu Service Worker chưa kiểm soát.
+7. Lưu ý nâng cấp từ V60/V61: lần mở đầu tiên sau deploy vẫn có thể bị Service Worker cũ giữ 1 lần; sau khi V62 nạp xong, worker mới tự tiếp quản và các lần mở kế tiếp dùng cache-first.
