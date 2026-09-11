@@ -1,0 +1,8 @@
+name = "in-and-out-gemini-food"
+main = "gemini-proxy-worker.js"
+compatibility_date = "2026-09-11"
+
+[vars]
+GEMINI_MODEL = "gemini-3.5-flash"
+# Sau khi biết domain web app, có thể bỏ comment và thay bằng origin thật để khóa CORS:
+# ALLOWED_ORIGINS = "https://YOUR-USERNAME.github.io"

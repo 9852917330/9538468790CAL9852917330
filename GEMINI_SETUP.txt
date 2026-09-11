@@ -1,0 +1,22 @@
+IN & OUT — GEMINI FOOD AI (V64)
+
+Mục tiêu:
+- API key Gemini KHÔNG nằm trong app.js / repository.
+- Web app gọi Cloudflare Worker; Worker giữ GEMINI_API_KEY dạng secret.
+- Gemini chỉ nhận diện món chưa có/khó hiểu. CSDL nội bộ vẫn được ưu tiên.
+
+Sau khi upload ZIP ghi đè repo:
+1) Tạo một Cloudflare Worker.
+2) Dùng nội dung file gemini-proxy-worker.js làm code Worker (hoặc deploy bằng Wrangler với wrangler.toml).
+3) Trong Worker > Settings > Variables and Secrets, tạo SECRET tên: GEMINI_API_KEY
+   Giá trị: API key Gemini của bạn.
+4) Deploy Worker và copy URL dạng: https://....workers.dev
+5) Mở web app > Thực phẩm > bấm "Kết nối AI" > dán URL Worker > OK.
+6) Bấm "Cập nhật ngay". Món lạ sẽ được gửi theo batch cho Gemini và cache lại trên thiết bị.
+
+Khuyến nghị bảo mật:
+- Khi mọi thứ đã chạy ổn, đặt ALLOWED_ORIGINS trong Worker bằng đúng origin của web app.
+- Không đưa GEMINI_API_KEY vào GitHub, app.js, index.html hoặc localStorage của web app.
+
+Model mặc định: gemini-3.5-flash.
+Có thể đổi biến GEMINI_MODEL trong Worker nếu muốn dùng model Gemini khác.

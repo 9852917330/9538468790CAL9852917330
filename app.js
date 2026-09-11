@@ -1,12 +1,13 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-08-31-v62-instant-paint-giant-kpi";
+  const APP_BUILD = "2026-09-11-v64-gemini-food-ai";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
       /* V53: xóa cache tra cứu online cũ vì alias có cả số gram từng có thể chiếm nhầm tên món nội bộ (vd. “300g hoa quả”). */
       localStorage.removeItem("inAndOutOnlineFoodCacheV4");
-      /* Service Worker V62 is registered by the tiny bootstrap before app.js loads. */
+      localStorage.removeItem("inAndOutLookupFailuresV4");
+      /* Service Worker V64 is registered by the tiny bootstrap before app.js loads. */
     }
   } catch (_) {}
   const SHEET_ID = "1oiraviDfjkyPk3cC9On76bvCyUloNI9UVFalCeI0ZQg",
@@ -4795,7 +4796,75 @@
   }
 
   const ONLINE_FOOD_CACHE_KEY = "inAndOutOnlineFoodCacheV4",
-    ONLINE_LOOKUP_FAIL_KEY = "inAndOutLookupFailuresV4";
+    ONLINE_LOOKUP_FAIL_KEY = "inAndOutLookupFailuresV4",
+    GEMINI_FOOD_CACHE_KEY = "inAndOutGeminiFoodCacheV1",
+    GEMINI_LOOKUP_FAIL_KEY = "inAndOutGeminiLookupFailuresV1",
+    GEMINI_PROXY_URL_KEY = "inAndOutGeminiProxyUrlV1";
+
+  function getGeminiProxyUrl() {
+    try {
+      const stored = String(localStorage.getItem(GEMINI_PROXY_URL_KEY) || "").trim();
+      if (stored) return stored;
+    } catch (_) {}
+    const configured = String(window.IN_OUT_CONFIG?.geminiProxyUrl || "").trim();
+    return configured;
+  }
+  function normalizeGeminiProxyUrl(value = "") {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const u = new URL(raw, location.href);
+      if (!/^https?:$/.test(u.protocol)) return "";
+      return u.href.replace(/\/$/, "");
+    } catch (_) {
+      return "";
+    }
+  }
+  function setGeminiProxyUrl(value = "") {
+    const url = normalizeGeminiProxyUrl(value);
+    try {
+      if (url) localStorage.setItem(GEMINI_PROXY_URL_KEY, url);
+      else localStorage.removeItem(GEMINI_PROXY_URL_KEY);
+    } catch (_) {}
+    updateGeminiSetupUi();
+    return url;
+  }
+  function getGeminiFoods() {
+    try {
+      const x = JSON.parse(localStorage.getItem(GEMINI_FOOD_CACHE_KEY) || "[]");
+      return Array.isArray(x) ? x.filter((v) => v && typeof v === "object") : [];
+    } catch (_) {
+      return [];
+    }
+  }
+  function saveGeminiFoods(items) {
+    try {
+      localStorage.setItem(GEMINI_FOOD_CACHE_KEY, JSON.stringify((Array.isArray(items) ? items : []).slice(0, 500)));
+      invalidateFoodIndex();
+    } catch (_) {}
+  }
+  function getGeminiLookupFailures() {
+    try {
+      const x = JSON.parse(localStorage.getItem(GEMINI_LOOKUP_FAIL_KEY) || "{}");
+      return x && typeof x === "object" ? x : {};
+    } catch (_) {
+      return {};
+    }
+  }
+  function saveGeminiLookupFailures(x) {
+    try { localStorage.setItem(GEMINI_LOOKUP_FAIL_KEY, JSON.stringify(x || {})); } catch (_) {}
+  }
+  function updateGeminiSetupUi() {
+    const btn = document.getElementById("geminiSetupBtn");
+    if (!btn) return;
+    const on = !!getGeminiProxyUrl();
+    btn.textContent = on ? "AI Gemini ✓" : "Kết nối AI";
+    btn.classList.toggle("is-connected", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.title = on
+      ? "Gemini đang được dùng để nhận diện món chưa có trong CSDL. Bấm để đổi endpoint."
+      : "Kết nối endpoint Gemini proxy để AI nhận diện món lạ.";
+  }
   function strip(text = "") {
     return String(text)
       .toLowerCase()
@@ -5032,9 +5101,10 @@
     return [
       ...GENERIC_PRODUCE_PARSER_V52,
       ...getAuthoritativeFoodDbV50(),
+      ...getGeminiFoods(),
       ...baseFoodsV50(),
-      /* V53: Excel chỉ nhận diện từ danh mục nội bộ + hồ sơ chung.
-         Dữ liệu USDA/OFF online chỉ phục vụ ô tìm kiếm, tuyệt đối không được chiếm alias món đã nhập trong Sheet. */
+      ...getOnlineFoods(),
+      /* V64: Gemini/USDA/OFF chỉ bổ sung alias hoặc món chưa có; danh mục chuẩn luôn có priority cao hơn. */
     ];
   }
   function foodIndex() {
@@ -5088,6 +5158,155 @@
     try {
       localStorage.setItem(ONLINE_LOOKUP_FAIL_KEY, JSON.stringify(x));
     } catch {}
+  }
+
+  function geminiFoodId(text = "") {
+    const src = normalizePhrase(text) || "food";
+    let h = 2166136261;
+    for (let i = 0; i < src.length; i++) {
+      h ^= src.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return `gemini_${(h >>> 0).toString(36)}`;
+  }
+  function geminiCatalogNames() {
+    const seen = new Set(), out = [];
+    const pools = [
+      ...GENERIC_PRODUCE_PARSER_V52,
+      ...getAuthoritativeFoodDbV50(),
+      ...baseFoodsV50(),
+    ];
+    for (const food of pools) {
+      const name = String(food?.name || "").trim();
+      const key = normalizePhraseAccentV51(name);
+      if (!name || !key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(name);
+      if (out.length >= 650) break;
+    }
+    return out;
+  }
+  function geminiNumber(value, fallback = null) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  function exactCatalogFoodByName(name = "") {
+    const target = normalizePhraseAccentV51(name);
+    if (!target) return null;
+    const foods = [
+      ...GENERIC_PRODUCE_PARSER_V52,
+      ...getAuthoritativeFoodDbV50(),
+      ...baseFoodsV50(),
+    ];
+    for (const food of foods) {
+      if (normalizePhraseAccentV51(food?.name || "") === target) return food;
+    }
+    return null;
+  }
+  function geminiResultToFood(result, queueItem) {
+    if (!result || typeof result !== "object") return null;
+    const original = String(queueItem?.original || result.input || "").trim();
+    const cleanedAlias = cleanLookupQuery(original);
+    const canonical = String(result.canonical_name_vi || cleanedAlias || original || "Món AI").trim();
+    const matchedName = String(result.matched_catalog_name || "").trim();
+    const matched = matchedName ? exactCatalogFoodByName(matchedName) : null;
+    if (matched) {
+      const aliases = [...new Set([
+        ...(matched.aliases || []),
+        cleanedAlias, canonical, original,
+      ].filter(Boolean))];
+      return {
+        ...matched,
+        id: geminiFoodId(`alias:${matched.id}:${cleanedAlias || canonical}`),
+        aliases,
+        priority: Math.min(950000, Number(matched.priority) || 900000),
+        isGeminiAlias: true,
+        geminiConfidence: String(result.confidence || "high"),
+        source: `Gemini AI nhận diện → ${matched.name} · ${matched.source || "CSDL nội bộ"}`,
+      };
+    }
+
+    const kcal = Math.max(0, geminiNumber(result.kcal, 0));
+    const protein = Math.max(0, geminiNumber(result.protein, 0));
+    const carbs = Math.max(0, geminiNumber(result.carbs, 0));
+    const fat = Math.max(0, geminiNumber(result.fat, 0));
+    if (!(kcal > 0 || protein > 0 || carbs > 0 || fat > 0)) return null;
+    const basisType = String(result.basis_type || "per_portion");
+    const portionUnit = String(result.portion_unit || "portion");
+    const portionGrams = Math.max(0, geminiNumber(result.portion_grams, 0));
+    const gramsPerUnit = Math.max(0, geminiNumber(result.grams_per_unit, 0));
+    const rangePct = clamp(geminiNumber(result.range_pct, 0.18), 0.05, 0.35);
+    const confidence = ["high", "medium", "low"].includes(String(result.confidence))
+      ? String(result.confidence) : "medium";
+    const food = {
+      id: geminiFoodId(`food:${canonical}`),
+      name: canonical,
+      en: String(result.canonical_name_en || "").trim(),
+      aliases: [...new Set([cleanedAlias, canonical, original].filter(Boolean))],
+      priority: 450000,
+      isGemini: true,
+      geminiConfidence: confidence,
+      rangePct,
+      rangeNote: String(result.note || "ước tính AI dựa trên khẩu phần phổ biến").trim(),
+      source: `Gemini AI · ước tính dinh dưỡng (${confidence})`,
+      defaultKcal: kcal,
+      defaultProtein: protein,
+      defaultCarbs: carbs,
+      defaultFat: fat,
+      allowCookingMethod: false,
+    };
+    if (basisType === "per100g") {
+      Object.assign(food, {
+        per100g: kcal, protein100g: protein, carbs100g: carbs, fat100g: fat,
+        defaultGrams: portionGrams > 0 ? portionGrams : 100,
+      });
+      if (gramsPerUnit > 0) {
+        food.gramsPerUnit = gramsPerUnit;
+        food.perUnit = kcal * gramsPerUnit / 100;
+      }
+    } else if (basisType === "per100ml") {
+      Object.assign(food, {
+        per100ml: kcal, protein100ml: protein, carbs100ml: carbs, fat100ml: fat,
+        defaultMl: portionGrams > 0 ? portionGrams : 100,
+      });
+    } else {
+      food.perPortion = kcal;
+      if (portionGrams > 0) food.defaultGrams = portionGrams;
+      if (gramsPerUnit > 0) food.gramsPerUnit = gramsPerUnit;
+      if (["unit", "piece", "portion"].includes(portionUnit)) food.perUnit = kcal;
+      if (portionUnit === "bowl") food.perBowl = kcal;
+      if (portionUnit === "cup") food.perCup = kcal;
+      if (portionUnit === "slice") food.perSlice = kcal;
+      if (portionUnit === "pack") food.perPack = kcal;
+      if (portionUnit === "can") food.perCan = kcal;
+      if (portionUnit === "whole") food.perWhole = kcal;
+    }
+    return food;
+  }
+  async function lookupFoodsWithGemini(queue) {
+    const endpoint = getGeminiProxyUrl();
+    if (!endpoint || !Array.isArray(queue) || !queue.length) return [];
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 18000);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        signal: controller.signal,
+        body: JSON.stringify({
+          items: queue.map((q) => String(q.original || "").slice(0, 240)),
+          catalog: geminiCatalogNames(),
+          locale: "vi-VN",
+        }),
+      });
+      if (!response.ok) throw new Error(`Gemini proxy ${response.status}`);
+      const data = await response.json();
+      if (!data || !Array.isArray(data.results)) throw new Error("Gemini proxy trả dữ liệu không hợp lệ");
+      return data.results;
+    } finally {
+      clearTimeout(timer);
+    }
   }
   function cleanLookupQuery(text = "") {
     return String(text)
@@ -5425,10 +5644,7 @@
       failed = getLookupFailures(),
       now = Date.now();
     for (const r of rows) {
-      const segments = String(r.food ?? "")
-        .split(/\s*(?:\+|;|\n|\s+và\s+|\s+and\s+)\s*/i)
-        .map((x) => x.trim())
-        .filter(Boolean);
+      const segments = splitFoodSegmentsV51(String(r.food ?? ""));
       for (const seg of segments) {
         const norm = normalizePhrase(seg);
         if (/\d+(?:[.,]\d+)?\s*kcal\b/.test(norm) || findFood(seg)) continue;
@@ -5446,38 +5662,124 @@
   let onlineLookupBusy = false;
   async function resolveUnknownFoods(rows) {
     if (onlineLookupBusy) return false;
-    const queue = unresolvedQueriesFromRows(rows).slice(0, 3);
-    if (!queue.length) {
-      setLookupText("Nhận diện nhanh: toàn bộ món đã có dữ liệu nội bộ");
+    const rawQueue = unresolvedQueriesFromRows(rows);
+    if (!rawQueue.length) {
+      setLookupText(getGeminiProxyUrl()
+        ? "AI Gemini · toàn bộ món đã được nhận diện"
+        : "Nhận diện nhanh: toàn bộ món đã có dữ liệu nội bộ");
       return false;
     }
+
+    const now = Date.now();
+    const geminiFailures = getGeminiLookupFailures();
+    const queue = rawQueue.filter((q) => !geminiFailures[q.key] || now - geminiFailures[q.key] >= 21600000);
+    if (!queue.length) return false;
+
     onlineLookupBusy = true;
-    setLookupText(`Nhận diện nhanh hoàn tất · đang bổ sung nền ${queue.length} món lạ`);
-    let cache = getOnlineFoods(), changed = false, failures = getLookupFailures();
+    let geminiCache = getGeminiFoods();
+    let onlineCache = getOnlineFoods();
+    let changed = false;
+    let aiResolved = 0;
+    let fallbackResolved = 0;
+    const unresolvedAfterAi = [];
+    const proxyUrl = getGeminiProxyUrl();
+
     try {
-      const results = await Promise.all(queue.map(async (item) => {
-        try { return { item, food: await lookupFoodOnline(item.original) }; }
-        catch { return { item, food:null }; }
-      }));
-      for (const {item:q, food:item} of results) {
-        if (item) {
-          item.aliases = [...new Set([...(item.aliases || []), q.original, q.key])];
-          cache = cache.filter((x) => x.id !== item.id && !item.aliases.some((a) => (x.aliases || []).includes(a)));
-          cache.unshift(item);
-          delete failures[q.key];
-          changed = true;
-        } else failures[q.key] = Date.now();
+      if (proxyUrl) {
+        setLookupText(`AI Gemini · đang nhận diện ${queue.length} món lạ…`);
+        const batchSize = 12;
+        for (let start = 0; start < queue.length; start += batchSize) {
+          const batch = queue.slice(start, start + batchSize);
+          let results = [];
+          try {
+            results = await lookupFoodsWithGemini(batch);
+          } catch (err) {
+            console.warn("Gemini food recognition failed", err);
+            unresolvedAfterAi.push(...batch);
+            continue;
+          }
+          const byInput = new Map();
+          for (const result of results) {
+            const k = normalizePhrase(String(result?.input || ""));
+            if (k && !byInput.has(k)) byInput.set(k, result);
+          }
+          for (let i = 0; i < batch.length; i++) {
+            const q = batch[i];
+            const result = byInput.get(normalizePhrase(q.original)) || results[i] || null;
+            const food = geminiResultToFood(result, q);
+            if (food) {
+              const aliasKey = normalizePhrase(cleanLookupQuery(q.original));
+              geminiCache = geminiCache.filter((x) => {
+                if (x.id === food.id) return false;
+                if (!aliasKey) return true;
+                return !(x.aliases || []).some((a) => normalizePhrase(a) === aliasKey);
+              });
+              geminiCache.unshift(food);
+              delete geminiFailures[q.key];
+              aiResolved++;
+              changed = true;
+            } else {
+              geminiFailures[q.key] = Date.now();
+              unresolvedAfterAi.push(q);
+            }
+          }
+        }
+        if (aiResolved) saveGeminiFoods(geminiCache);
+        saveGeminiLookupFailures(geminiFailures);
+      } else {
+        unresolvedAfterAi.push(...queue);
       }
-      if (changed) saveOnlineFoods(cache);
-      saveLookupFailures(failures);
-      setLookupText(changed ? "Nhận diện nhanh · dữ liệu món lạ đã được bổ sung" : "Món lạ chưa được tính để tránh sai calo và macro");
-      if (changed) render();
+
+      /* V64 fallback: nếu AI chưa cấu hình hoặc không tìm được, thử USDA/OFF.
+         Không còn giới hạn 3 món; chạy theo batch nhỏ để tránh dồn quá nhiều request. */
+      const fallbackQueue = unresolvedAfterAi.slice(0, 24);
+      if (fallbackQueue.length) {
+        const failures = getLookupFailures();
+        for (let start = 0; start < fallbackQueue.length; start += 6) {
+          const batch = fallbackQueue.slice(start, start + 6);
+          const results = await Promise.all(batch.map(async (q) => {
+            try { return { q, food: await lookupFoodOnline(q.original) }; }
+            catch (_) { return { q, food: null }; }
+          }));
+          for (const { q, food } of results) {
+            if (food) {
+              const cleanAlias = cleanLookupQuery(q.original);
+              food.aliases = [...new Set([...(food.aliases || []), cleanAlias, q.key].filter(Boolean))];
+              food.priority = Math.min(Number(food.priority) || 1000, 50000);
+              onlineCache = onlineCache.filter((x) => x.id !== food.id);
+              onlineCache.unshift(food);
+              delete failures[q.key];
+              fallbackResolved++;
+              changed = true;
+            } else {
+              failures[q.key] = Date.now();
+            }
+          }
+        }
+        if (fallbackResolved) saveOnlineFoods(onlineCache);
+        saveLookupFailures(failures);
+      }
+
+      if (changed) {
+        invalidateFoodIndex();
+        render();
+      }
+      if (aiResolved) {
+        setLookupText(`AI Gemini ✓ nhận diện thêm ${aiResolved} món${fallbackResolved ? ` · nguồn phụ ${fallbackResolved} món` : ""}`);
+      } else if (!proxyUrl) {
+        setLookupText(fallbackResolved
+          ? `Đã bổ sung ${fallbackResolved} món từ nguồn dinh dưỡng · Kết nối Gemini để nhận diện tốt hơn`
+          : "Có món chưa nhận diện · vào Thực phẩm → Kết nối AI để bật Gemini");
+      } else if (fallbackResolved) {
+        setLookupText(`Gemini chưa khớp hết · đã bổ sung ${fallbackResolved} món từ nguồn phụ`);
+      } else {
+        setLookupText("Một số món vẫn chưa đủ dữ liệu; app không tự cộng bừa calo/macro");
+      }
       return changed;
     } finally {
       onlineLookupBusy = false;
     }
   }
-
 
   function foodCoreV6(text = "") {
     return cleanLookupQuery(text)
@@ -6771,6 +7073,13 @@
         return connectorParts;
       /* Nếu có kcal tự nhập, giữ nguyên cả cụm để parser lấy các macro đi kèm. */
       if (parseExplicitCustomNutritionV51(part)) return [part];
+      /* V64: không tách chữ “và” nếu toàn cụm đã là một tên món/nhóm hợp lệ,
+         ví dụ “rau củ và hoa quả”. */
+      if (/\s+và\s+/i.test(part)) {
+        const wholeVi = findGenericProduceV53(part) || findFood(part);
+        const wholeAlias = normalizePhrase(wholeVi?.matchedAlias || "");
+        if (/\bva\b/.test(wholeAlias)) return [part];
+      }
       const viParts = part.split(/\s+và\s+/i).map((s)=>s.trim()).filter(Boolean);
       return viParts.flatMap((viPart)=>{
         if (!/\s+and\s+/i.test(viPart)) return [viPart];
@@ -8941,10 +9250,12 @@
       });
     }
     const canonical=normalizePhrase(name), base=baseFoodsV50();
+    let servingHint=null;
     for(const legacy of base){
       const roots=[legacy.name,legacy.en,...(legacy.aliases||[])].filter(Boolean);
       if(roots.some((x)=>safeAliasEqualV51(x,name) || aliasVariantsV50(name).some((a)=>safeAliasEqualV51(a,x)))){
         roots.forEach((x)=>aliases.add(x));
+        if(!servingHint && (Number.isFinite(legacy.gramsPerUnit) || Number.isFinite(legacy.gramsPerPiece))) servingHint=legacy;
       }
     }
     const blockedAliases=new Set((V51_BLOCKED_ALIASES.get(canonical)||[]).map(normalizePhrase));
@@ -8968,6 +9279,17 @@
       Object.assign(food,{per100ml:kcal*100/info.ml,protein100ml:protein*100/info.ml,carbs100ml:carbs*100/info.ml,fat100ml:fat*100/info.ml,defaultMl:info.ml});
     } else if(info.grams&&info.grams>0){
       Object.assign(food,{per100g:kcal*100/info.grams,protein100g:protein*100/info.grams,carbs100g:carbs*100/info.grams,fat100g:fat*100/info.grams,defaultGrams:info.grams,gramsPerUnit:info.grams});
+    }
+    /* V64: danh mục 100 g vẫn kế thừa trọng lượng/đơn vị thực tế từ CSDL parser cũ.
+       Ví dụ Trứng gà nguyên quả: 1 quả ≈ 50 g, không được hiểu 1 quả = 100 g. */
+    if(is100g && servingHint){
+      const unitGrams=Number(servingHint.gramsPerUnit);
+      const pieceGrams=Number(servingHint.gramsPerPiece);
+      if(Number.isFinite(unitGrams) && unitGrams>0){
+        food.gramsPerUnit=unitGrams;
+        food.perUnit=kcal*unitGrams/100;
+      }
+      if(Number.isFinite(pieceGrams) && pieceGrams>0) food.gramsPerPiece=pieceGrams;
     }
     /* Khóa đúng đơn vị khẩu phần ghi trên bảng. */
     if(/\b(?:bat|to)\b/.test(info.basis)) food.perBowl=kcal;
@@ -9433,6 +9755,30 @@
   /* USDA/Open Food Facts chỉ được gọi khi người dùng chủ động tìm kiếm để trang mặc định luôn gọn. */
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
   nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
+  document.getElementById("geminiSetupBtn")?.addEventListener("click", () => {
+    const current = getGeminiProxyUrl();
+    const value = window.prompt(
+      "Dán URL Gemini proxy (Cloudflare Worker) để AI nhận diện món. API key không lưu trong web app. Để trống rồi OK nếu muốn ngắt kết nối.",
+      current,
+    );
+    if (value === null) return;
+    const url = setGeminiProxyUrl(value);
+    if (String(value).trim() && !url) {
+      window.alert("URL không hợp lệ. Hãy dùng địa chỉ bắt đầu bằng https://");
+      return;
+    }
+    if (url) {
+      try {
+        localStorage.removeItem(GEMINI_LOOKUP_FAIL_KEY);
+        localStorage.removeItem(ONLINE_LOOKUP_FAIL_KEY);
+      } catch (_) {}
+      setLookupText("AI Gemini đã kết nối · đang thử nhận diện các món chưa biết");
+      if (rawRows.length) resolveUnknownFoods(rawRows);
+    } else {
+      setLookupText("Gemini đã ngắt kết nối; app vẫn dùng CSDL nội bộ và nguồn dinh dưỡng phụ");
+    }
+  });
+  updateGeminiSetupUi();
   document.getElementById("refreshBtn").addEventListener("click", refreshData);
   document.getElementById("stickyRefreshBtn").addEventListener("click", refreshData);
   document

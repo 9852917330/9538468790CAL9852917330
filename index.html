@@ -17,7 +17,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4f8fb">
-<title>In and Out — Energy Dashboard V62</title>
+<title>In and Out — Energy Dashboard V64</title>
 <script id="theme-bootstrap">
 (()=>{'use strict';let t='light';try{const s=localStorage.getItem('dienWebThemeV3')||localStorage.getItem('dienWebThemeV4');if(s==='light'||s==='dark')t=s;}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=t==='dark'?'#0d1728':'#f4f8fb';})();
 </script>
@@ -1448,6 +1448,9 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   #page-lookup .nutrition-lookup-form button{grid-column:auto;width:auto;height:34px;padding:0 14px;border-radius:10px;font-size:8.5px}
   #page-lookup .nutrition-lookup-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
   #page-lookup .nutrition-source-note,.footer{display:none!important}
+  #page-lookup .gemini-setup-btn{border:1px solid rgba(20,169,120,.28);border-radius:999px;padding:7px 11px;background:rgba(20,169,120,.08);color:var(--mint3);font-size:9px;font-weight:900;white-space:nowrap}
+  #page-lookup .gemini-setup-btn.is-connected{background:rgba(20,169,120,.16);border-color:rgba(20,169,120,.42)}
+  html[data-theme="dark"] #page-lookup .gemini-setup-btn{color:#86f4d1;background:rgba(69,230,179,.09);border-color:rgba(69,230,179,.28)}
 
   .nutrition-macro-catalog{display:block;margin-top:10px}
   .catalog-browser{display:grid;gap:12px}
@@ -1997,7 +2000,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
 <section id="page-lookup" class="page">
   <section class="section lookup-section" style="margin-top:0">
-    <div class="section-head"><div><h2>Thực phẩm</h2></div></div>
+    <div class="section-head"><div><h2>Thực phẩm</h2></div><button id="geminiSetupBtn" class="gemini-setup-btn" type="button" aria-pressed="false">Kết nối AI</button></div>
     <div class="nutrition-lookup-shell">
       <header class="nutrition-lookup-hero food-catalog-hero">
         <form id="nutritionLookupForm" class="nutrition-lookup-form">

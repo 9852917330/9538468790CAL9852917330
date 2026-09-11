@@ -1,0 +1,13 @@
+V64 — GEMINI FOOD AI
+
+- Thêm Gemini làm lớp nhận diện món lạ/biến thể tên món theo batch.
+- Gemini ưu tiên map về CSDL nội bộ; chỉ tạo ước tính AI khi không có món tương ứng.
+- Cache alias/món AI trên thiết bị để lần sau không gọi API lại.
+- API key không nằm trong web app/repository; dùng Cloudflare Worker proxy + secret GEMINI_API_KEY.
+- Thêm nút “Kết nối AI” tại trang Thực phẩm để lưu URL Worker trên thiết bị.
+- Bỏ giới hạn 3 món lạ; AI xử lý batch 12 món, fallback dinh dưỡng xử lý tối đa 24 món/lượt.
+- Cho parser dùng lại cache USDA/Open Food Facts ở priority thấp hơn CSDL chuẩn.
+- Sửa lỗi đơn vị đếm của thực phẩm theo 100 g bằng cách kế thừa gramsPerUnit từ parser cũ.
+  Trứng nguyên quả vì vậy dùng khoảng 50 g/quả thay vì nhầm 1 quả = 100 g.
+- README gốc để trống theo yêu cầu repo-overwrite.
+- Service Worker cache: V64.

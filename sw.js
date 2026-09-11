@@ -1,4 +1,4 @@
-const CACHE_NAME = "in-and-out-pwa-2026-08-31-v63-balance-jar";
+const CACHE_NAME = "in-and-out-pwa-2026-09-11-v64-gemini-food-ai";
 const INDEX_URL = new URL("./index.html", self.registration.scope).href;
 const APP_URL = new URL("./app.js", self.registration.scope).href;
 const ROOT_URL = new URL("./", self.registration.scope).href;
