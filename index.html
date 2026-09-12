@@ -1198,6 +1198,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <style id="foods-page-styles">
   /* V24 · Bảng thực phẩm 4 cột cố định, có tỷ lệ macro/100 kcal và không cuộn ngang */
   .food-page-shell{display:grid;gap:18px}
+  .ai-key-panel{display:grid;gap:12px;margin:0 0 16px;padding:16px;border:1px solid var(--line,#dce5ec);border-radius:16px;background:var(--panel,#fff)}
+  .ai-key-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.ai-key-panel-head h3{margin:0;font-size:1rem}.ai-key-state{font-size:.82rem;font-weight:700;color:#64748b}.ai-key-state.connected{color:#0f9f75}
+  .ai-key-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}.ai-key-row input{min-width:0;padding:11px 12px;border:1px solid var(--line,#dce5ec);border-radius:10px;background:var(--surface,#fff);color:inherit}.ai-key-row button{padding:10px 13px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.ai-key-save{background:#20c997;color:#072d24}.ai-key-delete{background:#e9eef3;color:#475569}.ai-key-note{margin:0;color:#64748b;font-size:.82rem;line-height:1.45}
+  @media(max-width:640px){.ai-key-row{grid-template-columns:1fr 1fr}.ai-key-row input{grid-column:1/-1}}
   .food-table-card,.external-food-card{border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.025);overflow:hidden}
   .food-card-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;padding:16px 17px;border-bottom:1px solid var(--line)}
   .food-card-head h3{margin:0;font-size:16px;letter-spacing:-.35px}
@@ -1448,9 +1452,6 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   #page-lookup .nutrition-lookup-form button{grid-column:auto;width:auto;height:34px;padding:0 14px;border-radius:10px;font-size:8.5px}
   #page-lookup .nutrition-lookup-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
   #page-lookup .nutrition-source-note,.footer{display:none!important}
-  #page-lookup .gemini-setup-btn{border:1px solid rgba(20,169,120,.28);border-radius:999px;padding:7px 11px;background:rgba(20,169,120,.08);color:var(--mint3);font-size:9px;font-weight:900;white-space:nowrap}
-  #page-lookup .gemini-setup-btn.is-connected{background:rgba(20,169,120,.16);border-color:rgba(20,169,120,.42)}
-  html[data-theme="dark"] #page-lookup .gemini-setup-btn{color:#86f4d1;background:rgba(69,230,179,.09);border-color:rgba(69,230,179,.28)}
 
   .nutrition-macro-catalog{display:block;margin-top:10px}
   .catalog-browser{display:grid;gap:12px}
@@ -2000,8 +2001,13 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
 <section id="page-lookup" class="page">
   <section class="section lookup-section" style="margin-top:0">
-    <div class="section-head"><div><h2>Thực phẩm</h2></div><button id="geminiSetupBtn" class="gemini-setup-btn" type="button" aria-pressed="false">Kết nối AI</button></div>
+    <div class="section-head"><div><h2>Thực phẩm</h2></div></div>
     <div class="nutrition-lookup-shell">
+      <section class="ai-key-panel" aria-labelledby="aiKeyTitle">
+        <div class="ai-key-panel-head"><h3 id="aiKeyTitle">Gemini nhận diện món ăn</h3><span id="geminiKeyState" class="ai-key-state">Chưa kết nối</span></div>
+        <div class="ai-key-row"><input id="geminiApiKeyInput" type="password" autocomplete="off" spellcheck="false" placeholder="Dán Gemini API key…" aria-label="Gemini API key"><button id="saveGeminiKeyBtn" class="ai-key-save" type="button">Lưu & kiểm tra</button><button id="deleteGeminiKeyBtn" class="ai-key-delete" type="button">Xóa key</button></div>
+        <p id="geminiKeyMessage" class="ai-key-note">Key chỉ được lưu trên trình duyệt này, không nằm trong mã nguồn hoặc Google Sheet.</p>
+      </section>
       <header class="nutrition-lookup-hero food-catalog-hero">
         <form id="nutritionLookupForm" class="nutrition-lookup-form">
           <span aria-hidden="true">⌕</span>
