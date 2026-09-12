@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-12-v65-gemini-header";
+  const APP_BUILD = "2026-09-12-v66-fast-start";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -4974,7 +4974,8 @@
     }
   }
   let FOOD_INDEX_CACHE = null;
-  function invalidateFoodIndex() { FOOD_INDEX_CACHE = null; }
+  const FOOD_MATCH_MEMO = new Map(), FOOD_ESTIMATE_MEMO = new Map();
+  function invalidateFoodIndex() { FOOD_INDEX_CACHE = null; FOOD_MATCH_MEMO.clear(); FOOD_ESTIMATE_MEMO.clear(); }
   function saveOnlineFoods(items) {
     try {
       localStorage.setItem(
@@ -5624,6 +5625,14 @@
     };
   }
   function findFood(norm) {
+    const key=String(norm||"");
+    if(FOOD_MATCH_MEMO.has(key))return FOOD_MATCH_MEMO.get(key);
+    const result=findFoodUncachedV66(key);
+    if(FOOD_MATCH_MEMO.size>=3000)FOOD_MATCH_MEMO.clear();
+    FOOD_MATCH_MEMO.set(key,result);
+    return result;
+  }
+  function findFoodUncachedV66(norm) {
     const input = String(norm || "");
     const normalized = normalizePhrase(input);
     if (!normalized) return null;
@@ -6847,6 +6856,14 @@
     });
   }
   function estimateFood(text) {
+    const key=String(text??"");
+    if(FOOD_ESTIMATE_MEMO.has(key))return FOOD_ESTIMATE_MEMO.get(key);
+    const result=estimateFoodUncachedV66(key);
+    if(FOOD_ESTIMATE_MEMO.size>=2000)FOOD_ESTIMATE_MEMO.clear();
+    FOOD_ESTIMATE_MEMO.set(key,result);
+    return result;
+  }
+  function estimateFoodUncachedV66(text) {
     const source = String(text ?? "").trim();
     if (!source || /^0+(?:[.,]0+)?$/.test(source))
       return {
@@ -8256,7 +8273,7 @@
   }
   async function loadCsvRows() {
     const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&range=A:F&headers=1&tqx=out:csv&_=${Date.now()}`;
-    const res = await fetch(csvUrl, { cache: "no-store" });
+    const res = await fetch(csvUrl, { cache: "no-store", signal: AbortSignal.timeout(12000) });
     if (!res.ok) throw new Error(`CSV ${res.status}`);
     const rows = csvToRows(await res.text());
     if (!rows.length) throw new Error("CSV không có dòng ngày hợp lệ.");
@@ -8385,6 +8402,16 @@
     }
   }
   let refreshBusy = false;
+  async function prepareFoodRowsV66(rows){
+    let sliceStart=performance.now();
+    for(const text of new Set(rows.map(row=>String(row.food??"")))){
+      estimateFood(text);
+      if(performance.now()-sliceStart>8){
+        await new Promise(resolve=>setTimeout(resolve,0));
+        sliceStart=performance.now();
+      }
+    }
+  }
   async function refreshData() {
     if (refreshBusy) return;
     refreshBusy = true;
@@ -8397,6 +8424,7 @@
     });
     try {
       const rows = await loadSheet();
+      await prepareFoodRowsV66(rows);
       rawRows = rows;
       writeSheetCache(rows);
       setSync("ok", "Sheet đã đồng bộ");
@@ -8959,6 +8987,24 @@
     ["bo bit tet",["thit bo nac","lean beef","bo nac","beef"]]
   ]);
   let AUTHORITATIVE_FOOD_DB_V50_CACHE=null;
+  let catalogPeersV66=null, legacyAliasesV66=null;
+  function prepareCatalogIndexesV66(){
+    if(catalogPeersV66)return;
+    catalogPeersV66=new Map();legacyAliasesV66=new Map();
+    for(const peer of UNIFIED_FOOD_CATALOG){
+      const key=catalogIdentity(peer);
+      if(!catalogPeersV66.has(key))catalogPeersV66.set(key,[]);
+      catalogPeersV66.get(key).push(peer);
+    }
+    baseFoodsV50().forEach((food,order)=>{
+      const roots=[food.name,food.en,...(food.aliases||[])].filter(Boolean);
+      const entry={food,roots,order};
+      for(const key of new Set(roots.map(normalizePhraseAccentV51).filter(Boolean))){
+        if(!legacyAliasesV66.has(key))legacyAliasesV66.set(key,[]);
+        legacyAliasesV66.get(key).push(entry);
+      }
+    });
+  }
   function aliasVariantsV50(name="") {
     const out=new Set(), add=(x)=>{x=String(x||"").trim();if(x)out.add(x);};
     add(name);
@@ -8999,21 +9045,23 @@
     /* V56: nếu cùng thực phẩm còn tồn tại ở một CSDL nội bộ khác với tên tiếng Anh chính thức, gom tên đó vào alias.
        Điều này tránh việc bản tiếng Việt thắng khi de-duplicate làm mất tên English của cùng món. */
     const itemIdentity=catalogIdentity(item);
-    for(const peer of UNIFIED_FOOD_CATALOG){
-      if(peer===item||catalogIdentity(peer)!==itemIdentity)continue;
+    prepareCatalogIndexesV66();
+    for(const peer of catalogPeersV66.get(itemIdentity)||[]){
+      if(peer===item)continue;
       [peer.originalName,peer.name].filter(Boolean).forEach((x)=>{
         const normalized=normalizePhrase(x);
         if(/[a-z]/.test(normalized) && !/[à-ỹđ]/i.test(String(x))) aliasVariantsV50(x).forEach((a)=>aliases.add(a));
       });
     }
-    const canonical=normalizePhrase(name), base=baseFoodsV50();
+    const canonical=normalizePhrase(name);
     let matchingLegacyFood=null;
-    for(const legacy of base){
-      const roots=[legacy.name,legacy.en,...(legacy.aliases||[])].filter(Boolean);
-      if(roots.some((x)=>safeAliasEqualV51(x,name) || aliasVariantsV50(name).some((a)=>safeAliasEqualV51(a,x)))){
-        if(!matchingLegacyFood) matchingLegacyFood=legacy;
-        roots.forEach((x)=>aliases.add(x));
-      }
+    const matchingEntries=new Set();
+    for(const alias of aliasVariantsV50(name)){
+      for(const entry of legacyAliasesV66.get(normalizePhraseAccentV51(alias))||[])matchingEntries.add(entry);
+    }
+    for(const entry of [...matchingEntries].sort((a,b)=>a.order-b.order)){
+      if(!matchingLegacyFood)matchingLegacyFood=entry.food;
+      entry.roots.forEach(x=>aliases.add(x));
     }
     const blockedAliases=new Set((V51_BLOCKED_ALIASES.get(canonical)||[]).map(normalizePhrase));
     if(blockedAliases.size) for(const alias of [...aliases]) if(blockedAliases.has(normalizePhrase(alias))) aliases.delete(alias);
@@ -9566,16 +9614,13 @@
     showPage(hash);
   const hasCachedRows = hydrateSheetCache();
   const hasOverviewSnapshot = hydrateOverviewSnapshot();
-  const boot = () => {
+  const boot = async () => {
+    await prepareFoodRowsV66(rawRows);
     render();
     refreshData();
   };
-  if (currentPage === "overview" && hasCachedRows && hasOverviewSnapshot) {
-    /* Let the browser paint the last dashboard first, then recompute/update in the next task. */
-    setTimeout(boot, 0);
-  } else {
-    boot();
-  }
+  /* Paint the saved dashboard and activate controls before processing rows. */
+  requestAnimationFrame(()=>setTimeout(boot,0));
   refreshTimer = setInterval(refreshData, PROFILE.refreshSeconds * 1000);
 
   /* theme-redraw-v6 · nutrition-integrity · priority-foods · cooking-engine */
