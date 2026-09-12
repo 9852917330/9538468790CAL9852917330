@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-12-v66-fast-start";
+  const APP_BUILD = "2026-09-12-v67-whole-food-match";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -4794,8 +4794,8 @@
     };
   }
 
-  const ONLINE_FOOD_CACHE_KEY = "inAndOutOnlineFoodCacheV4",
-    ONLINE_LOOKUP_FAIL_KEY = "inAndOutLookupFailuresV4",
+  const ONLINE_FOOD_CACHE_KEY = "inAndOutOnlineFoodCacheV67",
+    ONLINE_LOOKUP_FAIL_KEY = "inAndOutLookupFailuresV67",
     GEMINI_API_KEY_STORAGE = "inAndOutGeminiApiKeyV1",
     GEMINI_MODEL = "gemini-3.6-flash";
   let activeGeminiModel = GEMINI_MODEL;
@@ -5504,8 +5504,12 @@
   }
   function hashTextV64(text="") { let h=2166136261; for(const ch of text){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
   function geminiResultToFood(result, requested) {
+    if(!result || result.original!==requested || typeof result.canonicalName!=="string")return null;
+    if(!["per100g","protein100g","carbs100g","fat100g","defaultGrams","gramsPerUnit","confidence"].every(k=>typeof result[k]==="number"&&Number.isFinite(result[k])))return null;
+    if(result.confidence<0.65||result.confidence>1||result.per100g<0||result.per100g>950||result.defaultGrams<=0||result.gramsPerUnit<=0)return null;
+    if([result.protein100g,result.carbs100g,result.fat100g].some(n=>n<0||n>100)||result.protein100g+result.carbs100g+result.fat100g>105)return null;
     const canonical=String(result?.canonicalName||requested||"").trim(),known=canonical?findFood(canonical)?.food:null;
-    const aliases=[...new Set([requested,canonical,...(Array.isArray(result?.aliases)?result.aliases:[])].filter(Boolean))];
+    const aliases=[wholeFoodNameV67(requested),canonical];
     if(known)return {...known,id:`ai_alias_${hashTextV64(requested)}`,aliases:[...(known.aliases||[]),...aliases],source:`${known.source||"CSDL nội bộ"} · tên món do Gemini chuẩn hóa`,aiRecognized:true};
     const finite=(v,min,max,fallback)=>{const n=Number(v);return Number.isFinite(n)?clamp(n,min,max):fallback;};
     const kcal=finite(result?.per100g,0,950,0),protein=finite(result?.protein100g,0,100,0),carbs=finite(result?.carbs100g,0,100,0),fat=finite(result?.fat100g,0,100,0),defaultGrams=finite(result?.defaultGrams,1,2000,100),confidence=finite(result?.confidence,0,1,.65);
@@ -5524,11 +5528,22 @@
     let cache = getOnlineFoods(), changed = false, failures = getLookupFailures();
     try {
       let results=[];
-      if(getGeminiApiKey())try{const aiFoods=await callGeminiFoodParser(queue.map((q)=>q.original));results=queue.map((item,i)=>({item,food:geminiResultToFood(aiFoods[i],item.original)}));}catch(error){setLookupText(error.message||"Gemini chưa thể nhận diện món.");}
-      if(!results.length)results=await Promise.all(queue.map(async(item)=>{try{return {item,food:await lookupFoodOnline(item.original)};}catch{return {item,food:null};}}));
+      if(getGeminiApiKey()){
+        try{
+          for(let offset=0;offset<queue.length;offset+=12){
+            const batch=queue.slice(offset,offset+12);
+            const aiFoods=await callGeminiFoodParser(batch.map(q=>q.original));
+            results.push(...batch.map(item=>{
+              const matches=aiFoods.filter(food=>food.original===item.original);
+              return {item,food:matches.length===1?geminiResultToFood(matches[0],item.original):null};
+            }));
+          }
+        }catch(error){setLookupText(error.message||"Gemini chưa thể nhận diện món.");return false;}
+      }
+      if(!results.length){setLookupText("Có món cần Gemini nhận diện. Bấm API key để kết nối; món chưa rõ chưa được cộng vào tổng.");return false;}
       for (const {item:q, food:item} of results) {
         if (item) {
-          item.aliases = [...new Set([...(item.aliases || []), q.original, q.key])];
+          item.aliases = [...new Set([...(item.aliases || []), wholeFoodNameV67(q.original)])];
           cache = cache.filter((x) => x.id !== item.id && !item.aliases.some((a) => (x.aliases || []).includes(a)));
           cache.unshift(item);
           delete failures[q.key];
@@ -5627,10 +5642,32 @@
   function findFood(norm) {
     const key=String(norm||"");
     if(FOOD_MATCH_MEMO.has(key))return FOOD_MATCH_MEMO.get(key);
-    const result=findFoodUncachedV66(key);
+    const result=findWholeFoodV67(key);
     if(FOOD_MATCH_MEMO.size>=3000)FOOD_MATCH_MEMO.clear();
     FOOD_MATCH_MEMO.set(key,result);
     return result;
+  }
+  function wholeFoodNameV67(text=""){
+    return String(text).toLowerCase().normalize("NFC")
+      .replace(/\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?\s*(?:kilograms?|grams?|kg|g|ml|liters?|litres?|l|quả|trái|cái|chiếc|miếng|viên|bát|chén|tô|đĩa|hộp|gói|lon|lát|suất|phần|con|cups?|bowls?|pieces?|units?|servings?|packs?)?(?=$|[^\p{L}])/gu," ")
+      .replace(/[^\p{L}\s]/gu," ").replace(/\s+/g," ").trim();
+  }
+  function findWholeFoodV67(input){
+    const name=wholeFoodNameV67(input);
+    if(!name)return null;
+    const idx=foodIndex();
+    const accent=idx.exactAccent.get(normalizePhraseAccentV51(name));
+    if(accent)return {food:accent.food,matchedAlias:accent.matchedAlias,accentExact:true,score:9000000};
+    /* Accented Vietnamese must match an entire accented alias. Never let bò match bơ,
+       or a dish containing several ingredients match only one ingredient. */
+    if(/[à-ỹđ]/i.test(name))return null;
+    const normalized=normalizePhrase(name);
+    const variants=new Set([normalized,singularizeEnglish(normalized)]);
+    const matches=idx.aliases.filter(entry=>variants.has(entry.key));
+    const identities=new Set(matches.map(entry=>normalizePhraseAccentV51(entry.food.name)));
+    if(identities.size>1)return null;
+    const best=matches.sort((a,b)=>b.baseScore-a.baseScore)[0];
+    return best?{food:best.food,matchedAlias:best.raw,score:best.baseScore}:null;
   }
   function findFoodUncachedV66(norm) {
     const input = String(norm || "");
@@ -7103,6 +7140,10 @@
       if (food.genericEstimateV52 && confidence !== "exact") {
         confidence = "medium";
         basis += ` · ${food.genericNote || "ước tính chung do không ghi rõ loại thực phẩm"}`;
+      }
+      if(food.aiRecognized && confidence!=="exact"){
+        confidence="low";
+        basis+=" · Ước tính bởi AI; khẩu phần và công thức thực tế có thể khác";
       }
       if (food.isHeuristic) {
         basis += " · sẽ tự tra lại khi có kết nối";
