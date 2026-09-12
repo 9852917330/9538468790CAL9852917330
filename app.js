@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-12-v64-gemini-browser-key";
+  const APP_BUILD = "2026-09-12-v65-gemini-header";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -4797,7 +4797,21 @@
   const ONLINE_FOOD_CACHE_KEY = "inAndOutOnlineFoodCacheV4",
     ONLINE_LOOKUP_FAIL_KEY = "inAndOutLookupFailuresV4",
     GEMINI_API_KEY_STORAGE = "inAndOutGeminiApiKeyV1",
-    GEMINI_MODEL = "gemini-2.5-flash";
+    GEMINI_MODEL = "gemini-3.6-flash";
+  let activeGeminiModel = GEMINI_MODEL;
+  async function discoverGeminiModels(apiKey) {
+    const models=[]; let token="";
+    do {
+      const url=new URL("https://generativelanguage.googleapis.com/v1beta/models");
+      url.searchParams.set("pageSize","1000");
+      if(token)url.searchParams.set("pageToken",token);
+      const response=await fetch(url,{headers:{"x-goog-api-key":apiKey},signal:AbortSignal.timeout(20000)});
+      const data=await response.json();
+      if(!response.ok)throw new Error(geminiErrorMessage(response.status,data));
+      models.push(...(data.models||[]));token=data.nextPageToken||"";
+    }while(token);
+    return models.filter(m=>m.supportedGenerationMethods?.includes("generateContent") && /^models\/gemini-.*flash/.test(m.name) && !/image|audio|tts|live|native|experimental/.test(m.name)).map(m=>m.name.replace(/^models\//,"")).sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}));
+  }
   function strip(text = "") {
     return String(text)
       .toLowerCase()
@@ -5456,7 +5470,8 @@
     if (status === 400) return "API key hoặc yêu cầu Gemini không hợp lệ.";
     if (status === 401 || status === 403) return "API key Gemini không hợp lệ hoặc chưa được cấp quyền.";
     if (status === 429) return "Gemini đã hết hạn mức tạm thời. Hãy thử lại sau.";
-    return detail ? `Gemini lỗi: ${detail}` : `Không gọi được Gemini (HTTP ${status}).`;
+    if(status===404 || /no longer|not found|not available/i.test(detail))return "Model Gemini không còn khả dụng. Hãy thử Lưu & kiểm tra lại để chọn model khác.";
+    return `Không gọi được Gemini (HTTP ${status}). Hãy thử lại sau.`;
   }
   async function callGeminiFoodParser(segments, apiKey = getGeminiApiKey()) {
     if (!apiKey) throw new Error("Chưa nhập Gemini API key.");
@@ -5466,9 +5481,20 @@
       defaultGrams:{type:"NUMBER"},gramsPerUnit:{type:"NUMBER"},confidence:{type:"NUMBER"},note:{type:"STRING"}
     },required:["original","canonicalName","per100g","protein100g","carbs100g","fat100g","defaultGrams","gramsPerUnit","confidence"]}}},required:["foods"]};
     const prompt = `Bạn là bộ chuẩn hóa thực phẩm cho ứng dụng dinh dưỡng Việt Nam. Với từng chuỗi đầu vào, trả đúng một mục theo cùng thứ tự. Hiểu số lượng, đơn vị, cách chế biến và tên địa phương. Dinh dưỡng là kcal, protein, carb, fat trên 100 g phần ăn được; defaultGrams là khối lượng khẩu phần khi không ghi; gramsPerUnit là gram cho 1 quả/cái/miếng/hộp/bát phù hợp. Ví dụ 1 trứng gà nguyên quả khoảng 50 g. Không nhân dinh dưỡng theo số lượng trong kết quả. Món hỗn hợp dùng trung bình hợp lý và confidence thấp hơn. confidence từ 0 đến 1. Đầu vào JSON: ${JSON.stringify(segments)}`;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const response = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,responseMimeType:"application/json",responseSchema:schema}})});
-    const payload = await response.json().catch(()=>null);
+    const body=JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1,responseMimeType:"application/json",responseSchema:schema}});
+    const request=async(model)=>{
+      const response=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},body,signal:AbortSignal.timeout(45000)});
+      return {response,payload:await response.json().catch(()=>null)};
+    };
+    let {response,payload}=await request(activeGeminiModel);
+    if(!response.ok && (response.status===404 || /no longer|not found|not available/i.test(payload?.error?.message||""))){
+      const candidates=await discoverGeminiModels(apiKey);
+      for(const model of candidates.filter(m=>m!==activeGeminiModel).slice(0,3)){
+        ({response,payload}=await request(model));
+        if(response.ok){activeGeminiModel=model;break;}
+        if(response.status===429 || response.status===401 || response.status===403)break;
+      }
+    }
     if (!response.ok) throw new Error(geminiErrorMessage(response.status,payload));
     const output = payload?.candidates?.[0]?.content?.parts?.map((part)=>part.text||"").join("") || "";
     const parsed = JSON.parse(output);
@@ -9484,6 +9510,20 @@
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
   nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
   const geminiApiKeyInput=document.getElementById("geminiApiKeyInput"),geminiKeyState=document.getElementById("geminiKeyState"),geminiKeyMessage=document.getElementById("geminiKeyMessage");
+  const keyDialog=document.createElement("dialog");
+  keyDialog.id="geminiKeyDialog";
+  keyDialog.setAttribute("aria-labelledby","aiKeyTitle");
+  const keyPanel=document.querySelector(".ai-key-panel");
+  if(keyPanel){keyDialog.appendChild(keyPanel);document.body.appendChild(keyDialog);}
+  const closeKeyDialog=document.createElement("button");
+  closeKeyDialog.type="button";closeKeyDialog.className="ai-key-delete";closeKeyDialog.textContent="Đóng";
+  closeKeyDialog.addEventListener("click",()=>keyDialog.close());keyPanel?.appendChild(closeKeyDialog);
+  const headerKeyBtn=document.createElement("button");
+  headerKeyBtn.id="headerApiKeyBtn";headerKeyBtn.type="button";headerKeyBtn.className="header-api-key-btn";headerKeyBtn.textContent="API key";
+  headerKeyBtn.setAttribute("aria-haspopup","dialog");
+  headerKeyBtn.addEventListener("click",()=>{keyDialog.showModal();geminiApiKeyInput?.focus();});
+  document.getElementById("stickyRefreshBtn")?.before(headerKeyBtn);
+  keyDialog.addEventListener("click",event=>{if(event.target===keyDialog){const r=keyDialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)keyDialog.close();}});
   function renderGeminiKeyState(message=""){const connected=!!getGeminiApiKey();if(geminiKeyState){geminiKeyState.textContent=connected?"Gemini đã kết nối ✓":"Chưa kết nối";geminiKeyState.classList.toggle("connected",connected);}if(geminiApiKeyInput)geminiApiKeyInput.value="";if(message&&geminiKeyMessage)geminiKeyMessage.textContent=message;}
   document.getElementById("saveGeminiKeyBtn")?.addEventListener("click",async()=>{const key=String(geminiApiKeyInput?.value||"").trim();if(!key){if(geminiKeyMessage)geminiKeyMessage.textContent="Hãy dán API key Gemini trước.";return;}const btn=document.getElementById("saveGeminiKeyBtn");btn.disabled=true;if(geminiKeyMessage)geminiKeyMessage.textContent="Đang kiểm tra kết nối Gemini…";try{await callGeminiFoodParser(["1 quả trứng gà"],key);localStorage.setItem(GEMINI_API_KEY_STORAGE,key);renderGeminiKeyState("Đã lưu key trên trình duyệt này. Món lạ sẽ được Gemini nhận diện khi cập nhật Sheet.");if(rawRows.length)await resolveUnknownFoods(rawRows);}catch(error){if(geminiKeyMessage)geminiKeyMessage.textContent=error.message||"Không kết nối được Gemini.";}finally{btn.disabled=false;}});
   document.getElementById("deleteGeminiKeyBtn")?.addEventListener("click",()=>{try{localStorage.removeItem(GEMINI_API_KEY_STORAGE);}catch(_){}renderGeminiKeyState("Đã xóa API key khỏi trình duyệt này.");});

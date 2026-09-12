@@ -17,7 +17,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4f8fb">
-<title>In and Out — Energy Dashboard V64</title>
+<title>In and Out — Energy Dashboard V65</title>
 <script id="theme-bootstrap">
 (()=>{'use strict';let t='light';try{const s=localStorage.getItem('dienWebThemeV3')||localStorage.getItem('dienWebThemeV4');if(s==='light'||s==='dark')t=s;}catch(_){}document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;const m=document.querySelector('meta[name=\"theme-color\"]');if(m)m.content=t==='dark'?'#0d1728':'#f4f8fb';})();
 </script>
@@ -1198,6 +1198,13 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 <style id="foods-page-styles">
   /* V24 · Bảng thực phẩm 4 cột cố định, có tỷ lệ macro/100 kcal và không cuộn ngang */
   .food-page-shell{display:grid;gap:18px}
+  #geminiKeyDialog{width:min(560px,calc(100% - 24px));max-height:85dvh;padding:0;border:1px solid var(--line);border-radius:20px;color:var(--text);background:var(--panel);overflow:auto}
+  #geminiKeyDialog::backdrop{background:rgba(0,0,0,.65)}
+  #geminiKeyDialog .ai-key-panel{margin:0;border:0}
+  #geminiKeyDialog input{background:var(--panel2);color:var(--text)}
+  #geminiKeyDialog .ai-key-note{color:var(--muted)}
+  .header-api-key-btn{flex-shrink:0;padding:12px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-weight:800;font-size:12px;white-space:nowrap}
+  @media(max-width:420px){.header-tools{gap:6px!important}.header-api-key-btn{padding:10px 7px;font-size:11px}.header-tools .header-refresh-btn{padding:10px!important;font-size:11px!important}.header-tools .header-refresh-btn span{display:none}}
   .ai-key-panel{display:grid;gap:12px;margin:0 0 16px;padding:16px;border:1px solid var(--line,#dce5ec);border-radius:16px;background:var(--panel,#fff)}
   .ai-key-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.ai-key-panel-head h3{margin:0;font-size:1rem}.ai-key-state{font-size:.82rem;font-weight:700;color:#64748b}.ai-key-state.connected{color:#0f9f75}
   .ai-key-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}.ai-key-row input{min-width:0;padding:11px 12px;border:1px solid var(--line,#dce5ec);border-radius:10px;background:var(--surface,#fff);color:inherit}.ai-key-row button{padding:10px 13px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.ai-key-save{background:#20c997;color:#072d24}.ai-key-delete{background:#e9eef3;color:#475569}.ai-key-note{margin:0;color:#64748b;font-size:.82rem;line-height:1.45}
