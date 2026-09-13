@@ -1,4 +1,10 @@
-const CACHE_NAME = "in-and-out-pwa-2026-09-12-v67-whole-food-match";
+/* Service Worker V68
+   Mục tiêu: mở app tức thì (cache-first) NHƯNG đẩy được code mới xuống máy
+   mà không cần ai xoá cache bằng tay.
+   Cách làm: trả bản cache ngay cho nhanh, đồng thời tải bản mới ở nền; khi bản mới
+   khác bản đang dùng thì báo cho trang để trang tự nạp lại đúng MỘT lần. */
+const BUILD = "2026-09-13-v68-nutrition-core";
+const CACHE_NAME = `in-and-out-pwa-${BUILD}`;
 const INDEX_URL = new URL("./index.html", self.registration.scope).href;
 const APP_URL = new URL("./app.js", self.registration.scope).href;
 const ROOT_URL = new URL("./", self.registration.scope).href;
@@ -9,6 +15,8 @@ const OPTIONAL_SHELL = [
   new URL("./icon-192.png", self.registration.scope).href,
   new URL("./icon-512.png", self.registration.scope).href
 ];
+/* Hai file này quyết định app chạy đúng hay sai nên luôn được kiểm tra bản mới ở nền. */
+const REVALIDATE = new Set([INDEX_URL, APP_URL, ROOT_URL]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -29,6 +37,26 @@ self.addEventListener("activate", (event) => {
   })());
 });
 
+async function notifyClients(url) {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  clients.forEach((client) => client.postMessage({ type: "ASSET_UPDATED", url, build: BUILD }));
+}
+
+/* So sánh nội dung thay vì tin vào header: GitHub Pages đôi khi trả 200 kèm body cũ. */
+async function revalidate(cache, request, cachedResponse) {
+  try {
+    const fresh = await fetch(request, { cache: "no-cache" });
+    if (!fresh || !fresh.ok) return;
+    const freshClone = fresh.clone();
+    if (cachedResponse) {
+      const [a, b] = await Promise.all([cachedResponse.clone().text(), fresh.clone().text()]);
+      if (a === b) return;
+    }
+    await cache.put(request, freshClone);
+    await notifyClients(request.url);
+  } catch (_) {}
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -39,19 +67,17 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(INDEX_URL);
-
-      const refresh = fetch(request, { cache: "no-cache" })
-        .then(async (response) => {
-          if (response && response.ok) await cache.put(INDEX_URL, response.clone());
-          return response;
-        })
-        .catch(() => null);
-
       if (cached) {
-        event.waitUntil(refresh);
+        event.waitUntil(revalidate(cache, new Request(INDEX_URL), cached));
         return cached;
       }
-      return (await refresh) || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      try {
+        const response = await fetch(request, { cache: "no-cache" });
+        if (response && response.ok) await cache.put(INDEX_URL, response.clone());
+        return response;
+      } catch (_) {
+        return new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+      }
     })());
     return;
   }
@@ -59,7 +85,10 @@ self.addEventListener("fetch", (event) => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(request, { ignoreSearch: true });
-    if (cached) return cached;
+    if (cached) {
+      if (REVALIDATE.has(url.href)) event.waitUntil(revalidate(cache, request, cached));
+      return cached;
+    }
     try {
       const response = await fetch(request);
       if (response && response.ok) event.waitUntil(cache.put(request, response.clone()));

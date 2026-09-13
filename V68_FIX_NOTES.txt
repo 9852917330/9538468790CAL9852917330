@@ -1,0 +1,133 @@
+V68 — SỬA TẬN GỐC LỖI ĐẾM CALO / MACRO VÀ NHẬN DIỆN MÓN
+13/09/2026 · build 2026-09-13-v68-nutrition-core
+
+════════════════════════════════════════════════════════════════
+A. BA LỖI GỐC (đo được, không phải phỏng đoán)
+════════════════════════════════════════════════════════════════
+
+1. BỘ NHẬN DIỆN V67 TỰ BÓP CHẾT CHÍNH NÓ
+   findFood() của V67 chỉ chấp nhận khớp NGUYÊN VĂN cả tên món. Câu có dấu mà
+   không khớp nguyên văn thì trả null ngay (dòng: if(/[à-ỹđ]/i.test(name)) return null).
+   Toàn bộ lớp khớp gần (findFoodUncachedV66) bị bỏ không gọi — thành code chết.
+   Hệ quả đo trên 80 câu nhập thật: 23 câu trượt (29%).
+   "300g rau muống luộc", "3 quả trứng luộc", "250g thịt lợn ba chỉ",
+   "1 ly cà phê sữa", "1 cốc trà sữa trân châu" — có đủ trong CSDL mà vẫn trượt,
+   chỉ vì thừa một chữ chế biến hoặc thiếu một từ đơn vị.
+
+2. MỘT MÓN LẠ LÀM MẤT CẢ NGÀY
+   estimateFood trả total = null nếu có bất kỳ món nào chưa nhận diện, và
+   compute() coi ngày đó là "chưa đủ dữ liệu" → không cộng vào thâm hụt lũy kế,
+   không vào biểu đồ, không vào dự báo cân nặng.
+   Ghép với lỗi 1 (trượt 29% mỗi món): một ngày ghi 4–5 món gần như chắc chắn bị
+   loại. Lũy kế đứng yên trong khi thực tế vẫn đang thâm hụt. Đây chính là chỗ
+   "đếm calo không chuẩn" nặng nhất.
+
+3. CALO VÀ MACRO ĐI HAI ĐƯỜNG KHÁC NHAU
+   Calo lấy từ bảng, còn Carb/Fat suy ngược từ "phần calo còn thừa" nhân một tỉ lệ
+   đoán mò (macroResidualCarbRatio). Hai đường không bao giờ gặp nhau:
+     · 100 g phô mai → 26 g carb (thực tế ~1–3 g)
+     · 1 đĩa rau xào → 32 g carb (calo dư đến từ DẦU, không phải tinh bột)
+   Cộng thêm lỗi quy đổi đơn vị:
+     · 1 thìa đường  → 400 kcal  (tính nguyên 100 g đường vào một thìa)
+     · 1 cup milk    →  62 kcal  (tính 100 ml thay vì 240 ml)
+     · 2 cái nem rán → 1.100 kcal (mỗi "cái" bị tính bằng cả một suất 5 cái)
+
+════════════════════════════════════════════════════════════════
+B. CÁCH SỬA
+════════════════════════════════════════════════════════════════
+
+1. LÕI NHẬN DIỆN MỚI — findFoodV68
+   Một dòng nhập = [số lượng] + [đơn vị] + [TÊN MÓN] + [cách chế biến].
+   Tách ba phần, chỉ đem phần TÊN MÓN đi so khớp, theo 3 tầng, dừng ở tầng đầu tiên
+   có kết quả:
+     Tầng 1  khớp nguyên văn CÓ DẤU          → "thịt bò khô" không rơi về "thịt bò"
+     Tầng 2  bỏ từ chế biến rồi khớp lại      → "rau muống luộc" = "rau muống"
+     Tầng 2.5 tìm cụm liền mạch trong chuỗi bí danh của bảng Thực phẩm
+     Tầng 3  khớp bao phủ: MỌI chữ trong tên món phải có trong câu, phần dư chỉ
+             được là từ bổ nghĩa. Chữ dư mà là tên món khác ⇒ loại.
+             Nhờ đó "mì" không cướp được "bánh mì bò kho",
+             "đùi heo muối" không cướp được "10g muối".
+
+   LUẬT DẤU (chỗ V67 sợ và đã chọn cách cực đoan):
+     · Câu CÓ dấu chỉ khớp bí danh cùng dấu   → bò ≠ bơ, cơm ≠ cốm, dừa ≠ dứa
+     · Câu KHÔNG dấu khớp mọi biến thể, tranh chấp xử bằng bảng ưu tiên
+       (com→cơm, bo→bò, muoi→muối…)
+   Kết quả: giữ nguyên mọi bẫy nhập nhằng mà vẫn nhận ra món.
+
+2. LÕI DINH DƯỠNG MỚI — một khẩu phần, một hệ số
+     1 khẩu phần → 1 khối lượng (g hoặc ml) → 1 hệ số → nhân cho CẢ BỐN chỉ số.
+   Calo và macro từ nay luôn khớp nhau vì chúng là cùng một phép nhân.
+   Chỉ những món thật sự thiếu số liệu (tra online / ước tính AI) mới còn dùng
+   đường ước lượng cũ.
+
+   Bảng quy đổi đơn vị:
+     · Thìa canh theo từng loại: dầu 13,6 g · mật ong 21 g · đường 12,5 g · bột 8 g
+     · Cốc/ly 240 ml · bát 250 · lon 330 ml · chai 500 ml · lát 28 g
+     · "1 bát bún chả" dùng khẩu phần THẬT của món, không phải 250 ml đong bằng bát
+     · Bảng ghi "100 g" là cách chuẩn hóa, KHÔNG phải khẩu phần → một lát bánh mì
+       không còn bị tính thành 100 g bánh
+     · "1 suất · 5 cái · 175 g" nay hiểu đúng: một cái = 35 g
+
+3. NGÀY CÓ MÓN LẠ VẪN ĐƯỢC TÍNH
+   Cộng đủ các món đã nhận diện, giữ số món còn thiếu để gắn cảnh báo:
+     Lịch sử hiển thị "399 + ?" kèm badge viền cam
+     "✓ Đạt — thâm hụt calo · còn 1 món chưa nhận diện, chưa cộng vào".
+   Lũy kế, biểu đồ và dự báo cân nặng liền mạch trở lại.
+
+   Ngược lại: ngày để trống hoặc ghi "0" nay KHÔNG còn được tính là ngày nhịn ăn
+   0 kcal. Trước đây mỗi ngày như vậy tự cộng thêm một TDEE (~1.750 kcal) vào lũy
+   kế — thổi phồng tiến độ theo hướng ngược lại.
+
+4. TÁCH MÓN THEO DẤU PHẨY
+   "150g ức gà, 200g cơm trắng, 1 quả trứng" trước đây là MỘT món lạ → mất cả ngày.
+   Nay tách đúng 3 món. Dấu thập phân (1,5 kg) và cụm macro tự nhập
+   ("500 kcal, 30g đạm") vẫn được giữ nguyên.
+
+5. BỔ SUNG 52 MÓN + BÍ DANH
+   Nước lọc, muối, trà, nước cam, sinh tố, bạc xỉu, nước tăng lực, tương ớt,
+   mayonnaise, mắm tôm, giấm, thịt lợn/gà/cá chung, tai heo, dồi, cánh gà, thịt
+   quay, giò thủ, ngao, hàu, ếch, cá ngừ hộp, giá đỗ, cải thìa, rau dền, mồng tơi,
+   su su, bí xanh, đậu bắp, sushi, mì cay, bò kho, bánh mì bò kho, xôi xéo, xôi gà,
+   bánh gối, canh cua, canh rau ngót, bánh mì trứng, bánh mì chả, bánh mì đen,
+   trứng ốp la, protein shake, kẹo, kem ốc quế, tiết canh…
+   Cùng bí danh đời thường: bò, gà, cá, coca, nâu đá, trà sữa trân châu, mì tôm…
+   Kho Thực phẩm: 301 → 352 món.
+
+6. RƯỢU BIA KHÔNG CÒN BỊ BÁO SAI
+   Cồn cho 7 kcal/g nhưng không phải đạm/carb/fat. Trước đây mọi dòng bia/rượu đều
+   bị gắn "cảnh báo macro lệch calo" dù số liệu hoàn toàn đúng.
+
+════════════════════════════════════════════════════════════════
+C. SỐ LIỆU TRƯỚC / SAU
+════════════════════════════════════════════════════════════════
+  Món chưa nhận diện (80 câu nhập thật)     23  →   1
+  Món trong kho gõ đúng tên mà không ra      1  →   0  (352/352 nhận đúng)
+  Nhận nhầm sang món khác                          0/352
+  100g <tên món> lệch so với bảng >15%             0/352
+  Lệch năng lượng 4-4-9 giữa calo và macro         0 dòng > 20%
+
+  1 thìa đường      400 → 50 kcal        1 cup milk       62 → 149 kcal
+  2 cái nem rán   1.100 → 220 kcal       1 lát bánh mì   274 → 77 kcal
+  1 đĩa rau xào  C 32 g → C 12 g, F 10 g (calo dư về đúng phần dầu)
+
+════════════════════════════════════════════════════════════════
+D. CHẠY TEST TRƯỚC MỖI LẦN DEPLOY
+════════════════════════════════════════════════════════════════
+  npm i jsdom
+  node test-food-v68.js
+  → 63 phép kiểm tra: nhận diện, khối lượng, bẫy nhập nhằng (bò/bơ, cơm/cốm),
+    tách nhiều món, và độ khớp năng lượng 4-4-9.
+  File test KHÔNG ảnh hưởng web, chỉ để kiểm tra trước khi đẩy code.
+
+════════════════════════════════════════════════════════════════
+E. CẬP NHẬT PWA — KHÔNG CẦN XÓA CACHE TAY
+════════════════════════════════════════════════════════════════
+  Service Worker V68 vẫn trả bản cache ngay (mở app tức thì) nhưng đồng thời tải
+  bản mới ở nền và SO SÁNH NỘI DUNG file, không tin vào header. Khi phát hiện
+  app.js/index.html đã đổi, nó báo về trang và trang tự nạp lại đúng MỘT lần
+  (có cờ sessionStorage chặn vòng lặp). Quay lại tab cũng kích hoạt kiểm tra bản mới.
+
+F. TIỆN ÍCH NHỎ
+  Trang Thực phẩm: lọc ngay khi gõ, không phải bấm "Tìm" mới thấy kết quả nội bộ.
+  Nguồn trực tuyến (USDA/Open Food Facts) vẫn chỉ gọi khi bấm Tìm/Enter.
+  Dòng giải thích cách tính ghi đúng đơn vị người dùng gõ: "2 quả" thay vì "2 đơn vị".

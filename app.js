@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-12-v67-whole-food-match";
+  const APP_BUILD = "2026-09-13-v68-nutrition-core";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -4975,7 +4975,7 @@
   }
   let FOOD_INDEX_CACHE = null;
   const FOOD_MATCH_MEMO = new Map(), FOOD_ESTIMATE_MEMO = new Map();
-  function invalidateFoodIndex() { FOOD_INDEX_CACHE = null; FOOD_MATCH_MEMO.clear(); FOOD_ESTIMATE_MEMO.clear(); }
+  function invalidateFoodIndex() { FOOD_INDEX_CACHE = null; V68_FOOD_TOKEN_SET = null; FOOD_MATCH_MEMO.clear(); FOOD_ESTIMATE_MEMO.clear(); }
   function saveOnlineFoods(items) {
     try {
       localStorage.setItem(
@@ -5059,7 +5059,11 @@
     if (FOOD_INDEX_CACHE) return FOOD_INDEX_CACHE;
     const exact = new Map(), exactAccent = new Map(), aliases = [], catalogTexts = [];
     for (const item of allFoods()) {
-      for (const raw of [item.name, item.en, ...(item.aliases || [])].filter(Boolean)) {
+      /* V68: gắn bí danh bổ sung tại đây để phủ được CẢ hồ sơ cũ (id milk_coffee…)
+         lẫn hồ sơ sinh từ bảng Thực phẩm — hai nguồn này đi hai đường khác nhau. */
+      const extraAliases = [item.name, item.en].filter(Boolean)
+        .flatMap((n)=>V68_EXTRA_ALIASES.get(String(n).toLowerCase().normalize("NFC").trim())||[]);
+      for (const raw of [item.name, item.en, ...(item.aliases || []), ...extraAliases].filter(Boolean)) {
         const key = normalizePhrase(raw);
         const accentKey = normalizePhraseAccentV51(raw);
         if (!key) continue;
@@ -5077,6 +5081,7 @@
         const text = normalizePhrase(item.catalogAliasText);
         if (text) catalogTexts.push({
           text,
+          accentText: normalizePhraseAccentV51(item.catalogAliasText),
           singularText: singularizeEnglish(text),
           food: item,
           sourceScore: Number(item.catalogSourceScore) || 0,
@@ -5443,10 +5448,9 @@
       failed = getLookupFailures(),
       now = Date.now();
     for (const r of rows) {
-      const segments = String(r.food ?? "")
-        .split(/\s*(?:\+|;|\n|\s+và\s+|\s+and\s+)\s*/i)
-        .map((x) => x.trim())
-        .filter(Boolean);
+      /* V68: dùng chung bộ tách món với parser, nếu không thì các món lạ nằm sau
+         dấu phẩy sẽ không bao giờ được gửi đi tra cứu/AI. */
+      const segments = splitFoodSegmentsV51(String(r.food ?? ""));
       for (const seg of segments) {
         const norm = normalizePhrase(seg);
         if (/\d+(?:[.,]\d+)?\s*kcal\b/.test(norm) || findFood(seg)) continue;
@@ -5509,7 +5513,7 @@
     if(result.confidence<0.65||result.confidence>1||result.per100g<0||result.per100g>950||result.defaultGrams<=0||result.gramsPerUnit<=0)return null;
     if([result.protein100g,result.carbs100g,result.fat100g].some(n=>n<0||n>100)||result.protein100g+result.carbs100g+result.fat100g>105)return null;
     const canonical=String(result?.canonicalName||requested||"").trim(),known=canonical?findFood(canonical)?.food:null;
-    const aliases=[wholeFoodNameV67(requested),canonical];
+    const aliases=[v68FoodName(requested),canonical];
     if(known)return {...known,id:`ai_alias_${hashTextV64(requested)}`,aliases:[...(known.aliases||[]),...aliases],source:`${known.source||"CSDL nội bộ"} · tên món do Gemini chuẩn hóa`,aiRecognized:true};
     const finite=(v,min,max,fallback)=>{const n=Number(v);return Number.isFinite(n)?clamp(n,min,max):fallback;};
     const kcal=finite(result?.per100g,0,950,0),protein=finite(result?.protein100g,0,100,0),carbs=finite(result?.carbs100g,0,100,0),fat=finite(result?.fat100g,0,100,0),defaultGrams=finite(result?.defaultGrams,1,2000,100),confidence=finite(result?.confidence,0,1,.65);
@@ -5543,7 +5547,7 @@
       if(!results.length){setLookupText("Có món cần Gemini nhận diện. Bấm API key để kết nối; món chưa rõ chưa được cộng vào tổng.");return false;}
       for (const {item:q, food:item} of results) {
         if (item) {
-          item.aliases = [...new Set([...(item.aliases || []), wholeFoodNameV67(q.original)])];
+          item.aliases = [...new Set([...(item.aliases || []), v68FoodName(q.original)])];
           cache = cache.filter((x) => x.id !== item.id && !item.aliases.some((a) => (x.aliases || []).includes(a)));
           cache.unshift(item);
           delete failures[q.key];
@@ -5639,102 +5643,243 @@
       duplicateHits: sameFood.length
     };
   }
+  /* =================== V68 · LÕI NHẬN DIỆN MÓN ===================
+     Nguyên lý: một dòng nhập = [số lượng] + [đơn vị] + [TÊN MÓN] + [cách chế biến].
+     Tách ba phần rồi so khớp riêng phần TÊN MÓN theo ba tầng, dừng ở tầng đầu tiên có kết quả:
+
+       Tầng 1 — khớp nguyên văn CÓ DẤU.      "thịt bò khô" → đúng món khô, không rơi về "thịt bò".
+       Tầng 2 — bỏ từ chế biến rồi khớp lại.  "rau muống luộc" → "rau muống".
+       Tầng 3 — khớp bao phủ: MỌI chữ trong tên món phải có mặt trong câu,
+                phần dư chỉ được là từ bổ nghĩa vô hại.
+                Nhờ vậy "mì" không cướp được "bánh mì bò kho",
+                "đùi heo muối" không cướp được "10g muối".
+
+     Quy tắc dấu (điểm chết của bản V67 cũ):
+       - Câu CÓ dấu chỉ khớp alias cùng dấu  → bò ≠ bơ, cơm ≠ cốm.
+       - Câu KHÔNG dấu khớp mọi biến thể, tranh chấp xử bằng bảng ưu tiên bên dưới.
+     V67 cũ chọn cách an toàn tuyệt đối: hễ có dấu mà không khớp nguyên văn thì trả null.
+     Đó là lý do 29% số món bị coi là "chưa nhận diện". */
+
+  const V68_UNIT_WORDS_RAW = [
+    "kilograms","kilogram","grams","gram","kg","gr","g","lạng","lang",
+    "mililit","ml","liters","litres","liter","litre","lit","l","cc",
+    "cái","cai","chiếc","chiec","quả","qua","trái","trai","miếng","mieng","viên","vien",
+    "cuốn","cuon","ổ","cốc","coc","ly","cup","cups","glass","glasses",
+    "bát","bat","chén","chen","tô","đĩa","dia","plate","plates",
+    "hộp","hop","box","boxes","gói","goi","pack","packs","packet","packets",
+    "bịch","bich","bag","bags","lon","cans","can","chai","bottle","bottles",
+    "que","xiên","xien","skewer","skewers","thìa","thia","muỗng","muong",
+    "tbsp","tablespoons","tablespoon","tsp","teaspoons","teaspoon",
+    "lát","lat","slices","slice","suất","suat","phần","phan",
+    "servings","serving","portions","portion","pieces","piece","pcs","pc","units","unit",
+    "bowls","bowl","con","whole","bird","khay","vỉ","nải","nai","múi","mui","tép","tep"
+  ].sort((a,b)=>b.length-a.length);
+  const V68_UNIT_ALT = V68_UNIT_WORDS_RAW.map((u)=>u.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|");
+  const V68_AMOUNT_RE = new RegExp(`(^|[^\\p{L}])\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+)?\\s*(?:${V68_UNIT_ALT})?(?=$|[^\\p{L}])`,"giu");
+  /* Chỉ những từ CHẮC CHẮN là vật đựng/khẩu phần mới được bỏ khi đứng đầu câu.
+     "tép", "múi", "nải", "con" không nằm đây vì "Tép khô" là tên món, không phải đơn vị. */
+  const V68_LEAD_UNIT_ALT = [
+    "bát","bat","chén","chen","tô","đĩa","dia","cốc","coc","ly","lon","hộp","hop","gói","goi",
+    "chai","bịch","bich","khay","miếng","mieng","lát","lat","cái","cai","chiếc","chiec",
+    "quả","qua","trái","trai","suất","suat","phần","phan","ổ","cup","bowl","glass","can",
+    "plate","slice","piece","serving","portion","box","pack","packet","bottle"
+  ].sort((a,b)=>b.length-a.length).map((u)=>u.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|");
+  const V68_LEAD_UNIT_RE = new RegExp(`^(?:${V68_LEAD_UNIT_ALT})\\s+(?=\\p{L})`,"iu");
+
+  /* Từ bổ nghĩa CÓ DẤU — bỏ được mà không đổi bản chất món. */
+  const V68_MOD_ACCENTED = new Set(("luộc hấp xào chiên rán nướng quay kho hầm om rang trộn tái chần ninh tần nấu "+
+    "sống chín tươi nguội nóng lạnh mới thái xắt cắt băm xay nghiền bóc gọt lọc "+
+    "phi lê fillet bỏ không có da xương vảy đầu đuôi "+
+    "nhỏ lớn vừa ít nhiều đầy cỡ khoảng chừng tầm độ "+
+    "ăn uống thêm với của loại kiểu ngon tự làm nhà mình").split(/\s+/));
+  /* Từ bổ nghĩa KHÔNG DẤU — chỉ liệt kê những từ KHÔNG trùng tên thực phẩm nào.
+     Cố ý loại bỏ: bo (bò/bơ), lon (lợn), to (tô), do (đỗ), cua (cua), gia (giá),
+     nho (nho), ca (cá), ga (gà), tai (tai heo), vo (vỏ/vò) — bỏ nhầm là hỏng món. */
+  const V68_MOD_PLAIN = new Set(("luoc hap xao chien ran nuong quay ham tron chan ninh nau "+
+    "song chin tuoi nguoi nong lanh thai xat cat bam xay nghien "+
+    "phile fillet khoang chung them loai kieu "+
+    "boiled steamed fried grilled roasted baked raw cooked fresh sliced chopped diced minced "+
+    "skinless boneless plain small large medium homemade").split(/\s+/));
+
+  /* Câu không dấu gõ vội thì trùng nhau rất nhiều. Bảng này quyết định ai thắng.
+     Trái: chữ không dấu người dùng gõ. Phải: chữ có dấu phải nằm trong tên món thắng cuộc. */
+  const V68_ACCENT_PREFERENCE = new Map(Object.entries({
+    "com":"cơm", "bo":"bò", "ga":"gà", "ca":"cá", "muoi":"muối", "duong":"đường",
+    "trung":"trứng", "nuoc":"nước", "sua":"sữa", "mi":"mì", "bun":"bún", "pho":"phở",
+    "xoi":"xôi", "chao":"cháo", "thit":"thịt", "tom":"tôm", "mo":"mỡ", "bot":"bột",
+    "dau":"dầu", "do":"đỗ", "che":"chè", "cha":"chả", "gio":"giò", "dua":"dưa",
+    "rau":"rau", "banh":"bánh", "canh":"canh", "hanh":"hành", "toi":"tỏi", "ot":"ớt",
+    "muc":"mực", "so":"sò", "oc":"ốc", "ech":"ếch", "luon":"lươn", "ngo":"ngô",
+    "khoai":"khoai", "dua hau":"dưa hấu", "sua chua":"sữa chua", "nuoc mam":"nước mắm"
+  }));
+
+  let V68_FOOD_TOKEN_SET = null;
+  function v68FoodTokenSet(){
+    if(V68_FOOD_TOKEN_SET) return V68_FOOD_TOKEN_SET;
+    const set=new Set();
+    for(const item of allFoods()){
+      for(const raw of [item.name,item.en].filter(Boolean)){
+        for(const tok of v68Tokens(raw)) if(tok.length>1) set.add(strip(tok));
+      }
+    }
+    V68_FOOD_TOKEN_SET=set;
+    return set;
+  }
+  function v68HasAccent(token=""){ return strip(token)!==String(token).toLowerCase(); }
+  function v68Tokens(text=""){ return String(text).toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/).filter(Boolean); }
+
+  /* Bỏ số lượng + đơn vị, giữ nguyên dấu của phần tên món. */
+  function v68FoodName(text=""){
+    return String(text).toLowerCase().normalize("NFC")
+      .replace(/[()[\]{}"“”'’]/g," ")
+      .replace(V68_AMOUNT_RE," ")
+      .replace(/\s+/g," ").trim()
+      .replace(V68_LEAD_UNIT_RE," ")
+      .replace(/[^\p{L}\s]/gu," ")
+      .replace(/\s+/g," ").trim();
+  }
+  function v68IsModifier(token=""){
+    return V68_MOD_ACCENTED.has(token) || V68_MOD_PLAIN.has(strip(token));
+  }
+  function v68StripModifiers(tokens){
+    const kept=tokens.filter((t)=>!v68IsModifier(t));
+    return kept.length?kept:tokens;
+  }
+  /* So khớp từng chữ: câu có dấu buộc phải trùng dấu; câu không dấu được khớp rộng. */
+  function v68TokenEq(queryToken,aliasToken){
+    if(queryToken===aliasToken) return true;
+    if(strip(queryToken)!==strip(aliasToken)) return false;
+    return !v68HasAccent(queryToken);
+  }
+  function v68AccentPreferenceOk(queryTokens,aliasRaw,foodName){
+    const haystack=`${String(aliasRaw||"").toLowerCase()} ${String(foodName||"").toLowerCase()}`.normalize("NFC");
+    for(const token of queryTokens){
+      if(v68HasAccent(token)) continue;
+      const wanted=V68_ACCENT_PREFERENCE.get(strip(token));
+      if(!wanted) continue;
+      /* Chỉ áp dụng khi alias thật sự chứa một biến thể của chữ đó. */
+      const variants=[...haystack.matchAll(/\p{L}+/gu)].map((m)=>m[0]).filter((w)=>strip(w)===strip(token));
+      if(variants.length && !variants.includes(wanted)) return false;
+    }
+    return true;
+  }
+  function v68AliasCovered(queryTokens,aliasTokens){
+    const pool=[...queryTokens];
+    for(const aliasToken of aliasTokens){
+      const hit=pool.findIndex((q)=>v68TokenEq(q,aliasToken));
+      if(hit<0) return null;
+      pool.splice(hit,1);
+    }
+    return pool;
+  }
+  function v68Entries(){
+    const idx=foodIndex();
+    if(!idx.v68) idx.v68=idx.aliases.map((entry)=>({...entry,tokens:v68Tokens(entry.raw)})).filter((entry)=>entry.tokens.length);
+    return idx.v68;
+  }
+  function v68ExactLookup(tokens){
+    if(!tokens.length) return null;
+    const idx=foodIndex(), phrase=tokens.join(" ");
+    const accent=idx.exactAccent.get(normalizePhraseAccentV51(phrase));
+    if(accent) return {food:accent.food,matchedAlias:accent.matchedAlias,score:9000000+accent.baseScore,accentExact:true};
+    /* Chỉ cho phép khớp không dấu khi chính người dùng gõ không dấu. */
+    if(tokens.some(v68HasAccent)) return null;
+    const plain=normalizePhrase(phrase);
+    const hits=v68Entries().filter((entry)=>entry.key===plain||singularizeEnglish(entry.key)===plain||entry.key===singularizeEnglish(plain));
+    const allowed=hits.filter((entry)=>v68AccentPreferenceOk(tokens,entry.raw,entry.food?.name));
+    const pool=allowed.length?allowed:hits;
+    if(!pool.length) return null;
+    const best=pool.sort((a,b)=>b.baseScore-a.baseScore)[0];
+    return {food:best.food,matchedAlias:best.raw,score:8000000+best.baseScore};
+  }
+  /* Tầng 3: tên món phải được câu bao phủ trọn vẹn, phần dư phải vô hại. */
+  function v68CoverageLookup(tokens){
+    if(!tokens.length) return null;
+    const foodTokens=v68FoodTokenSet();
+    let best=null;
+    for(const entry of v68Entries()){
+      if(entry.tokens.length>tokens.length) continue;
+      const leftover=v68AliasCovered(tokens,entry.tokens);
+      if(!leftover) continue;
+      if(!v68AccentPreferenceOk(tokens,entry.raw,entry.food?.name)) continue;
+      /* Chữ dư mà lại là tên một thực phẩm khác ⇒ đây là món khác, không phải món này. */
+      const harmful=leftover.filter((t)=>!v68IsModifier(t)&&foodTokens.has(strip(t))&&strip(t).length>1);
+      if(harmful.length) continue;
+      const softLeftover=leftover.length-leftover.filter(v68IsModifier).length;
+      const score=entry.tokens.length*100000-leftover.length*6000-softLeftover*4000+Math.min(entry.baseScore,900000)/10;
+      if(!best||score>best.score) best={food:entry.food,matchedAlias:entry.raw,score,coverageV68:true};
+    }
+    return best;
+  }
+  /* Tầng 2.5 — bí danh gom trong chuỗi alias của bảng Thực phẩm.
+     Chuỗi đó là một dãy từ liền nhau ("tai heo tai lợn pig ear …") nên không tách
+     thành từng bí danh riêng được; cách duy nhất là tìm cụm liền mạch trong dãy,
+     rồi áp lại đúng luật dấu của V68 để "bò" không chui vào chỗ của "bơ". */
+  function v68CatalogTextLookup(tokens){
+    const idx=foodIndex();
+    if(!idx?.catalogTexts?.length||!tokens.length) return null;
+    const accentPhrase=tokens.join(" ");
+    const plainPhrase=normalizePhrase(accentPhrase);
+    const queryHasAccent=tokens.some(v68HasAccent);
+    if(tokens.length===1&&plainPhrase.length<4) return null;
+    const variants=[...new Set([plainPhrase,singularizeEnglish(plainPhrase)].filter(Boolean))];
+    let best=null;
+    for(const entry of idx.catalogTexts){
+      let hit="";
+      for(const variant of variants){
+        const pattern=escapeRegExp(variant).replace(/\s+/g,"\\s+");
+        const re=new RegExp(`(^|[^a-z0-9])${pattern}(?=$|[^a-z0-9])`,"i");
+        if(re.test(entry.text)||re.test(entry.singularText)){hit=variant;break;}
+      }
+      if(!hit) continue;
+      /* Luật dấu: câu có dấu buộc từng chữ phải trùng dấu trong chuỗi alias gốc. */
+      if(queryHasAccent){
+        const words=(entry.accentText||"").split(" ").filter(Boolean);
+        const missing=tokens.some((t)=>v68HasAccent(t)&&!words.includes(t));
+        if(missing) continue;
+      } else if(!v68AccentPreferenceOk(tokens,entry.accentText,entry.food?.name)) continue;
+      const words=hit.split(" ").length;
+      const canonical=normalizePhrase(entry.food?.name||"");
+      /* Cụm "bánh mì" nằm trong cả "Bánh mì baguette" lẫn "Bánh mì bò kho".
+         Phạt theo số chữ thừa của tên món để "1 lát bánh mì" không thành suất bò kho. */
+      const canonicalWords=canonical.split(" ").filter(Boolean).length;
+      const specificity=-Math.max(0,canonicalWords-words)*120000;
+      const score=(entry.curated?30000:0)+(canonical===hit?400000:0)+specificity+words*50000+hit.length*300+entry.sourceScore*10;
+      if(!best||score>best.score) best={food:entry.food,matchedAlias:hit,score,catalogAlias:true};
+    }
+    return best;
+  }
+  function findFoodV68(input){
+    const name=v68FoodName(input);
+    if(!name) return null;
+    const tokens=v68Tokens(name);
+    if(!tokens.length) return null;
+    const bare=v68StripModifiers(tokens);
+    return v68ExactLookup(tokens)
+        || v68ExactLookup(bare)
+        || v68CatalogTextLookup(tokens)
+        || v68CatalogTextLookup(bare)
+        || v68CoverageLookup(tokens)
+        || v68CoverageLookup(bare);
+  }
+
   function findFood(norm) {
     const key=String(norm||"");
     if(FOOD_MATCH_MEMO.has(key))return FOOD_MATCH_MEMO.get(key);
-    const result=findWholeFoodV67(key);
+    const result=findFoodV68(key);
     if(FOOD_MATCH_MEMO.size>=3000)FOOD_MATCH_MEMO.clear();
     FOOD_MATCH_MEMO.set(key,result);
     return result;
   }
-  function wholeFoodNameV67(text=""){
-    return String(text).toLowerCase().normalize("NFC")
-      .replace(/\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?\s*(?:kilograms?|grams?|kg|g|ml|liters?|litres?|l|quả|trái|cái|chiếc|miếng|viên|bát|chén|tô|đĩa|hộp|gói|lon|lát|suất|phần|con|cups?|bowls?|pieces?|units?|servings?|packs?)?(?=$|[^\p{L}])/gu," ")
-      .replace(/[^\p{L}\s]/gu," ").replace(/\s+/g," ").trim();
-  }
-  function findWholeFoodV67(input){
-    const name=wholeFoodNameV67(input);
-    if(!name)return null;
-    const idx=foodIndex();
-    const accent=idx.exactAccent.get(normalizePhraseAccentV51(name));
-    if(accent)return {food:accent.food,matchedAlias:accent.matchedAlias,accentExact:true,score:9000000};
-    /* Accented Vietnamese must match an entire accented alias. Never let bò match bơ,
-       or a dish containing several ingredients match only one ingredient. */
-    if(/[à-ỹđ]/i.test(name))return null;
-    const normalized=normalizePhrase(name);
-    const variants=new Set([normalized,singularizeEnglish(normalized)]);
-    const matches=idx.aliases.filter(entry=>variants.has(entry.key));
-    const identities=new Set(matches.map(entry=>normalizePhraseAccentV51(entry.food.name)));
-    if(identities.size>1)return null;
-    const best=matches.sort((a,b)=>b.baseScore-a.baseScore)[0];
-    return best?{food:best.food,matchedAlias:best.raw,score:best.baseScore}:null;
-  }
-  function findFoodUncachedV66(norm) {
-    const input = String(norm || "");
-    const normalized = normalizePhrase(input);
-    if (!normalized) return null;
-    const idx = foodIndex();
-    const accentCandidates=[normalizePhraseAccentV51(input),normalizePhraseAccentV51(cleanLookupQuery(input))].filter(Boolean);
-    for(const accentKey of [...new Set(accentCandidates)]){
-      const accentExact=idx.exactAccent?.get(accentKey);
-      if(accentExact) return {food:accentExact.food,score:9000000+accentExact.baseScore,matchedAlias:accentExact.matchedAlias,accentExact:true};
-    }
-    /* V51: tên/alias tiếng Anh nằm trong chính danh mục Thực phẩm được ưu tiên trước CSDL cũ. */
-    const catalogAlias = authoritativeCatalogAliasMatchV51(input, idx);
-    for (const variant of [normalized, singularizeEnglish(normalized)]) {
-      const exact = idx.exact.get(variant);
-      if (exact && (!catalogAlias || exact.food?.authoritativeV50))
-        return { food:exact.food, score:5000 + 2000 + exact.baseScore, matchedAlias:exact.matchedAlias };
-    }
-    if (catalogAlias) return catalogAlias;
-    for (const variant of [normalized, singularizeEnglish(normalized)]) {
-      const exact = idx.exact.get(variant);
-      if (exact) return { food:exact.food, score:5000 + 2000 + exact.baseScore, matchedAlias:exact.matchedAlias };
-    }
-    let best = null, bestScore = -1;
-    for (const entry of idx.aliases) {
-      const score = foodMatchScore(normalized, entry.key, entry.food);
-      if (score > bestScore) {
-        bestScore = score;
-        best = entry;
-      }
-      if (bestScore >= 7000) break;
-    }
-    return best ? { food:best.food, score:bestScore, matchedAlias:best.raw } : null;
-  }
   const UNIT_GROUPS = {
     unit: [
-      "cai",
-      "chiec",
-      "qua",
-      "trai",
-      "vien",
-      "cuon",
-      "o",
-      "suat",
-      "phan",
-      "dia",
-      "plate",
-      "plates",
-      "hop",
-      "box",
-      "boxes",
-      "bich",
-      "bag",
-      "bags",
-      "que",
-      "xien",
-      "skewer",
-      "skewers",
-      "serving",
-      "piece",
-      "pieces",
-      "pc",
-      "pcs",
-      "unit",
-      "units",
-      "each",
+      "cai","chiec","qua","trai","vien","cuon","o",
+      "hop","box","boxes","bich","bag","bags","que","xien","skewer","skewers",
+      "piece","pieces","pc","pcs","unit","units","each",
     ],
+    /* V68: "suất/phần/đĩa" là khẩu phần của cả món, không phải một cái/một miếng.
+       Gộp chung như bản cũ khiến "2 cái nem rán" bị tính thành 2 suất. */
+    portion: ["suat","phan","dia","plate","plates","serving","servings","portion","portions"],
     whole: ["con", "whole", "bird"],
     slice: ["lat", "slice", "slices"],
     bowl: ["bat", "chen", "to", "bowl", "bowls"],
@@ -6568,7 +6713,11 @@
     )
       return 0.03;
     if (/(?:tofu|bean|milk|yogurt)/.test(text)) return 0.45;
-    if (/(?:vegetable|salad|rau|cucumber|tomato|carrot)/.test(text)) return 0.9;
+    /* V68: phải xét cách chế biến TRƯỚC nhóm thực phẩm. Rau xào/chiên dư calo là do
+       dầu chứ không phải tinh bột — bản cũ gán 90% phần dư thành carb nên một đĩa
+       rau xào ra 32 g carb. */
+    const friedText=/(?:xao|chien|ran|quay|stir fried|stir fry|deep fried|pan fried|fried|sauteed)/.test(text);
+    if (/(?:vegetable|salad|rau|cucumber|tomato|carrot|cai|nam|mushroom)/.test(text)) return friedText ? 0.35 : 0.9;
     if (
       /(?:fried|chien|ran|pizza|burger|pasta|curry|noodle soup|sandwich|dumpling|spring roll|rice bowl)/.test(
         text,
@@ -6790,9 +6939,15 @@
     }
     return null;
   }
+  /* Cồn cho 7 kcal/g nhưng không phải đạm, carb hay fat. Không đánh dấu thì mọi
+     dòng bia/rượu đều bị báo "macro lệch calo" dù số liệu hoàn toàn đúng. */
+  function v68AlcoholEnergy(food){
+    const text=`${String(food?.id||"")} ${normalizePhrase(food?.name||"")} ${normalizePhrase(food?.en||"")}`;
+    return /(?:^|[\s_])(?:bia|beer|ruou|wine|vodka|whisky|whiskey|rum|gin|tequila|sake|soju|champagne|cocktail|lager|ale|stout)(?:$|[\s_])/.test(text);
+  }
   function reconcileNutritionEnergy({ kcal, protein, carbs, fat, confidence, basis, food }) {
     const macroKcal = macroEnergy(protein, carbs, fat);
-    if (food?.nonMacroEnergy)
+    if (food?.nonMacroEnergy || v68AlcoholEnergy(food))
       return { kcal, basis, warning: false, macroKcal };
     if (!(kcal > 0) || !(macroKcal > 0))
       return { kcal, basis, warning: false, macroKcal };
@@ -6874,7 +7029,24 @@
     };
   }
   function splitFoodSegmentsV51(source) {
-    const hard = String(source||"").split(/\s*(?:\+|;|•|·|\n)\s*/i).map((s)=>s.trim()).filter(Boolean);
+    /* V68: Excel/Sheet thường ghi "150g ức gà, 200g cơm, 1 quả trứng".
+       Bản cũ không tách dấu phẩy nên cả dòng thành MỘT món lạ và cả ngày bị loại.
+       Dấu phẩy chỉ tách khi không phải dấu thập phân (1,5 kg) và không nằm trong
+       cụm macro tự nhập ("500 kcal, 30g đạm"). */
+    const raw=String(source||"")
+      .replace(/(\d)\s*,\s*(\d)/g,"$1<V68DEC>$2")
+      .split(/\s*(?:\+|;|•|·|\n|\u2013|\u2014|,)\s*/i)
+      .map((s)=>s.replace(/<V68DEC>/g,",").trim())
+      .filter(Boolean);
+    /* Ghép lại các mảnh chỉ chứa macro rời ("30g đạm") vào món ngay trước nó. */
+    const merged=[];
+    for(const part of raw){
+      const macroOnly=/^\s*\d+(?:[.,]\d+)?\s*g?\s*(?:kcal|calo|protein|dam|đạm|carb(?:s|ohydrate)?|tinh bot|tinh bột|fat|chat beo|chất béo)\b/i.test(part)
+        || /^(?:kcal|calo|protein|đạm|carb|fat)\b/i.test(part);
+      if(macroOnly&&merged.length) merged[merged.length-1]=`${merged[merged.length-1]}, ${part}`;
+      else merged.push(part);
+    }
+    const hard = merged;
     return hard.flatMap((part)=>{
       /* Hai món tự nhập nối bằng “và/and” được tách; nhưng
          “Bánh 2000kcal và 30g đạm” vẫn là một món duy nhất. */
@@ -6892,6 +7064,165 @@
       });
     });
   }
+  /* =================== V68 · LÕI TÍNH DINH DƯỠNG ===================
+     Sai lầm gốc của bản cũ: calo đi một đường, macro đi một đường khác.
+     Calo lấy từ bảng, còn Carb/Fat thì suy ngược từ "phần calo còn thừa" theo một
+     tỉ lệ đoán mò. Hai đường đó không bao giờ gặp nhau, nên mới ra 100 g phô mai
+     26 g carb, hay đĩa rau xào 32 g carb.
+
+     Nguyên lý mới, đúng như cách một bảng dinh dưỡng vận hành:
+        1 khẩu phần  →  1 khối lượng (g hoặc ml)  →  1 hệ số  →  nhân cho CẢ BỐN chỉ số.
+     Calo và macro từ đó luôn khớp nhau vì chúng là cùng một phép nhân. */
+
+  const V68_UNIT_DEFAULT_GRAMS = {
+    tbsp:14, tsp:5, cup:240, bowl:250, can:330, bottle:500,
+    slice:28, piece:40, pack:40, box:180, whole:1000, unit:100
+  };
+  /* Đơn vị đong thể tích: với món lỏng thì quy ra ml, món đặc quy ra gram. */
+  const V68_VOLUME_UNITS = new Set(["cup","can","bottle","tbsp","tsp","bowl"]);
+  /* Một thìa canh không phải lúc nào cũng 14 g: mật ong đặc hơn dầu, đường nhẹ hơn bơ. */
+  const V68_TBSP_GRAMS = [
+    [/(?:mat ong|honey|syrup|mach nha)/,21],
+    [/(?:sua dac|condensed milk)/,19],
+    [/(?:bo dau phong|peanut butter|bo hat)/,16],
+    [/(?:dau an|dau oliu|dau me|oil|olive oil|sesame oil|mo)/,13.6],
+    [/(?:bo lat|butter|bo thuc vat|margarine)/,14],
+    [/(?:duong|sugar)/,12.5],
+    [/(?:muoi|salt)/,18],
+    [/(?:bot|flour|powder|cocoa|whey)/,8],
+    [/(?:nuoc mam|nuoc tuong|xi dau|giam|fish sauce|soy sauce|vinegar|sot|sauce)/,15]
+  ];
+  function v68TbspGrams(food){
+    const text=`${String(food?.id||"")} ${normalizePhrase(food?.name||"")} ${normalizePhrase(food?.en||"")}`;
+    for(const [re,grams] of V68_TBSP_GRAMS) if(re.test(text)) return grams;
+    return V68_UNIT_DEFAULT_GRAMS.tbsp;
+  }
+
+  function v68Num(value){ const n=Number(value); return Number.isFinite(n)&&n>=0?n:null; }
+  /* Bảng dinh dưỡng chuẩn hóa của một món: luôn quy về 100 g hoặc 100 ml. */
+  function v68Vector(food,norm=""){
+    const g=v68Num(food?.per100g), gp=v68Num(food?.protein100g), gc=v68Num(food?.carbs100g), gf=v68Num(food?.fat100g);
+    if(g!==null&&g>0&&(gp!==null||gc!==null||gf!==null))
+      return {unit:"g",kcal:g,protein:gp??0,carbs:gc??0,fat:gf??0,complete:gp!==null&&gc!==null&&gf!==null,method:"database"};
+    const m=v68Num(food?.per100ml), mp=v68Num(food?.protein100ml), mc=v68Num(food?.carbs100ml), mf=v68Num(food?.fat100ml);
+    if(m!==null&&m>0&&(mp!==null||mc!==null||mf!==null))
+      return {unit:"ml",kcal:m,protein:mp??0,carbs:mc??0,fat:mf??0,complete:mp!==null&&mc!==null&&mf!==null,method:"database"};
+    /* Món chưa có bảng đầy đủ (tra online, ước tính AI): dựng tạm từ hồ sơ chung. */
+    const rate=directPer100gRate(food,norm);
+    if(rate){
+      const pp=proteinProfile(food,norm), mm=macroProfile(food,norm);
+      return {unit:"g",kcal:rate.rate,protein:v68Num(pp.per100g)??null,carbs:v68Num(mm.carbs100g)??null,fat:v68Num(mm.fat100g)??null,complete:false,method:rate.method};
+    }
+    const rateMl=directPer100mlRate(food,norm);
+    if(rateMl){
+      const pp=proteinProfile(food,norm), mm=macroProfile(food,norm);
+      return {unit:"ml",kcal:rateMl.rate,protein:v68Num(pp.per100ml)??null,carbs:v68Num(mm.carbs100ml)??null,fat:v68Num(mm.fat100ml)??null,complete:false,method:rateMl.method};
+    }
+    return null;
+  }
+  /* Khối lượng một khẩu phần của món theo từng loại đơn vị người dùng gõ. */
+  function v68ServingAmount(food,kind,isBiteSize,vector){
+    const per100=vector?.kcal||0;
+    const fromKcal=(kcal)=>{const k=v68Num(kcal);return k!==null&&k>0&&per100>0?(k/per100)*100:null;};
+    const own={
+      piece:isBiteSize?(v68Num(food?.gramsPerBite)??18):(v68Num(food?.gramsPerPiece)??fromKcal(food?.perPiece)??v68Num(food?.gramsPerUnit)),
+      slice:v68Num(food?.gramsPerSlice)??fromKcal(food?.perSlice),
+      bowl:v68Num(food?.gramsPerBowl)??fromKcal(food?.perBowl),
+      cup:v68Num(food?.gramsPerCup)??fromKcal(food?.perCup),
+      can:v68Num(food?.gramsPerCan)??fromKcal(food?.perCan),
+      pack:v68Num(food?.gramsPerPack)??fromKcal(food?.perPack),
+      tbsp:v68Num(food?.gramsPerTbsp)??fromKcal(food?.perTbsp),
+      whole:v68Num(food?.gramsPerWhole)??fromKcal(food?.perWhole),
+      portion:v68Num(food?.gramsPerPortion)??fromKcal(food?.perPortion),
+      unit:v68Num(food?.gramsPerUnit)??fromKcal(food?.perUnit)
+    };
+    /* 1. Bảng có sẵn khối lượng đúng loại đơn vị người dùng gõ → chính xác nhất. */
+    if(own[kind]>0) return {amount:own[kind],source:"food"};
+    /* 2. Đơn vị ĐONG (thìa, cốc, lon, chai, bát): kích thước do dụng cụ quyết định,
+          không phải do món. Một thìa đường mãi mãi là ~14 g, dù bảng ghi theo 100 g. */
+    const generic=V68_UNIT_DEFAULT_GRAMS[kind];
+    /* Thìa là dụng cụ đong, không bảng nào ghi khẩu phần theo thìa. */
+    if(kind==="tbsp") return {amount:v68TbspGrams(food),source:"generic"};
+    if(kind==="tsp") return {amount:v68TbspGrams(food)/3,source:"generic"};
+    /* 3. Khẩu phần thật ghi trên bảng. "1 bát bún chả" là khẩu phần của MÓN,
+          không phải 250 ml đong bằng bát — nên khẩu phần của món được ưu tiên.
+          Bảng ghi theo "100 g" thì không có khẩu phần thật, rơi xuống bảng quy đổi
+          chung: một cốc sữa vẫn là 240 ml dù bảng ghi theo 100 ml. */
+    const serving=food?.per100Basis?null:(v68Num(food?.gramsPerServing)??v68Num(food?.mlPerServing)??v68Num(food?.defaultGrams)??v68Num(food?.defaultMl));
+    if(serving>0) return {amount:serving,source:"serving"};
+    if(V68_VOLUME_UNITS.has(kind)) return {amount:generic,source:"generic"};
+    /* 4. Món cũ chỉ có "một khẩu phần bao nhiêu calo" → suy ngược ra khối lượng.
+          Bỏ qua với bảng ghi theo 100 g, vì ở đó defaultKcal chính là số/100 g:
+          suy ngược sẽ ra đúng 100 g và một lát bánh mì thành cả 100 g bánh. */
+    const fromServingKcal=food?.per100Basis?(fromKcal(food?.perPortion)??null):(fromKcal(food?.perPortion)??fromKcal(food?.defaultKcal));
+    if(fromServingKcal>0) return {amount:fromServingKcal,source:"serving"};
+    if(generic>0) return {amount:generic,source:"generic"};
+    const last=v68Num(food?.defaultGrams)??v68Num(food?.defaultMl)??100;
+    return {amount:last,source:"fallback"};
+  }
+  /* Ghi lại đúng từ người dùng gõ ("2 quả", "1 ổ") thay vì "2 đơn vị" chung chung. */
+  const V68_UNIT_DISPLAY = {
+    qua:"quả",trai:"trái",cai:"cái",chiec:"chiếc",mieng:"miếng",vien:"viên",cuon:"cuốn",o:"ổ",
+    bat:"bát",chen:"chén",to:"tô",dia:"đĩa",coc:"cốc",ly:"ly",lon:"lon",chai:"chai",
+    hop:"hộp",goi:"gói",bich:"bịch",lat:"lát",que:"que",xien:"xiên",thia:"thìa",muong:"muỗng",
+    suat:"suất",phan:"phần",con:"con",khay:"khay",
+    cup:"cốc",cups:"cốc",bowl:"bát",bowls:"bát",glass:"ly",glasses:"ly",can:"lon",cans:"lon",
+    slice:"lát",slices:"lát",piece:"miếng",pieces:"miếng",pack:"gói",packs:"gói",
+    serving:"suất",servings:"suất",plate:"đĩa",plates:"đĩa",box:"hộp",boxes:"hộp",whole:"con"
+  };
+  function v68UnitLabel(kind,unitWord=""){
+    const typed=V68_UNIT_DISPLAY[normalizePhrase(unitWord)];
+    if(typed) return typed;
+    return {whole:"con",bowl:"bát",cup:"cốc",slice:"lát",pack:"gói",can:"lon",tbsp:"thìa",tsp:"thìa cà phê",piece:"miếng",portion:"suất",unit:"đơn vị"}[kind]||"đơn vị";
+  }
+  /* Quy mọi cách ghi về một con số duy nhất: bao nhiêu gram (hoặc ml) đã ăn. */
+  function v68ResolveAmount({food,norm,weight,volume,quantity,kind,isBiteSize,vector,unitWord}){
+    if(weight){
+      let q=+weight[1].replace(",",".");
+      if(["kg","kilogram","kilograms"].includes(weight[2]))q*=1000;
+      return {amount:q,unit:"g",basis:`${fmt(q)} g`,confidence:"high"};
+    }
+    if(volume){
+      let q=+volume[1].replace(",",".");
+      if(["l","lit","liter","litre","liters","litres"].includes(volume[2]))q*=1000;
+      return {amount:q,unit:"ml",basis:`${fmt(q)} ml`,confidence:"high"};
+    }
+    if(Number.isFinite(quantity)){
+      const serving=v68ServingAmount(food,kind,isBiteSize,vector);
+      const amount=quantity*serving.amount;
+      const unit=vector?.unit==="ml"&&V68_VOLUME_UNITS.has(kind)?"ml":vector?.unit||"g";
+      const note=serving.source==="food"?"":serving.source==="serving"?" (theo khẩu phần ghi trên bảng)":" (quy đổi đơn vị đong tiêu chuẩn)";
+      return {amount,unit,basis:`${formatQuantity(quantity)} ${v68UnitLabel(kind,unitWord)} ≈ ${fmt(serving.amount)} ${unit}${note}`,confidence:serving.source==="food"?"high":"medium"};
+    }
+    const serving=v68ServingAmount(food,"portion",false,vector);
+    const fallback=serving.amount>0?serving.amount:(v68Num(food?.defaultGrams)??v68Num(food?.defaultMl)??100);
+    return {amount:fallback,unit:vector?.unit||"g",basis:`1 khẩu phần tham chiếu ≈ ${fmt(fallback)} ${vector?.unit||"g"}`,confidence:"low"};
+  }
+  /* Một hệ số duy nhất, nhân cho cả bốn chỉ số. Đó là toàn bộ phép tính. */
+  function v68Scale(vector,amount){
+    const factor=amount/100;
+    return {
+      kcal:vector.kcal*factor,
+      protein:vector.protein===null?null:vector.protein*factor,
+      carbs:vector.carbs===null?null:vector.carbs*factor,
+      fat:vector.fat===null?null:vector.fat*factor
+    };
+  }
+  /* Suy ra nhóm chế biến để cộng dầu khi người dùng ghi "chiên/xào/nướng"
+     mà tên món trên bảng lại là nguyên liệu sống. */
+  function v68MethodClass(food){
+    if(food?.methodClass) return food.methodClass;
+    const text=`${String(food?.id||"")} ${normalizePhrase(food?.name||"")} ${normalizePhrase(food?.en||"")}`;
+    if(/(?:dau phu|tofu|dau hu)/.test(text)) return "tofu";
+    if(/(?:tom|ca |ca$|muc|so |ngao|hen|cua|ghe|shrimp|fish|squid|salmon|tuna|crab|clam|oyster)/.test(text)) return "seafood";
+    if(/(?:ba chi|thit mo|pork belly|duck|vit|ngan|bacon|xuc xich|lap xuong|salami)/.test(text)) return "fattyProtein";
+    if(/(?:ga|bo|heo|lon|thit|trung|chicken|beef|pork|egg|meat|steak)/.test(text)) return "leanProtein";
+    if(/(?:com|rice|banh|bun|pho|mi |mien|xoi|khoai|potato|noodle|bread|oat|yen mach|ngo|corn)/.test(text)) return "starch";
+    if(/(?:rau|cai|nam|mushroom|vegetable|salad|bi |ca rot|carrot|dau que|gia do)/.test(text)) return "vegetable";
+    if(/(?:chuoi|tao|cam|xoai|banana|apple|orange|mango|fruit|du du|dua hau)/.test(text)) return "fruit";
+    return null;
+  }
+
   function estimateFood(text) {
     const key=String(text??"");
     if(FOOD_ESTIMATE_MEMO.has(key))return FOOD_ESTIMATE_MEMO.get(key);
@@ -7017,19 +7348,22 @@
       const direct = norm.match(
         /(?:^|[=,:;\s])(\d+(?:[.,]\d+)?)\s*kcal\b(?!\s*(?:\/|per))/,
       );
-      let kcal = 0,
-        basis = "",
-        confidence = "low";
+      /* ---- V68: một khẩu phần → một hệ số → nhân cho cả kcal, đạm, carb, fat ---- */
+      const vector = v68Vector(food, norm);
+      const explicitProtein = norm.match(/(?:protein|dam|đạm)\s*[:=]\s*(\d+(?:[.,]\d+)?)\s*g\b/) || norm.match(/(\d+(?:[.,]\d+)?)\s*g\s*(?:protein|dam|đạm)\b/);
+      const explicitCarb = norm.match(/(?:carb(?:s|ohydrate)?|tinh bot)\s*[:=]\s*(\d+(?:[.,]\d+)?)\s*g\b/) || norm.match(/(\d+(?:[.,]\d+)?)\s*g\s*(?:carb(?:s)?|tinh bot)\b/);
+      const explicitFat = norm.match(/(?:fat|chat beo)\s*[:=]\s*(\d+(?:[.,]\d+)?)\s*g\b/) || norm.match(/(\d+(?:[.,]\d+)?)\s*g\s*(?:fat|chat beo)\b/);
+      let kcal = 0, basis = "", confidence = "low",
+        protein = null, carbs = null, fat = null, scaledAmount = null, amountUnit = "g";
+
       if (per100 && (weight || volume)) {
         const m = weight || volume;
-        let qty = +m[1].replace(",", "."),
-          u = m[2];
-        if (["kg", "kilogram", "kilograms"].includes(u)) qty *= 1000;
-        if (["l", "lit", "liter", "litre", "liters", "litres"].includes(u))
-          qty *= 1000;
+        let qty = +m[1].replace(",", "."), u = m[2];
+        if (["kg","kilogram","kilograms"].includes(u)) qty *= 1000;
+        if (["l","lit","liter","litre","liters","litres"].includes(u)) qty *= 1000;
         const rate = +per100[1].replace(",", ".");
-        kcal = (qty * rate) / 100;
-        basis = `${fmt(qty)} ${volume ? "ml" : "g"} × ${fmt(rate)} kcal/100 ${volume ? "ml" : "g"} (nhập trực tiếp)`;
+        kcal = (qty * rate) / 100; scaledAmount = qty; amountUnit = volume ? "ml" : "g";
+        basis = `${fmt(qty)} ${amountUnit} × ${fmt(rate)} kcal/100 ${amountUnit} (nhập trực tiếp)`;
         confidence = "exact";
       } else if (perUnit && Number.isFinite(quantity)) {
         const rate = +perUnit[1].replace(",", ".");
@@ -7040,156 +7374,65 @@
         kcal = +direct[1].replace(",", ".");
         basis = "Tổng calo nhập trực tiếp";
         confidence = "exact";
-      } else if (weight) {
-        let qty = +weight[1].replace(",", "."),
-          u = weight[2];
-        if (["kg", "kilogram", "kilograms"].includes(u)) qty *= 1000;
-        const resolvedRate = directPer100gRate(food, norm);
-        if (resolvedRate) {
-          kcal = (qty * resolvedRate.rate) / 100;
-          basis = `${fmt(qty)} g × ${fmt(resolvedRate.rate, 1)} kcal/100 g${resolvedRate.method === "database" ? "" : " (quy đổi từ hồ sơ dinh dưỡng)"}`;
-          confidence = food.isHeuristic
-            ? "low"
-            : food.isOnline || resolvedRate.method !== "database"
-              ? "medium"
-              : "high";
-        } else {
-          kcal = (qty * 200) / 100;
-          basis = `${fmt(qty)} g × 200 kcal/100 g (ước lượng tạm vì món chưa có dữ liệu theo gram)`;
-          confidence = "low";
-          warningCount++;
-        }
-      } else if (volume) {
-        let qty = +volume[1].replace(",", "."),
-          u = volume[2];
-        if (["l", "lit", "liter", "litre", "liters", "litres"].includes(u))
-          qty *= 1000;
-        const resolvedRate = directPer100mlRate(food, norm);
-        if (resolvedRate) {
-          kcal = (qty * resolvedRate.rate) / 100;
-          basis = `${fmt(qty)} ml × ${fmt(resolvedRate.rate, 1)} kcal/100 ml${resolvedRate.method === "database" ? "" : " (quy đổi từ hồ sơ dinh dưỡng)"}`;
-          confidence = food.isHeuristic
-            ? "low"
-            : food.isOnline || resolvedRate.method !== "database"
-              ? "medium"
-              : "high";
-        } else {
-          kcal = (qty * 60) / 100;
-          basis = `${fmt(qty)} ml × 60 kcal/100 ml (ước lượng tạm vì món chưa có dữ liệu theo ml)`;
-          confidence = "low";
-          warningCount++;
-        }
-      } else if (Number.isFinite(quantity)) {
-        const rate =
-          kind === "whole"
-            ? food.perWhole
-            : kind === "bowl"
-              ? food.perBowl
-              : kind === "cup"
-                ? food.perCup
-                : kind === "tbsp"
-                  ? food.perTbsp
-                  : kind === "slice"
-                    ? food.perSlice
-                    : kind === "pack"
-                      ? food.perPack
-                      : kind === "can"
-                        ? food.perCan
-                        : food.perUnit;
-        if (Number.isFinite(rate)) {
-          kcal = quantity * rate;
-          basis = `${formatQuantity(quantity, fraction)} ${kind === "whole" ? "con" : kind === "bowl" ? "bát" : kind === "cup" ? "cốc" : kind === "slice" ? "lát" : kind === "pack" ? "gói" : kind === "can" ? "lon" : "đơn vị"} × ${fmt(rate)} kcal`;
-        } else if (kind === "piece" && food.per100g) {
-          const pieceGrams = isBiteSize
-            ? food.gramsPerBite || 18
-            : food.gramsPerPiece || food.gramsPerUnit || 30;
-          kcal = (quantity * pieceGrams * food.per100g) / 100;
-          basis = `${fmt(quantity)} miếng${isBiteSize ? " bite-size" : ""} × khoảng ${fmt(pieceGrams)} g/miếng × ${fmt(food.per100g)} kcal/100 g`;
-        } else if (food.gramsPerUnit && food.per100g) {
-          kcal = (quantity * food.gramsPerUnit * food.per100g) / 100;
-          basis = `${fmt(quantity)} đơn vị × khoảng ${fmt(food.gramsPerUnit)} g`;
-        } else if (food.perPortion) {
-          kcal = quantity * food.perPortion;
-          basis = `${fmt(quantity)} khẩu phần × ${fmt(food.perPortion)} kcal`;
-        } else {
-          kcal = quantity * (food.defaultKcal || food.per100g || 220);
-          basis = "Dùng khẩu phần tự động";
-        }
-        confidence = food.isHeuristic
-          ? "low"
-          : food.isOnline
-            ? "medium"
-            : "medium";
+      } else if (vector) {
+        const resolved = v68ResolveAmount({ food, norm, weight, volume, quantity, kind, isBiteSize, vector, unitWord: actualCount ? actualCount[2] : "" });
+        /* Người dùng ghi ml nhưng bảng chỉ có số liệu theo gram (hoặc ngược lại):
+           nước và món lỏng lấy khối lượng riêng ≈ 1, sai số nhỏ hơn nhiều so với bỏ qua. */
+        const amount = resolved.amount;
+        const scaled = v68Scale(vector, amount);
+        kcal = scaled.kcal; protein = scaled.protein; carbs = scaled.carbs; fat = scaled.fat;
+        scaledAmount = amount; amountUnit = vector.unit;
+        const rateNote = vector.method === "database" ? "" : " (quy đổi từ hồ sơ dinh dưỡng)";
+        basis = `${resolved.basis} × ${fmt(vector.kcal, 1)} kcal/100 ${vector.unit}${rateNote}`;
+        confidence = food.isHeuristic ? "low"
+          : resolved.confidence === "low" ? "low"
+          : food.isOnline || vector.method !== "database" ? "medium"
+          : resolved.confidence;
       } else {
-        const rate =
-          food.perPortion ||
-          food.defaultKcal ||
-          food.perUnit ||
-          food.perCup ||
-          food.perBowl ||
-          food.per100g ||
-          220;
-        kcal = rate;
-        basis = "Không ghi lượng — dùng 1 khẩu phần tham chiếu";
-        confidence = food.isHeuristic
-          ? "low"
-          : food.isOnline
-            ? "medium"
-            : "low";
+        kcal = v68Num(food.perPortion) ?? v68Num(food.defaultKcal) ?? v68Num(food.perUnit) ?? 0;
+        basis = "Không đủ dữ liệu theo khối lượng — dùng 1 khẩu phần tham chiếu";
+        confidence = "low";
+        warningCount++;
       }
+
+      /* Giá trị người dùng tự ghi luôn thắng số liệu tra bảng. */
+      if (explicitProtein) protein = Math.max(0, +explicitProtein[1].replace(",", "."));
+      if (explicitCarb) carbs = Math.max(0, +explicitCarb[1].replace(",", "."));
+      if (explicitFat) fat = Math.max(0, +explicitFat[1].replace(",", "."));
+
       if (food.genericEstimateV52 && confidence !== "exact") {
         confidence = "medium";
         basis += ` · ${food.genericNote || "ước tính chung do không ghi rõ loại thực phẩm"}`;
       }
-      if(food.aiRecognized && confidence!=="exact"){
-        confidence="low";
-        basis+=" · Ước tính bởi AI; khẩu phần và công thức thực tế có thể khác";
+      if (food.aiRecognized && confidence !== "exact") {
+        confidence = "low";
+        basis += " · Ước tính bởi AI; khẩu phần và công thức thực tế có thể khác";
       }
-      if (food.isHeuristic) {
-        basis += " · sẽ tự tra lại khi có kết nối";
-        warningCount++;
-      }
-      if (
-        !food.isHeuristic &&
-        confidence !== "exact" &&
-        Number(food.rangePct) > 0 &&
-        kcal > 0
-      ) {
+      if (food.isHeuristic) { basis += " · sẽ tự tra lại khi có kết nối"; warningCount++; }
+      if (!food.isHeuristic && confidence !== "exact" && Number(food.rangePct) > 0 && kcal > 0) {
         const rp = clamp(Number(food.rangePct), 0.03, 0.35),
           lo = Math.max(0, Math.round(kcal * (1 - rp))),
           hi = Math.round(kcal * (1 + rp));
         basis += ` · khoảng hợp lý ${fmt(lo)}–${fmt(hi)} kcal ${food.rangeNote || "tùy kích thước, dầu và sốt"}`;
       }
       kcal = Math.max(0, Math.round(kcal));
-      const protein = Math.max(
-          0,
-          estimateProteinAmount({
-            food,
-            original,
-            norm,
-            weight,
-            volume,
-            quantity,
-            kind,
-            isBiteSize,
-            kcal,
-          }),
-        ),
-        macros = estimateMacroAmounts({
-          food,
-          original,
-          norm,
-          weight,
-          volume,
-          quantity,
-          kind,
-          isBiteSize,
-          kcal,
-          protein,
-        });
-      let carbs = macros.carbs, fat = macros.fat;
+
+      /* Chỉ những món thiếu số liệu mới phải ước tính macro; món có bảng đầy đủ thì không. */
+      if (protein === null)
+        protein = Math.max(0, estimateProteinAmount({ food, original, norm, weight, volume, quantity, kind, isBiteSize, kcal }));
+      if (carbs === null || fat === null) {
+        const guessed = estimateMacroAmounts({ food, original, norm, weight, volume, quantity, kind, isBiteSize, kcal, protein });
+        if (carbs === null) carbs = guessed.carbs;
+        if (fat === null) fat = guessed.fat;
+      }
+      protein = Math.max(0, Number(protein) || 0);
+      carbs = Math.max(0, Number(carbs) || 0);
+      fat = Math.max(0, Number(fat) || 0);
+
+      /* Cộng dầu khi người dùng ghi cách chế biến mà bảng lại ghi nguyên liệu sống. */
+      const cookingFood = food.methodClass ? food : { ...food, methodClass: v68MethodClass(food) };
       const cooked = applyCookingMethodV6({
-        food, norm, match, weight, quantity, kind, isBiteSize,
+        food: cookingFood, norm, match, weight, quantity, kind, isBiteSize,
         kcal, carbs, fat, basis, confidence
       });
       kcal = cooked.kcal; carbs = cooked.carbs; fat = cooked.fat;
@@ -7225,13 +7468,18 @@
         foodId: food.id || null,
       });
     }
+    /* V68: trước đây chỉ cần MỘT món lạ là total = null, cả ngày bị vứt khỏi
+       thâm hụt lũy kế, biểu đồ và dự báo cân nặng. Một ngày 5 món mà lỡ 1 món thì
+       mất luôn 4 món có thật — sai nhiều hơn là ước lượng thiếu.
+       Từ V68: cộng đủ những món đã nhận diện, giữ unresolvedCount để gắn cảnh báo. */
     return {
-      total: unresolvedCount ? null : Math.round(total),
+      total: Math.round(total),
       proteinTotal: Math.round(proteinTotal),
       carbsTotal: Math.round(carbsTotal),
       fatTotal: Math.round(fatTotal),
       items,
       unresolvedCount,
+      resolvedCount: items.length - unresolvedCount,
       warningCount,
     };
   }
@@ -7532,7 +7780,10 @@
         cardioBurn = exerciseCaloriesFromInput(r.cardio, rawCardioBurn),
         exerciseBurn = strengthBurn + cardioBurn,
         totalOut = baseTdee + exerciseBurn,
-        complete = foodEst.total !== null && foodEst.unresolvedCount === 0,
+        /* Ngày để trống hoặc ghi "0" là CHƯA NHẬP, không phải ngày nhịn ăn 0 kcal.
+           Tính nó thành thâm hụt trọn một ngày TDEE sẽ thổi phồng lũy kế. */
+        complete = foodEst.total !== null && foodEst.resolvedCount > 0,
+        partial = foodEst.unresolvedCount > 0,
         deficit = complete ? totalOut - foodEst.total : null;
       if (complete) cumulative += deficit;
       const endWeight = complete
@@ -7572,6 +7823,7 @@
         deficit,
         cumulative,
         complete,
+        partial,
         achieved: complete && deficit > 0,
       };
     });
@@ -8004,13 +8256,15 @@
               ? "today-highlight"
               : "",
           state = !d.complete ? "incomplete" : d.achieved ? "good" : "bad",
+          /* V68: ngày thiếu món vẫn được tính, nhưng phải nói rõ là đang tính thiếu. */
+          missingNote = d.partial ? ` · còn ${d.foodEst.unresolvedCount} món chưa nhận diện, chưa cộng vào` : "",
           status = !d.complete
             ? `Chưa đủ dữ liệu${d.foodEst.unresolvedCount ? ` — ${d.foodEst.unresolvedCount} món chưa nhận diện` : ""}`
             : d.deficit > 0
-              ? "✓ Đạt — thâm hụt calo"
+              ? `✓ Đạt — thâm hụt calo${missingNote}`
               : d.deficit < 0
-                ? "✕ Chưa đạt — dư thừa calo"
-                : "✕ Chưa đạt — chưa tạo thâm hụt",
+                ? `✕ Chưa đạt — dư thừa calo${missingNote}`
+                : `✕ Chưa đạt — chưa tạo thâm hụt${missingNote}`,
           balance = !d.complete
             ? "Chưa tính"
             : d.deficit > 0
@@ -8018,7 +8272,7 @@
               : d.deficit < 0
                 ? `Dư thừa ${fmt(Math.abs(d.deficit))} kcal`
                 : "Cân bằng 0 kcal",
-          intake = d.complete
+          intake = d.complete && !d.partial
             ? fmt(d.foodEst.total)
             : `${fmt(d.foodEst.total)} + ?`,
           breakdown = d.foodEst.items
@@ -8030,7 +8284,7 @@
           detailsOpen = historyDetailsState.has(dayKey)
             ? historyDetailsState.get(dayKey)
             : d.foodEst.unresolvedCount > 0;
-        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric"><span>Cardio 15% · 3,3 km/h</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${fmt(d.waistUsed, 1)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
+        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}${d.partial ? " partial" : ""}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric"><span>Cardio 15% · 3,3 km/h</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${fmt(d.waistUsed, 1)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
       })
       .join("");
     list.querySelectorAll("details[data-day-key]").forEach((details) => {
@@ -8693,7 +8947,9 @@
     return original;
   }
   function numberOrNull(value) { const n=Number(value); return Number.isFinite(n) ? n : null; }
-  function hasAllMacros(item) { return [item.kcal,item.protein,item.carb,item.fat].every((v)=>Number.isFinite(Number(v))) && Number(item.kcal)>0 && Number(item.kcal)<2000; }
+  /* V68: nước lọc và muối là 0 kcal nhưng vẫn là món có thật. Chặn chúng ở đây
+     khiến cả ngày ghi "1 cốc nước lọc" bị coi là chưa nhận diện. */
+  function hasAllMacros(item) { return [item.kcal,item.protein,item.carb,item.fat].every((v)=>Number.isFinite(Number(v))) && (Number(item.kcal)>0 || item.zeroCalorieV68===true) && Number(item.kcal)<2000; }
   function foodIconForName(name) {
     const n=normalizeFoodText(name);
     if (/(strongbow|cider)/.test(n)) return "🍺";
@@ -9046,6 +9302,27 @@
       }
     });
   }
+  /* V68: bí danh một chữ và tên gọi đời thường. Phải là alias "hạng nhất" (có dấu)
+     thì luật dấu mới bảo vệ được: "bò" khớp Thịt bò, còn "bơ" thì không. */
+  const V68_EXTRA_ALIASES = new Map(Object.entries({
+    "thịt bò":["bò","beef"],
+    "thịt lợn":["lợn","heo"],
+    "thịt gà":["gà"],
+    "kem":["kem tràng tiền","kem ốc quế","kem que","kem ly","kem hộp","ice cream cone"],
+    "bánh flan caramen":["caramen","ca ra men","kem flan","flan","bánh caramen"],
+    "cà phê sữa":["nâu đá","nâu nóng","cà phê nâu","cafe sữa","cafe sữa đá","cà phê sữa đá"],
+    "dồi lợn":["dồi","dồi heo","dồi trường"],
+    "trà sữa":["trà sữa trân châu","trà sữa chân trâu","trà sữa full topping","milk tea boba","bubble tea"],
+    "coca-cola / pepsi":["coca","coke","cola","pepsi","coca cola","nước có ga"],
+    "nước lọc":["nước","nuoc loc"],
+    "cơm gạo trắng":["cơm","cơm trắng"],
+    "mì ăn liền":["mì tôm","mỳ tôm","mì gói","úp mì"],
+    "sữa chua có đường":["sữa chua"],
+    "quả bơ":["bơ","trái bơ"],
+    "tôm bóc vỏ":["tôm"],
+    "trứng gà nguyên quả":["trứng","trứng gà"]
+  }));
+
   function aliasVariantsV50(name="") {
     const out=new Set(), add=(x)=>{x=String(x||"").trim();if(x)out.add(x);};
     add(name);
@@ -9057,6 +9334,7 @@
     ];
     [...out].forEach((base)=>replacements.forEach(([re,to])=>add(base.replace(re,to))));
     (V50_EXPLICIT_ALIASES[normalizePhrase(name)]||[]).forEach(add);
+    (V68_EXTRA_ALIASES.get(String(name).toLowerCase().normalize("NFC").trim())||[]).forEach(add);
     (V51_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[]).forEach(add);
     (V56_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[]).forEach(add);
     (V57_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[]).forEach(add);
@@ -9066,7 +9344,15 @@
     const basis=normalizePhrase(text);
     const g=basis.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*g\b/);
     const ml=basis.match(/(?:^|\s)(\d+(?:[.,]\d+)?)\s*ml\b/);
-    return {grams:g?Number(g[1].replace(",",".")):null,ml:ml?Number(ml[1].replace(",",".")):null,basis};
+    /* V68: "1 suất · 5 cái · 175 g" nghĩa là một cái nặng 35 g, không phải 175 g.
+       Không đọc con số này thì "2 cái nem rán" bị tính thành 2 suất (gấp 5 lần). */
+    const pieces=basis.match(/(?:^|\s)(\d+)\s*(?:cai|chiec|mieng|vien|cuon|qua|trai|lat)\b/);
+    return {
+      grams:g?Number(g[1].replace(",",".")):null,
+      ml:ml?Number(ml[1].replace(",",".")):null,
+      pieces:pieces?Number(pieces[1]):null,
+      basis
+    };
   }
   function safeAliasEqualV51(a,b){
     const aa=normalizePhraseAccentV51(a), bb=normalizePhraseAccentV51(b);
@@ -9119,12 +9405,26 @@
       defaultKcal:kcal,defaultProtein:protein,defaultCarbs:carbs,defaultFat:fat
     };
     const is100ml=/^100\s*ml\b/.test(info.basis), is100g=/^100\s*g\b/.test(info.basis);
+    /* V68: "100 g" là cách chuẩn hóa bảng, KHÔNG phải khẩu phần thật.
+       Bản cũ coi nó là khẩu phần nên "1 cốc sữa" chỉ được tính 100 ml thay vì 240 ml. */
+    if(is100ml||is100g) food.per100Basis=true;
     if(is100ml){Object.assign(food,{per100ml:kcal,protein100ml:protein,carbs100ml:carbs,fat100ml:fat,defaultMl:100});}
     else if(is100g){Object.assign(food,{per100g:kcal,protein100g:protein,carbs100g:carbs,fat100g:fat,defaultGrams:100});}
     else if(info.ml&&info.ml>0){
-      Object.assign(food,{per100ml:kcal*100/info.ml,protein100ml:protein*100/info.ml,carbs100ml:carbs*100/info.ml,fat100ml:fat*100/info.ml,defaultMl:info.ml});
+      Object.assign(food,{per100ml:kcal*100/info.ml,protein100ml:protein*100/info.ml,carbs100ml:carbs*100/info.ml,fat100ml:fat*100/info.ml,defaultMl:info.ml,mlPerServing:info.ml});
     } else if(info.grams&&info.grams>0){
-      Object.assign(food,{per100g:kcal*100/info.grams,protein100g:protein*100/info.grams,carbs100g:carbs*100/info.grams,fat100g:fat*100/info.grams,defaultGrams:info.grams,gramsPerUnit:info.grams});
+      Object.assign(food,{per100g:kcal*100/info.grams,protein100g:protein*100/info.grams,carbs100g:carbs*100/info.grams,fat100g:fat*100/info.grams,defaultGrams:info.grams,gramsPerServing:info.grams});
+      const pieces=Number(info.pieces)||0;
+      if(pieces>1){
+        /* Khẩu phần gồm nhiều cái: chia ra khối lượng từng cái. */
+        food.gramsPerPiece=info.grams/pieces;
+        food.gramsPerUnit=info.grams/pieces;
+        food.piecesPerServing=pieces;
+      } else if(/\b(?:cai|chiec|mieng|vien|cuon|qua|trai|con|chai|lat|o)\b/.test(info.basis)){
+        food.gramsPerUnit=info.grams;
+      } else {
+        food.gramsPerPortion=info.grams;
+      }
     }
     /* V64: bảng hiển thị thường ghi dinh dưỡng/100 g nhưng vẫn phải giữ khối lượng
        của từng quả/cái từ hồ sơ món tương ứng (vd. 1 trứng = 50 g, không phải 100 g). */
@@ -9140,9 +9440,13 @@
     if(/\blon\b/.test(info.basis)) food.perCan=kcal;
     if(/\b(?:goi)\b/.test(info.basis)) food.perPack=kcal;
     if(/\blat\b/.test(info.basis)) food.perSlice=kcal;
-    if(/\b(?:suat|phan|dia)\b/.test(info.basis)) food.perPortion=kcal;
+    if(/\b(?:suat|phan|dia)\b/.test(info.basis)) { food.perPortion=kcal; if(info.grams>0) food.gramsPerPortion=info.grams; }
     if(/\b(?:cai|chiec|mieng|vien|cuon|con|chai|chen)\b/.test(info.basis)) food.perUnit=kcal;
-    if(!Number.isFinite(food.perUnit)&&!Number.isFinite(food.perPortion)&&!Number.isFinite(food.perBowl)&&!Number.isFinite(food.perCup)&&!is100g&&!is100ml) food.perUnit=kcal;
+    if(Number.isFinite(food.piecesPerServing)&&food.piecesPerServing>1){
+      /* Suất nhiều cái: perUnit phải là một cái, không phải cả suất. */
+      food.perUnit=kcal/food.piecesPerServing;
+      food.perPiece=food.perUnit;
+    } else if(!Number.isFinite(food.perUnit)&&!Number.isFinite(food.perPortion)&&!Number.isFinite(food.perBowl)&&!Number.isFinite(food.perCup)&&!is100g&&!is100ml) food.perUnit=kcal;
     return food;
   }
   function getAuthoritativeFoodDbV50(){
@@ -9158,6 +9462,76 @@
     return AUTHORITATIVE_FOOD_DB_V50_CACHE;
   }
 
+  /* =================== V68 · BỔ SUNG CSDL MÓN CÒN THIẾU ===================
+     Các món dưới đây xuất hiện thường xuyên trong thực tế nhưng chưa có trong bảng,
+     nên trước đây bị đánh dấu "chưa nhận diện" và kéo cả ngày ra khỏi phép tính.
+     Giá trị là mức tham chiếu trung bình; món nấu ngoài hàng luôn dao động theo
+     lượng dầu, topping và cỡ suất. */
+  const CURATED_CATALOG_V68 = [
+    /* Nước và đồ uống — tính theo 100 ml */
+    curatedCatalogFood("nuoc_loc","Nước lọc","drinks",0,0,0,0,"100 ml","💧","nước suối nước khoáng nước tinh khiết nước đun sôi nước lọc water mineral water drinking water plain water","water"),
+    curatedCatalogFood("tra_khong_duong","Trà xanh không đường","drinks",1,0,0.2,0,"100 ml","🍵","trà trà đá trà nóng trà xanh nước trà trà mạn green tea tea iced tea unsweetened tea","tea"),
+    curatedCatalogFood("nuoc_chanh","Nước chanh đường","drinks",30,0.1,7.5,0,"100 ml","🍋","nước chanh chanh đường lemonade lemon juice drink","juice"),
+    curatedCatalogFood("nuoc_cam_vat","Nước cam vắt","drinks",45,0.7,10.4,0.2,"100 ml","🍊","nước ép cam nước cam orange juice fresh orange juice","juice"),
+    curatedCatalogFood("sinh_to_bo","Sinh tố bơ","drinks",360,5.4,36,22.5,"1 cốc · 300 ml","🥑","sinh tố bơ sữa avocado smoothie avocado shake","smoothie"),
+    curatedCatalogFood("sinh_to_xoai","Sinh tố xoài","drinks",255,3.6,54,3.6,"1 cốc · 300 ml","🥭","sinh tố xoài mango smoothie mango shake","smoothie"),
+    curatedCatalogFood("bac_xiu","Bạc xỉu","drinks",220,5,34,7,"1 cốc · 200 ml","☕","bạc xỉu bac xiu cà phê sữa nhiều sữa vietnamese white coffee","coffee"),
+    curatedCatalogFood("nuoc_tang_luc","Nước tăng lực","drinks",45,0,11,0,"100 ml","⚡","sting redbull red bull bò húc number one energy drink nước tăng lực","soft-drink"),
+
+    /* Gia vị — tính theo 100 g */
+    curatedCatalogFood("muoi_an","Muối","seasoning",0,0,0,0,"100 g","🧂","muối muối ăn muối tinh muối biển salt table salt sea salt","seasoning"),
+    curatedCatalogFood("hat_nem","Hạt nêm","seasoning",200,8,40,1,"100 g","🧂","hạt nêm bột nêm bột canh seasoning powder bouillon powder","seasoning"),
+    curatedCatalogFood("tuong_ot","Tương ớt","seasoning",93,1.3,22,0.4,"100 g","🌶️","tương ớt chili sauce hot sauce sriracha","sauce"),
+    curatedCatalogFood("tuong_ca","Tương cà","seasoning",100,1.3,24,0.2,"100 g","🍅","tương cà sốt cà chua ketchup tomato ketchup","sauce"),
+    curatedCatalogFood("mayonnaise_v68","Mayonnaise","seasoning",680,1,1.5,75,"100 g","🥚","mayonnaise mayo sốt mayonnaise xốt mayo","sauce"),
+    curatedCatalogFood("mam_tom","Mắm tôm","seasoning",80,12,3,2,"100 g","🦐","mắm tôm shrimp paste fermented shrimp paste","sauce"),
+    curatedCatalogFood("giam_an","Giấm","seasoning",20,0,0.9,0,"100 g","🧴","giấm giấm gạo vinegar rice vinegar","seasoning"),
+
+    /* Thịt, hải sản chưa có hồ sơ chung — 100 g phần ăn được, chưa chế biến */
+    curatedCatalogFood("thit_lon_chung","Thịt lợn","meat",195,20,0,12,"100 g · nạc vai trung bình, sống","🐖","thịt heo thịt lợn nạc vai nạc heo pork raw pork pork shoulder","pork"),
+    curatedCatalogFood("thit_ga_chung","Thịt gà","meat",143,20,0,6.5,"100 g · gà nguyên con bỏ xương, sống","🍗","gà thịt gà gà ta chicken whole chicken chicken meat","poultry"),
+    curatedCatalogFood("ca_chung","Cá","fish",105,20,0,2.5,"100 g · cá nạc trung bình, sống","🐟","cá cá tươi cá nạc fish raw fish white fish","fish"),
+    curatedCatalogFood("tai_heo","Tai heo luộc","meat",240,19,0,18,"100 g","🐖","tai heo tai lợn tai heo luộc pig ear boiled pig ear","offal"),
+    curatedCatalogFood("doi_lon","Dồi lợn","meat",290,12,8,24,"100 g","🌭","dồi dồi lợn dồi heo dồi trường blood sausage vietnamese blood sausage","offal"),
+    curatedCatalogFood("canh_ga_chien","Cánh gà chiên","meat",290,25,6,19,"100 g","🍗","cánh gà cánh gà chiên cánh gà rán chicken wings fried chicken wings","poultry"),
+    curatedCatalogFood("thit_quay","Thịt quay","meat",400,22,1,34,"100 g","🥓","thịt quay heo quay thịt lợn quay roast pork crispy pork belly","pork"),
+    curatedCatalogFood("gio_thu","Giò thủ","meat",290,17,1,24,"100 g","🍖","giò thủ giò xào head cheese pork head cheese","processed-meat"),
+    curatedCatalogFood("ngao_hen","Ngao","fish",86,14.7,3,1,"100 g · phần thịt","🦪","ngao nghêu hến clam clams baby clam","shellfish"),
+    curatedCatalogFood("hau_bien","Hàu","fish",68,7,4,2.5,"100 g · phần thịt","🦪","hàu hào oyster oysters","shellfish"),
+    curatedCatalogFood("ech_thit","Ếch","fish",73,16.4,0,0.3,"100 g · phần thịt","🐸","ếch thịt ếch frog frog legs","other-seafood"),
+    curatedCatalogFood("ca_ngu_hop","Cá ngừ hộp","fish",116,26,0,1,"100 g · ngâm nước, đã ráo","🐟","cá ngừ hộp cá hộp canned tuna tuna in water tinned tuna","fish"),
+
+    /* Rau củ — 100 g tươi */
+    curatedCatalogFood("gia_do","Giá đỗ","vegetables",30,3,6,0.2,"100 g","🌱","giá giá đỗ giá đậu bean sprouts mung bean sprouts","vegetable"),
+    curatedCatalogFood("cai_thia","Cải thìa","vegetables",13,1.5,2.2,0.2,"100 g","🥬","cải thìa cải chíp bok choy pak choi","vegetable"),
+    curatedCatalogFood("rau_den","Rau dền","vegetables",23,2.5,4,0.3,"100 g","🥬","rau dền dền đỏ amaranth amaranth greens","vegetable"),
+    curatedCatalogFood("mong_toi","Mồng tơi","vegetables",19,1.8,3.1,0.3,"100 g","🥬","mồng tơi mùng tơi malabar spinach","vegetable"),
+    curatedCatalogFood("su_su","Su su","vegetables",19,0.8,4.5,0.1,"100 g","🥒","su su quả su su chayote","vegetable"),
+    curatedCatalogFood("bi_xanh","Bí xanh","vegetables",13,0.4,3,0.2,"100 g","🥒","bí xanh bí đao winter melon wax gourd","vegetable"),
+    curatedCatalogFood("dau_bap","Đậu bắp","vegetables",33,1.9,7.5,0.2,"100 g","🥬","đậu bắp mướp tây okra lady finger","vegetable"),
+
+    /* Món ăn hằng ngày */
+    curatedCatalogFood("sushi_suat","Sushi","restaurant",350,12,65,3,"1 suất · 8 miếng · 250 g","🍣","sushi cơm cuộn sushi roll maki nigiri","japanese"),
+    curatedCatalogFood("mi_cay","Mì cay","restaurant",650,28,80,24,"1 bát · 600 g","🍜","mì cay mì cay hàn quốc spicy noodles korean spicy ramen","noodle-soup"),
+    curatedCatalogFood("banh_mi_bo_kho","Bánh mì bò kho","restaurant",620,30,68,24,"1 suất · 450 g","🥖","bánh mì bò kho bò kho bánh mì beef stew with bread","bread-dish"),
+    curatedCatalogFood("bo_kho","Bò kho","restaurant",320,26,10,19,"1 bát · 300 g","🍲","bò kho thịt bò kho vietnamese beef stew braised beef","stew"),
+    curatedCatalogFood("xoi_xeo","Xôi xéo","starch",290,6.5,45,9,"100 g","🍙","xôi xéo xôi đỗ hành phi sticky rice mung bean fried shallot","rice"),
+    curatedCatalogFood("xoi_ga","Xôi gà","starch",250,10,38,6,"100 g","🍙","xôi gà sticky rice with chicken","rice"),
+    curatedCatalogFood("banh_goi","Bánh gối","snacks",260,8,26,14,"1 cái · 90 g","🥟","bánh gối bánh quai vạc fried dumpling vietnamese empanada","fried-snack"),
+    curatedCatalogFood("canh_cua","Canh cua rau đay","restaurant",90,8,6,4,"1 bát · 250 g","🍲","canh cua canh cua rau đay crab soup vietnamese crab soup","soup"),
+    curatedCatalogFood("canh_rau_ngot","Canh rau ngót","restaurant",45,4,4,1.5,"1 bát · 250 g","🍲","canh rau ngót canh rau sweet leaf soup vegetable soup","soup"),
+    curatedCatalogFood("banh_mi_trung","Bánh mì trứng","restaurant",380,14,48,14,"1 cái · 180 g","🥖","bánh mì trứng bánh mì ốp la banh mi with egg egg banh mi","bread-dish"),
+    curatedCatalogFood("banh_mi_cha","Bánh mì chả","restaurant",450,16,55,18,"1 cái · 200 g","🥖","bánh mì chả bánh mì pate chả banh mi with pork roll","bread-dish"),
+    curatedCatalogFood("banh_mi_den","Bánh mì đen","starch",250,9,42,3.5,"100 g","🍞","bánh mì đen bánh mì nguyên cám rye bread wholemeal bread whole wheat bread","bread"),
+    curatedCatalogFood("trung_op_la","Trứng ốp la","eggs",185,12,0.8,15,"100 g · chiên với dầu","🍳","trứng ốp la trứng chiên trứng rán fried egg sunny side up","egg-dish"),
+    curatedCatalogFood("protein_shake","Protein shake","dairy",135,25.5,3.9,1.5,"1 cốc · 300 ml · whey pha nước","🥤","protein shake sữa whey lắc protein whey shake protein drink","supplement"),
+    curatedCatalogFood("keo_ngot","Kẹo","sweet-cakes",390,0,97,0.2,"100 g","🍬","kẹo kẹo cứng kẹo ngọt candy hard candy sweets","candy"),
+    curatedCatalogFood("tiet_canh","Tiết canh","restaurant",200,24,3,10,"1 bát · 200 g","🍲","tiết canh tiết canh vịt tiết canh lợn raw blood pudding","other"),
+    curatedCatalogFood("kem_oc_que","Kem ốc quế","sweet-cakes",230,3.5,30,11,"1 cái · 100 g","🍦","kem ốc quế kem tràng tiền kem que kem ly ice cream cone soft serve","ice-cream")
+  ].map((item)=>item.kcal===0?{...item,zeroCalorieV68:true}:item);
+  /* Chỉ những món 0 kcal được khai báo ở đây mới được nhận diện. Nếu mở cho mọi
+     dòng 0 kcal thì các dòng trống trong CSDL cũ sẽ cướp mất tên "cơm", "bơ". */
+
   function buildUnifiedFoodCatalog() {
     const candidates=[];
     FREQUENT_FOODS.forEach((food)=>{const x=normalizeFrequentFood(food);if(x)candidates.push(x);});
@@ -9169,6 +9543,7 @@
       [FOOD_DB_V4,"CSDL mở rộng V4"]
     ].forEach(([rows,source])=>rows.forEach((food)=>{const x=normalizeLegacyFood(food,source);if(x)candidates.push(x);}));
     candidates.push(...CURATED_CATALOG_V47);
+    candidates.push(...CURATED_CATALOG_V68);
     /* Không gộp ở đây: lọc và chọn bản ưu tiên tại renderUnifiedFoodCatalog. */
     return candidates;
   }
@@ -9597,7 +9972,20 @@
   window.__foodParserV57={estimateFood,findFood,getAuthoritativeFoodDbV50,V57_BILINGUAL_EN_ALIAS_ROWS};
   /* USDA/Open Food Facts chỉ được gọi khi người dùng chủ động tìm kiếm để trang mặc định luôn gọn. */
   nutritionLookupForm?.addEventListener("submit",(event)=>{event.preventDefault();runNutritionLookup(nutritionLookupInput.value);});
-  nutritionLookupInput?.addEventListener("input",()=>{if(!nutritionLookupInput.value.trim())runNutritionLookup("");});
+  /* V68: lọc kho nội bộ ngay khi gõ, không phải bấm "Tìm" rồi mới thấy kết quả.
+     Chỉ lọc offline ở đây; nguồn trực tuyến vẫn chỉ gọi khi bấm Tìm/Enter. */
+  let nutritionInstantTimer=null;
+  nutritionLookupInput?.addEventListener("input",()=>{
+    clearTimeout(nutritionInstantTimer);
+    nutritionInstantTimer=setTimeout(()=>{
+      const query=String(nutritionLookupInput.value||"").trim();
+      activeCatalogQuery=query;
+      if(!query){nutritionOnlineCache=[];renderUnifiedFoodCatalog(currentFullCatalog());return;}
+      if(query.length<2){nutritionLookupStatus.textContent="Nhập ít nhất 2 ký tự để tìm.";return;}
+      renderUnifiedFoodCatalog(filterLocalCatalog(query),query);
+      nutritionLookupStatus.textContent=`${lastCatalogItems.length} kết quả trong kho nội bộ · bấm Tìm để bổ sung nguồn trực tuyến`;
+    },180);
+  });
   const geminiApiKeyInput=document.getElementById("geminiApiKeyInput"),geminiKeyState=document.getElementById("geminiKeyState"),geminiKeyMessage=document.getElementById("geminiKeyMessage");
   const keyDialog=document.createElement("dialog");
   keyDialog.id="geminiKeyDialog";
