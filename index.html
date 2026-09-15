@@ -1226,6 +1226,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .settings-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
   .settings-cols span{padding:7px 9px;border-radius:9px;background:rgba(127,127,127,.12);color:var(--text,#17372f);font-size:.74rem;font-weight:700}
   .settings-cols b{display:inline-block;min-width:15px;color:var(--mint,#0b9f75)}
+  .forecast-empty{margin:0;padding:18px 14px;border:1px dashed var(--line,#dce5ec);border-radius:14px;color:var(--muted,#64748b);font-size:.82rem;line-height:1.5;text-align:center}
+  .profile-state{font-weight:800}
+  .profile-state.missing{color:#f3a93c}
+  .profile-state.ready{color:#0f9f75}
   .settings-help-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
   .settings-help-actions button{min-height:42px;padding:10px 12px;border:0;border-radius:10px;font-weight:800;font-size:.78rem;cursor:pointer}
   @media(max-width:420px){.settings-cols{grid-template-columns:1fr}}
@@ -2045,13 +2049,11 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
             <button id="saveSheetBtn" class="ai-key-save" type="button">Lưu &amp; tải</button>
             <button id="clearSheetBtn" class="ai-key-delete" type="button">Xóa</button>
           </div>
-          <div class="settings-grid">
-            <label for="sheetNameInput">Tên tab trong Sheet<input id="sheetNameInput" type="text" autocomplete="off" spellcheck="false" placeholder="Sheet1"></label>
-          </div>
-          <p id="sheetMessage" class="ai-key-note">Link chỉ lưu trên trình duyệt này. Mỗi người dùng Sheet của riêng mình.</p>
+          <p id="sheetMessage" class="ai-key-note">Mở đúng tab chứa dữ liệu rồi copy link trên thanh địa chỉ — web tự nhận tab đó. Link chỉ lưu trên trình duyệt này.</p>
           <details class="settings-help">
             <summary>Sheet cần chuẩn bị thế nào?</summary>
             <p><b>Bước 1 — Chia sẻ:</b> mở Sheet › Chia sẻ › Bất kỳ ai có đường liên kết › <b>Người xem</b>. Không mở quyền này thì web không đọc được.</p>
+            <p><b>Nhiều tab?</b> Mở đúng tab chứa dữ liệu rồi copy link trên thanh địa chỉ — web bám theo tab đó. Copy link từ nút Chia sẻ thì web lấy tab đầu tiên.</p>
             <p><b>Bước 2 — Sáu cột theo đúng thứ tự,</b> dòng 1 là tiêu đề:</p>
             <div class="settings-cols">
               <span><b>A</b> Ngày</span><span><b>B</b> Đồ ăn</span><span><b>C</b> Tập tạ</span>
@@ -2067,15 +2069,17 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
         <div class="settings-block">
           <h4>3 · Thông số cơ thể</h4>
-          <p class="ai-key-note">Dùng để tính TDEE, % mỡ và dự báo cân nặng. Sửa xong là số liệu tính lại ngay.</p>
+          <p class="ai-key-note">Dùng để tính TDEE, % mỡ và dự báo cân nặng. Phải điền đủ thì dashboard mới hiện số — điền xong là tính lại ngay.</p>
+          <p id="profileStateMsg" class="ai-key-note profile-state"></p>
           <div class="settings-grid two">
-            <label for="setSex">Giới tính<select id="setSex"><option value="male">Nam</option><option value="female">Nữ</option></select></label>
-            <label for="setAge">Tuổi<input id="setAge" type="number" inputmode="numeric" min="10" max="100" step="1"></label>
-            <label for="setHeight">Chiều cao (cm)<input id="setHeight" type="number" inputmode="decimal" min="120" max="220" step="1"></label>
-            <label for="setWeight">Cân nặng khởi điểm (kg)<input id="setWeight" type="number" inputmode="decimal" min="30" max="250" step="0.1"></label>
-            <label for="setStartFat">% mỡ khởi điểm<input id="setStartFat" type="number" inputmode="decimal" min="3" max="60" step="0.5"></label>
-            <label for="setTargetFat">% mỡ mục tiêu<input id="setTargetFat" type="number" inputmode="decimal" min="3" max="45" step="0.5"></label>
+            <label for="setSex">Giới tính<select id="setSex"><option value="">— chọn —</option><option value="male">Nam</option><option value="female">Nữ</option></select></label>
+            <label for="setAge">Tuổi<input id="setAge" type="number" inputmode="numeric" min="10" max="100" step="1" placeholder="vd. 34"></label>
+            <label for="setHeight">Chiều cao (cm)<input id="setHeight" type="number" inputmode="decimal" min="120" max="220" step="1" placeholder="vd. 170"></label>
+            <label for="setWeight">Cân nặng khởi điểm (kg)<input id="setWeight" type="number" inputmode="decimal" min="30" max="250" step="0.1" placeholder="vd. 72"></label>
+            <label for="setStartFat">% mỡ khởi điểm<input id="setStartFat" type="number" inputmode="decimal" min="3" max="60" step="0.5" placeholder="vd. 24"></label>
+            <label for="setTargetFat">% mỡ mục tiêu<input id="setTargetFat" type="number" inputmode="decimal" min="3" max="45" step="0.5" placeholder="vd. 14"></label>
             <label class="wide" for="setActivity">Hệ số vận động ngoài tập luyện<select id="setActivity">
+              <option value="">— chọn —</option>
               <option value="1.2">1,2 · ngồi nhiều, ít đi lại</option>
               <option value="1.375">1,375 · đi lại nhẹ trong ngày</option>
               <option value="1.55">1,55 · đứng/đi nhiều</option>

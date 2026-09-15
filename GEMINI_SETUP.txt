@@ -11,7 +11,7 @@ Sau khi upload ZIP ghi đè repo:
 3) Trong Worker > Settings > Variables and Secrets, tạo SECRET tên: GEMINI_API_KEY
    Giá trị: API key Gemini của bạn.
 4) Deploy Worker và copy URL dạng: https://....workers.dev
-5) Mở web app > Thực phẩm > bấm "Kết nối AI" > dán URL Worker > OK.
+5) Mở web app > bấm "Cài đặt" > mục 2 Gemini AI > dán API key > Lưu & kiểm tra.
 6) Bấm "Cập nhật ngay". Món lạ sẽ được gửi theo batch cho Gemini và cache lại trên thiết bị.
 
 Khuyến nghị bảo mật:

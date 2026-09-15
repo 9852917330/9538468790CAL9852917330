@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-15-v69-multi-user";
+  const APP_BUILD = "2026-09-15-v70-no-defaults";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -14,18 +14,23 @@
      web chỉ dùng được cho đúng một người. Từ V69 mọi thứ nằm trong MỘT object
      lưu ở localStorage của từng trình duyệt; mã nguồn không chứa dữ liệu cá nhân
      của ai cả. Ai mở web cũng chỉ thấy Sheet của chính họ. */
-  const SETTINGS_KEY = "inAndOutSettingsV1";
+  const SETTINGS_KEY = "inAndOutSettingsV2";
+  /* V70: không điền sẵn số nào cả. Số mặc định trông y như số thật nên người dùng
+     tưởng đã cấu hình xong, trong khi TDEE và % mỡ đang chạy trên cơ thể tưởng tượng.
+     Để trống thì sai lệch tự lộ ra ngay. */
   const DEFAULT_SETTINGS = {
     sheetId: "",
-    sheetName: "Sheet1",
-    sex: "male",
-    age: 35,
-    height: 165,
-    defaultWeight: 70,
-    startBodyFat: 25,
-    targetBodyFat: 15,
-    activityFactor: 1.2
+    sheetGid: "",
+    sex: "",
+    age: null,
+    height: null,
+    defaultWeight: null,
+    startBodyFat: null,
+    targetBodyFat: null,
+    activityFactor: null
   };
+  /* Các ô bắt buộc phải có thì mọi con số trên dashboard mới có nghĩa. */
+  const REQUIRED_PROFILE_FIELDS = ["sex","age","height","defaultWeight","startBodyFat","targetBodyFat","activityFactor"];
   const SETTINGS_NUMBER_RANGE = {
     age: [10, 100],
     height: [120, 220],
@@ -44,9 +49,22 @@
     const bare = text.match(/^[a-zA-Z0-9-_]{20,}$/);
     return bare ? text : "";
   }
+  /* Link Sheet thường kèm #gid=… — đó chính là tab đang mở. Đọc được nó thì
+     không cần bắt người dùng gõ tên tab nữa. Không có gid thì dùng tab đầu tiên. */
+  function extractSheetGid(raw = "") {
+    const m = String(raw).match(/[#&?]gid=(\d+)/);
+    return m ? m[1] : "";
+  }
   function readSettings() {
     const merged = { ...DEFAULT_SETTINGS };
     try {
+      /* Ai đã dán link ở bản V69 thì giữ lại đúng link đó, khỏi dán lần nữa.
+         Riêng thông số cơ thể của V69 là số mặc định do máy điền, không phải
+         người dùng nhập, nên cố tình KHÔNG mang sang. */
+      if (!localStorage.getItem(SETTINGS_KEY)) {
+        const legacy = JSON.parse(localStorage.getItem("inAndOutSettingsV1") || "null");
+        if (legacy && legacy.sheetId) merged.sheetId = String(legacy.sheetId);
+      }
       const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
       if (stored && typeof stored === "object") {
         for (const key of Object.keys(DEFAULT_SETTINGS)) {
@@ -60,10 +78,18 @@
       }
     } catch (_) {}
     merged.sheetId = extractSheetId(merged.sheetId) || "";
-    merged.sheetName = String(merged.sheetName || "Sheet1").trim() || "Sheet1";
-    merged.sex = merged.sex === "female" ? "female" : "male";
-    if (merged.targetBodyFat >= merged.startBodyFat) merged.startBodyFat = merged.targetBodyFat + 1;
+    merged.sheetGid = String(merged.sheetGid || "").replace(/\D/g, "");
+    merged.sex = merged.sex === "female" ? "female" : merged.sex === "male" ? "male" : "";
+    if (Number.isFinite(merged.targetBodyFat) && Number.isFinite(merged.startBodyFat)
+        && merged.targetBodyFat >= merged.startBodyFat) merged.startBodyFat = merged.targetBodyFat + 1;
     return merged;
+  }
+  function profileReady() {
+    return REQUIRED_PROFILE_FIELDS.every((key) => {
+      const value = SETTINGS[key];
+      if (key === "sex") return value === "male" || value === "female";
+      return Number.isFinite(Number(value)) && Number(value) > 0;
+    });
   }
   function clampRange(value, key) {
     const [min, max] = SETTINGS_NUMBER_RANGE[key] || [];
@@ -79,31 +105,29 @@
   }
   let SETTINGS = readSettings();
   const sheetId = () => SETTINGS.sheetId;
-  const sheetName = () => SETTINGS.sheetName;
+  const sheetGid = () => SETTINGS.sheetGid;
+  /* Chỉ định tab bằng gid nếu link có; không có thì để Google tự lấy tab đầu tiên. */
+  let forceFirstTab = false;
+  const sheetTabParam = () => (!forceFirstTab && sheetGid() ? `gid=${encodeURIComponent(sheetGid())}&` : "");
   const sheetUrl = () => (sheetId() ? `https://docs.google.com/spreadsheets/d/${sheetId()}/edit` : "");
   const hasSheet = () => !!sheetId();
   /* Mỗi Sheet có kho cache riêng: đổi sang Sheet khác không được hiện lại số của Sheet cũ. */
   const cacheKey = () => `inAndOutSheetCacheV2::${sheetId() || "none"}`;
   const snapshotKey = () => `inAndOutOverviewSnapshotV1::${sheetId() || "none"}`;
   const PROFILE = {
-    sex: "male",
-    age: 35,
-    height: 165,
-    defaultWeight: 70,
-    startBodyFat: 25,
-    targetBodyFat: 15,
-    activityFactor: 1.2,
+    sex: "male", age: 35, height: 165, defaultWeight: 70,
+    startBodyFat: 25, targetBodyFat: 15, activityFactor: 1.2,
     strengthMet: 5,
     refreshSeconds: 60,
   };
+  /* PROFILE chỉ được nạp số thật của người dùng. Khi chưa nhập đủ, dashboard
+     không hiển thị số nào cả nên các giá trị còn lại ở đây không bao giờ lộ ra. */
   function applySettingsToProfile() {
-    PROFILE.sex = SETTINGS.sex;
-    PROFILE.age = SETTINGS.age;
-    PROFILE.height = SETTINGS.height;
-    PROFILE.defaultWeight = SETTINGS.defaultWeight;
-    PROFILE.startBodyFat = SETTINGS.startBodyFat;
-    PROFILE.targetBodyFat = SETTINGS.targetBodyFat;
-    PROFILE.activityFactor = SETTINGS.activityFactor;
+    for (const key of REQUIRED_PROFILE_FIELDS) {
+      const value = SETTINGS[key];
+      if (key === "sex") { if (value) PROFILE.sex = value; continue; }
+      if (Number.isFinite(Number(value)) && Number(value) > 0) PROFILE[key] = Number(value);
+    }
   }
   applySettingsToProfile();
   const VI_TIME_ZONE = "Asia/Ho_Chi_Minh";
@@ -7917,7 +7941,34 @@
     setText("forecastTargetLabel", `Ước lượng số ngày đạt ${fmt(PROFILE.targetBodyFat, 0)}% mỡ`);
     setText("bodyFatTargetLegend", `Mục tiêu ${fmt(PROFILE.targetBodyFat, 0)}%`);
   }
+  /* V70: chưa nhập đủ thông số cơ thể thì KHÔNG vẽ số nào lên dashboard.
+     Vẽ bằng số mặc định còn tệ hơn để trống: người dùng tưởng đó là số của mình. */
+  const PROFILE_GATED_IDS = [
+    "latestStatus","targetBurnKcal","targetBurnSub","targetBurnWeight","targetBurnFatKg",
+    "targetBurnWalkTime","targetBurnWalkSub","targetBurnRate",
+    "kpiWeight","kpiBodyFat","kpiWaist","kpiTdee","progressPercent",
+    "calorieJarValue","calorieJarSub","progressRangeLabel","forecastTargetLabel"
+  ];
+  function renderProfileMissing() {
+    computedDays = [];
+    PROFILE_GATED_IDS.forEach((id) => setText(id, "—"));
+    setText("latestDate", "Chưa nhập thông số cơ thể");
+    setText("progressRangeLabel", "Chưa có mục tiêu mỡ");
+    setText("forecastTargetLabel", "Chưa nhập thông số cơ thể");
+    setText("calorieJarValue", "—");
+    const fill = document.getElementById("fatProgressFill");
+    if (fill) fill.style.width = "0%";
+    const targetDates = document.getElementById("targetDates");
+    if (targetDates) targetDates.innerHTML = `<p class="forecast-empty">Điền thông số cơ thể trong Cài đặt để tính TDEE và dự báo.</p>`;
+    ["historyList","yearCalendar"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<p class="forecast-empty">Điền thông số cơ thể trong Cài đặt để xem phần này.</p>`;
+    });
+    showBanner("Chưa nhập thông số cơ thể. Bấm Cài đặt › mục 3 để điền giới tính, tuổi, chiều cao, cân nặng và % mỡ — TDEE và % mỡ không tính được nếu thiếu.");
+    headerKeyBtn?.classList.add("needs-setup");
+  }
   function render() {
+    if (!profileReady()) { renderProfileMissing(); return; }
     const today = getVietnamToday(),
       eligibleRows = rowsThroughToday(rawRows);
     computedDays = compute(eligibleRows);
@@ -8657,7 +8708,7 @@
     return rows;
   }
   async function loadCsvRows() {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?sheet=${encodeURIComponent(sheetName())}&range=A:F&headers=1&tqx=out:csv&_=${Date.now()}`;
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?${sheetTabParam()}range=A:F&headers=1&tqx=out:csv&_=${Date.now()}`;
     const res = await fetch(csvUrl, { cache: "no-store", signal: AbortSignal.timeout(12000) });
     if (!res.ok) throw new Error(`CSV ${res.status}`);
     const rows = csvToRows(await res.text());
@@ -8688,7 +8739,7 @@
       }, 15000);
       const script = document.createElement("script");
       script.id = "gvizLoader";
-      script.src = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?sheet=${encodeURIComponent(sheetName())}&range=A:F&headers=1&tqx=${encodeURIComponent(`out:json;responseHandler:${cb}`)}&_=${Date.now()}`;
+      script.src = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?${sheetTabParam()}range=A:F&headers=1&tqx=${encodeURIComponent(`out:json;responseHandler:${cb}`)}&_=${Date.now()}`;
       script.onerror = () => {
         if (done) return;
         done = true;
@@ -8711,6 +8762,7 @@
     }
   }
   function writeOverviewSnapshot() {
+    if (!profileReady()) return;
     try {
       const ids = [
         "latestDate", "latestStatus",
@@ -8744,6 +8796,7 @@
   }
 
   function hydrateOverviewSnapshot() {
+    if (!profileReady()) return false;
     try {
       const snap = JSON.parse(localStorage.getItem(snapshotKey()) || "null");
       if (!snap || snap.version !== 1 || !snap.text) return false;
@@ -8781,10 +8834,25 @@
     if (!hasSheet()) throw new Error("NO_SHEET");
     setSync("loading", rawRows.length ? "Đang cập nhật · giữ dữ liệu hiện tại" : "Đang cập nhật Sheet…");
     hideBanner();
+    forceFirstTab = false;
     try {
       return await loadCsvRows();
     } catch (csvErr) {
-      return await loadGvizRows();
+      try {
+        return await loadGvizRows();
+      } catch (gvizErr) {
+        /* gid đã lưu có thể trỏ tới tab đã bị xóa hoặc đổi. Thử lại với tab đầu tiên
+           trước khi kết luận là không đọc được. */
+        if (!sheetGid()) throw gvizErr;
+        forceFirstTab = true;
+        try {
+          return await loadCsvRows();
+        } catch (_) {
+          return await loadGvizRows();
+        } finally {
+          forceFirstTab = false;
+        }
+      }
     }
   }
   let refreshBusy = false, lastSheetError = "";
@@ -10117,7 +10185,7 @@
      link Google Sheet, Gemini API key và thông số cơ thể.
      Thông số cơ thể áp dụng NGAY khi sửa xong ô — không có nút "Tính lại". */
   const settingsPanel=document.getElementById("settingsPanel");
-  const sheetLinkInput=document.getElementById("sheetLinkInput"),sheetNameInput=document.getElementById("sheetNameInput");
+  const sheetLinkInput=document.getElementById("sheetLinkInput");
   const sheetMessage=document.getElementById("sheetMessage"),settingsSheetState=document.getElementById("settingsSheetState");
   const PROFILE_FIELDS=[
     ["setSex","sex","text"],["setAge","age","number"],["setHeight","height","number"],
@@ -10126,20 +10194,36 @@
   ];
   function fillSettingsForm(){
     if(sheetLinkInput) sheetLinkInput.value=sheetUrl();
-    if(sheetNameInput) sheetNameInput.value=sheetName();
     for(const [id,key] of PROFILE_FIELDS){
       const el=document.getElementById(id);
-      if(el) el.value=String(SETTINGS[key]);
+      /* Chưa nhập thì để trống hẳn — không mồi sẵn số nào. */
+      if(el) el.value=SETTINGS[key]===null||SETTINGS[key]===undefined||SETTINGS[key]===""?"":String(SETTINGS[key]);
     }
     renderSheetState();
+    renderProfileState();
   }
   function renderSheetState(message=""){
     if(settingsSheetState){
       settingsSheetState.textContent=hasSheet()?"Sheet đã kết nối ✓":"Chưa kết nối Sheet";
       settingsSheetState.classList.toggle("connected",hasSheet());
     }
-    headerKeyBtn?.classList.toggle("needs-setup",!hasSheet());
+    headerKeyBtn?.classList.toggle("needs-setup",!hasSheet()||!profileReady());
     if(message&&sheetMessage) sheetMessage.textContent=message;
+  }
+  const VI_PROFILE_LABEL={sex:"giới tính",age:"tuổi",height:"chiều cao",defaultWeight:"cân nặng khởi điểm",startBodyFat:"% mỡ khởi điểm",targetBodyFat:"% mỡ mục tiêu",activityFactor:"hệ số vận động"};
+  function renderProfileState(){
+    const box=document.getElementById("profileStateMsg");
+    if(!box) return;
+    const missing=REQUIRED_PROFILE_FIELDS.filter((key)=>{
+      const value=SETTINGS[key];
+      if(key==="sex") return !(value==="male"||value==="female");
+      return !(Number.isFinite(Number(value))&&Number(value)>0);
+    });
+    box.classList.toggle("missing",missing.length>0);
+    box.classList.toggle("ready",missing.length===0);
+    box.textContent=missing.length
+      ? `Còn thiếu: ${missing.map((key)=>VI_PROFILE_LABEL[key]).join(", ")}.`
+      : "Đã đủ thông số — dashboard đang tính theo số của bạn.";
   }
   function openSettingsDialog(){
     fillSettingsForm();
@@ -10149,12 +10233,12 @@
   document.getElementById("saveSheetBtn")?.addEventListener("click",async()=>{
     const id=extractSheetId(sheetLinkInput?.value||"");
     if(!id){renderSheetState("Link chưa đúng. Dán nguyên đường link Google Sheet (có /spreadsheets/d/…) hoặc dán riêng phần ID.");return;}
-    const tab=String(sheetNameInput?.value||"").trim()||"Sheet1";
-    const changedSheet=id!==sheetId()||tab!==sheetName();
+    const gid=extractSheetGid(sheetLinkInput?.value||"");
+    const changedSheet=id!==sheetId()||gid!==sheetGid();
     const button=document.getElementById("saveSheetBtn");
     button.disabled=true;
     renderSheetState("Đang thử đọc Sheet…");
-    writeSettings({sheetId:id,sheetName:tab});
+    writeSettings({sheetId:id,sheetGid:gid});
     if(changedSheet){
       /* Đổi Sheet thì phải quên sạch dữ liệu của Sheet cũ, nếu không dashboard sẽ
          trộn số của hai người. */
@@ -10163,9 +10247,10 @@
     }
     try{
       const ok=await refreshData();
-      if(ok&&rawRows.length) renderSheetState(`Đã đọc ${rawRows.length} dòng từ Sheet.`);
-      else if(ok) renderSheetState("Đọc được Sheet nhưng chưa thấy dòng ngày hợp lệ ở cột A — kiểm tra lại định dạng ngày và tên tab.");
-      else renderSheetState(`Chưa đọc được Sheet. Kiểm tra: (1) đã Chia sẻ › Bất kỳ ai có đường liên kết › Người xem chưa, (2) tên tab có đúng "${tab}" không. ${lastSheetError}`.trim());
+      const tabNote=gid?"đúng tab đang mở trong link":"tab đầu tiên của Sheet";
+      if(ok&&rawRows.length) renderSheetState(`Đã đọc ${rawRows.length} dòng (${tabNote}).`);
+      else if(ok) renderSheetState(`Đọc được Sheet (${tabNote}) nhưng cột A chưa có ngày hợp lệ. Nếu dữ liệu nằm ở tab khác, mở đúng tab đó rồi copy lại link trên thanh địa chỉ.`);
+      else renderSheetState(`Chưa đọc được Sheet. Kiểm tra đã Chia sẻ › Bất kỳ ai có đường liên kết › Người xem chưa. ${lastSheetError}`.trim());
     }finally{
       button.disabled=false;
       fillSettingsForm();
@@ -10214,6 +10299,9 @@
     writeSettings(next);
     try{localStorage.removeItem(snapshotKey());}catch(_){}
     render();
+    renderProfileState();
+    headerKeyBtn?.classList.toggle("needs-setup",!hasSheet()||!profileReady());
+    if(profileReady()) hideBanner();
   }
   PROFILE_FIELDS.forEach(([id])=>{
     const el=document.getElementById(id);

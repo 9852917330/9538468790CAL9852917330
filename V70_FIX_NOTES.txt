@@ -1,0 +1,52 @@
+V70 — BỎ Ô TÊN TAB, BỎ THÔNG SỐ MẶC ĐỊNH
+15/09/2026 · build 2026-09-15-v70-no-defaults
+
+════════════════════════════════════════════════════════════════
+1. BỎ Ô "TÊN TAB TRONG SHEET"
+════════════════════════════════════════════════════════════════
+Bắt gõ tên tab là thừa, vì chính đường link đã nói tab nào rồi.
+
+  https://docs.google.com/spreadsheets/d/<ID>/edit#gid=1234567890
+                                                      ^^^^^^^^^^
+  gid chính là tab đang mở.
+
+Từ V70, khi lưu link web đọc luôn cả ID lẫn gid:
+  · Link có gid  → đọc đúng tab đó, dù nó tên gì, tiếng Việt có dấu cũng được
+  · Link không có gid (link lấy từ nút Chia sẻ) → đọc tab ĐẦU TIÊN của Sheet
+  · gid trỏ tới tab đã bị xóa → tự thử lại với tab đầu tiên trước khi báo lỗi
+
+Vậy người dùng chỉ cần: mở đúng tab chứa dữ liệu, copy link trên thanh địa chỉ.
+Không còn phải gõ đúng từng chữ "Calories In and Out".
+
+════════════════════════════════════════════════════════════════
+2. BỎ THÔNG SỐ CƠ THỂ MẶC ĐỊNH
+════════════════════════════════════════════════════════════════
+Bản V69 điền sẵn 165 cm · 70 kg · 25% → 15% · Nam · 35 tuổi · hệ số 1,2.
+Đó là số bịa, nhưng nhìn y hệt số thật — người dùng mở lên thấy ô đã có số thì
+tưởng cấu hình xong rồi, trong khi TDEE và % mỡ đang chạy trên một cơ thể không
+tồn tại. Sai kiểu đó nguy hiểm hơn là để trống, vì không có dấu hiệu nào để nhận ra.
+
+Từ V70:
+  · Bảy ô để TRỐNG hoàn toàn, chỉ có gợi ý mờ (vd. 170) và "— chọn —"
+  · Dòng cam ngay dưới liệt kê đúng những ô còn thiếu, cập nhật theo từng ô điền
+  · Chưa đủ bảy ô thì dashboard KHÔNG hiện số nào: tất cả là "—", kèm câu
+    "Chưa nhập thông số cơ thể", Lịch sử và Lịch năm cũng nhắc điền
+  · Điền đủ ô cuối cùng là số hiện ra ngay, không cần bấm gì thêm
+  · Ảnh chụp nhanh dashboard (snapshot mở app tức thì) không ghi và không khôi phục
+    khi chưa đủ thông số — nếu không, lần mở sau sẽ lại thấy số cũ tính sai
+
+Bảy ô bắt buộc: giới tính · tuổi · chiều cao · cân nặng khởi điểm ·
+                % mỡ khởi điểm · % mỡ mục tiêu · hệ số vận động
+
+════════════════════════════════════════════════════════════════
+3. CHUYỂN TỪ V69 SANG
+════════════════════════════════════════════════════════════════
+Khóa cấu hình đổi sang "inAndOutSettingsV2".
+  · Link Sheet đã dán ở V69 được mang sang, KHÔNG phải dán lại
+  · Thông số cơ thể của V69 cố tình không mang sang, vì đó là số máy tự điền
+    chứ không phải số người dùng nhập. Mở Cài đặt › mục 3 điền một lần.
+
+4. KIỂM TRA
+  node test-food-v68.js → 63/63 đạt
+  Trình duyệt thật: lần đầu trắng trơn, điền từng ô một, đủ ô cuối thì số hiện ra,
+  link có gid, link không gid, đổi sang gid khác, giữ link cũ từ V69.
