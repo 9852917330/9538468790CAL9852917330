@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-13-v68-nutrition-core";
+  const APP_BUILD = "2026-09-15-v69-multi-user";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -9,22 +9,103 @@
       /* Service Worker V62 is registered by the tiny bootstrap before app.js loads. */
     }
   } catch (_) {}
-  const SHEET_ID = "1oiraviDfjkyPk3cC9On76bvCyUloNI9UVFalCeI0ZQg",
-    SHEET_NAME = "Sheet1",
-    SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
-  const CACHE_KEY = "inAndOutSheetCacheV2";
-  const OVERVIEW_SNAPSHOT_KEY = "inAndOutOverviewSnapshotV1";
+  /* =================== V69 · CẤU HÌNH NGƯỜI DÙNG ===================
+     Trước V69, Sheet ID và toàn bộ thông số cơ thể nằm cứng trong mã nguồn, nên
+     web chỉ dùng được cho đúng một người. Từ V69 mọi thứ nằm trong MỘT object
+     lưu ở localStorage của từng trình duyệt; mã nguồn không chứa dữ liệu cá nhân
+     của ai cả. Ai mở web cũng chỉ thấy Sheet của chính họ. */
+  const SETTINGS_KEY = "inAndOutSettingsV1";
+  const DEFAULT_SETTINGS = {
+    sheetId: "",
+    sheetName: "Sheet1",
+    sex: "male",
+    age: 35,
+    height: 165,
+    defaultWeight: 70,
+    startBodyFat: 25,
+    targetBodyFat: 15,
+    activityFactor: 1.2
+  };
+  const SETTINGS_NUMBER_RANGE = {
+    age: [10, 100],
+    height: [120, 220],
+    defaultWeight: [30, 250],
+    startBodyFat: [3, 60],
+    targetBodyFat: [3, 45],
+    activityFactor: [1, 2.2]
+  };
+  /* Người dùng có thể dán nguyên đường link Sheet, dán ID, hoặc dán link có /edit#gid=…
+     Tất cả đều phải ra cùng một ID. */
+  function extractSheetId(raw = "") {
+    const text = String(raw).trim();
+    if (!text) return "";
+    const fromUrl = text.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]{20,})/);
+    if (fromUrl) return fromUrl[1];
+    const bare = text.match(/^[a-zA-Z0-9-_]{20,}$/);
+    return bare ? text : "";
+  }
+  function readSettings() {
+    const merged = { ...DEFAULT_SETTINGS };
+    try {
+      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
+      if (stored && typeof stored === "object") {
+        for (const key of Object.keys(DEFAULT_SETTINGS)) {
+          const value = stored[key];
+          if (value === undefined || value === null || value === "") continue;
+          if (SETTINGS_NUMBER_RANGE[key]) {
+            const n = Number(value);
+            if (Number.isFinite(n)) merged[key] = clampRange(n, key);
+          } else merged[key] = String(value);
+        }
+      }
+    } catch (_) {}
+    merged.sheetId = extractSheetId(merged.sheetId) || "";
+    merged.sheetName = String(merged.sheetName || "Sheet1").trim() || "Sheet1";
+    merged.sex = merged.sex === "female" ? "female" : "male";
+    if (merged.targetBodyFat >= merged.startBodyFat) merged.startBodyFat = merged.targetBodyFat + 1;
+    return merged;
+  }
+  function clampRange(value, key) {
+    const [min, max] = SETTINGS_NUMBER_RANGE[key] || [];
+    if (!Number.isFinite(min)) return value;
+    return Math.max(min, Math.min(max, value));
+  }
+  function writeSettings(next) {
+    const merged = { ...SETTINGS, ...next };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+    SETTINGS = readSettings();
+    applySettingsToProfile();
+    return SETTINGS;
+  }
+  let SETTINGS = readSettings();
+  const sheetId = () => SETTINGS.sheetId;
+  const sheetName = () => SETTINGS.sheetName;
+  const sheetUrl = () => (sheetId() ? `https://docs.google.com/spreadsheets/d/${sheetId()}/edit` : "");
+  const hasSheet = () => !!sheetId();
+  /* Mỗi Sheet có kho cache riêng: đổi sang Sheet khác không được hiện lại số của Sheet cũ. */
+  const cacheKey = () => `inAndOutSheetCacheV2::${sheetId() || "none"}`;
+  const snapshotKey = () => `inAndOutOverviewSnapshotV1::${sheetId() || "none"}`;
   const PROFILE = {
     sex: "male",
     age: 35,
-    height: 160,
+    height: 165,
     defaultWeight: 70,
-    startBodyFat: 28,
-    targetBodyFat: 12,
+    startBodyFat: 25,
+    targetBodyFat: 15,
     activityFactor: 1.2,
     strengthMet: 5,
     refreshSeconds: 60,
   };
+  function applySettingsToProfile() {
+    PROFILE.sex = SETTINGS.sex;
+    PROFILE.age = SETTINGS.age;
+    PROFILE.height = SETTINGS.height;
+    PROFILE.defaultWeight = SETTINGS.defaultWeight;
+    PROFILE.startBodyFat = SETTINGS.startBodyFat;
+    PROFILE.targetBodyFat = SETTINGS.targetBodyFat;
+    PROFILE.activityFactor = SETTINGS.activityFactor;
+  }
+  applySettingsToProfile();
   const VI_TIME_ZONE = "Asia/Ho_Chi_Minh";
   const SAMPLE_ROWS = [];
   let rawRows = [],
@@ -7828,6 +7909,14 @@
       };
     });
   }
+  /* V69: mọi nhãn nhắc tới mốc % mỡ đều phải đi theo thông số người dùng nhập,
+     nếu không người khác sẽ thấy "28% → 12%" của chủ cũ. */
+  function renderProfileLabels(currentBf) {
+    const start = Number.isFinite(currentBf) ? currentBf : PROFILE.startBodyFat;
+    setText("progressRangeLabel", `Tiến độ ${fmt(start, 0)}% → ${fmt(PROFILE.targetBodyFat, 0)}% mỡ`);
+    setText("forecastTargetLabel", `Ước lượng số ngày đạt ${fmt(PROFILE.targetBodyFat, 0)}% mỡ`);
+    setText("bodyFatTargetLegend", `Mục tiêu ${fmt(PROFILE.targetBodyFat, 0)}%`);
+  }
   function render() {
     const today = getVietnamToday(),
       eligibleRows = rowsThroughToday(rawRows);
@@ -7848,6 +7937,7 @@
         computedDays.find((d) => d.measuredWeight !== null)?.measuredWeight ??
         startWeight,
       initialWaist = computedDays.find((d) => d.waist !== null)?.waist ?? null;
+    renderProfileLabels(PROFILE.startBodyFat);
     setText(
       "latestDate",
       latest
@@ -8120,7 +8210,7 @@
       if (sign === "deficit" && projection.state === "projected") {
         foot = `Nếu giữ nhịp này: ${fmt(projection.days)} ngày · ${formatDateVi(projection.date)}`;
       } else if (sign === "deficit") {
-        foot = "Thâm hụt hiện tại chưa đủ để chạm mốc 12% mỡ.";
+        foot = `Thâm hụt hiện tại chưa đủ để chạm mốc ${fmt(PROFILE.targetBodyFat, 0)}% mỡ.`;
       } else if (sign === "surplus") {
         foot = "Giữ nhịp này sẽ xa mục tiêu hơn.";
       } else {
@@ -8567,7 +8657,7 @@
     return rows;
   }
   async function loadCsvRows() {
-    const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&range=A:F&headers=1&tqx=out:csv&_=${Date.now()}`;
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?sheet=${encodeURIComponent(sheetName())}&range=A:F&headers=1&tqx=out:csv&_=${Date.now()}`;
     const res = await fetch(csvUrl, { cache: "no-store", signal: AbortSignal.timeout(12000) });
     if (!res.ok) throw new Error(`CSV ${res.status}`);
     const rows = csvToRows(await res.text());
@@ -8598,7 +8688,7 @@
       }, 15000);
       const script = document.createElement("script");
       script.id = "gvizLoader";
-      script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}&range=A:F&headers=1&tqx=${encodeURIComponent(`out:json;responseHandler:${cb}`)}&_=${Date.now()}`;
+      script.src = `https://docs.google.com/spreadsheets/d/${sheetId()}/gviz/tq?sheet=${encodeURIComponent(sheetName())}&range=A:F&headers=1&tqx=${encodeURIComponent(`out:json;responseHandler:${cb}`)}&_=${Date.now()}`;
       script.onerror = () => {
         if (done) return;
         done = true;
@@ -8611,7 +8701,7 @@
   }
   function readSheetCache() {
     try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      const cached = JSON.parse(localStorage.getItem(cacheKey()) || "null");
       if (!cached || cached.version !== 1 || !Array.isArray(cached.rows) || !cached.rows.length) return null;
       const rows = cached.rows.filter((row) => row && typeof row.date === "string");
       if (!rows.length) return null;
@@ -8639,7 +8729,7 @@
       const track = document.getElementById("fatProgressTrack");
       const targetDates = document.getElementById("targetDates");
       localStorage.setItem(
-        OVERVIEW_SNAPSHOT_KEY,
+        snapshotKey(),
         JSON.stringify({
           version: 1,
           savedAt: new Date().toISOString(),
@@ -8655,7 +8745,7 @@
 
   function hydrateOverviewSnapshot() {
     try {
-      const snap = JSON.parse(localStorage.getItem(OVERVIEW_SNAPSHOT_KEY) || "null");
+      const snap = JSON.parse(localStorage.getItem(snapshotKey()) || "null");
       if (!snap || snap.version !== 1 || !snap.text) return false;
       Object.entries(snap.text).forEach(([id, value]) => setText(id, value));
       const targetDates = document.getElementById("targetDates");
@@ -8675,7 +8765,7 @@
   function writeSheetCache(rows) {
     try {
       localStorage.setItem(
-        CACHE_KEY,
+        cacheKey(),
         JSON.stringify({ version: 1, savedAt: new Date().toISOString(), rows }),
       );
     } catch (_) {}
@@ -8688,6 +8778,7 @@
     return true;
   }
   async function loadSheet() {
+    if (!hasSheet()) throw new Error("NO_SHEET");
     setSync("loading", rawRows.length ? "Đang cập nhật · giữ dữ liệu hiện tại" : "Đang cập nhật Sheet…");
     hideBanner();
     try {
@@ -8696,7 +8787,7 @@
       return await loadGvizRows();
     }
   }
-  let refreshBusy = false;
+  let refreshBusy = false, lastSheetError = "";
   async function prepareFoodRowsV66(rows){
     let sliceStart=performance.now();
     for(const text of new Set(rows.map(row=>String(row.food??"")))){
@@ -8741,9 +8832,21 @@
       const runLookup = () => resolveUnknownFoods(rows);
       if ("requestIdleCallback" in window) requestIdleCallback(runLookup, { timeout: 1200 });
       else setTimeout(runLookup, 50);
+      lastSheetError = "";
+      return true;
     } catch (err) {
+      lastSheetError = err && err.message ? err.message : "Không đọc được Sheet.";
       const hasFallback = rawRows.length > 0;
       render();
+      /* V69: chưa dán link Sheet KHÔNG phải lỗi — đó là trạng thái chưa cài đặt.
+         Báo đỏ "không tải được" ở đây chỉ làm người mới hoảng. */
+      if (err && err.message === "NO_SHEET") {
+        setSync("loading", "Chưa kết nối Google Sheet");
+        setLookupText("Bấm Cài đặt để dán link Google Sheet của bạn");
+        showBanner("Chưa kết nối Google Sheet. Bấm nút Cài đặt ở góc trên để dán link Sheet của bạn — dữ liệu chỉ lưu trên trình duyệt này.");
+        setText("lastSync", "Chưa kết nối Sheet");
+        return false;
+      }
       setSync(
         "error",
         hasFallback ? "Chưa cập nhật được · đang dùng dữ liệu lần trước" : "Chưa đọc được dữ liệu Sheet",
@@ -8759,6 +8862,7 @@
           : `${err.message} Chưa có dữ liệu đã lưu trên thiết bị này.`,
       );
       setText("lastSync", hasFallback ? "Đang dùng dữ liệu lần trước" : "Chưa đồng bộ trực tiếp");
+      return false;
     } finally {
       refreshBusy = false;
       refreshButtons.forEach((button) => {
@@ -9991,27 +10095,142 @@
   keyDialog.id="geminiKeyDialog";
   keyDialog.setAttribute("aria-labelledby","aiKeyTitle");
   const keyPanel=document.querySelector(".ai-key-panel");
-  if(keyPanel){keyDialog.appendChild(keyPanel);document.body.appendChild(keyDialog);}
+  const settingsPanelNode=document.getElementById("settingsPanel");
+  /* Khối Gemini nằm GIỮA khối Sheet và khối thông số cơ thể, đúng thứ tự 1-2-3. */
+  if(settingsPanelNode&&keyPanel) settingsPanelNode.querySelector(".settings-block:last-of-type")?.before(keyPanel);
+  if(settingsPanelNode){keyDialog.appendChild(settingsPanelNode);document.body.appendChild(keyDialog);}
+  else if(keyPanel){keyDialog.appendChild(keyPanel);document.body.appendChild(keyDialog);}
   const closeKeyDialog=document.createElement("button");
   closeKeyDialog.type="button";closeKeyDialog.className="ai-key-delete";closeKeyDialog.textContent="Đóng";
-  closeKeyDialog.addEventListener("click",()=>keyDialog.close());keyPanel?.appendChild(closeKeyDialog);
+  closeKeyDialog.addEventListener("click",()=>keyDialog.close());(settingsPanelNode||keyPanel)?.appendChild(closeKeyDialog);
   const headerKeyBtn=document.createElement("button");
-  headerKeyBtn.id="headerApiKeyBtn";headerKeyBtn.type="button";headerKeyBtn.className="header-api-key-btn";headerKeyBtn.textContent="API key";
+  headerKeyBtn.id="headerApiKeyBtn";headerKeyBtn.type="button";headerKeyBtn.className="header-api-key-btn";headerKeyBtn.textContent="Cài đặt";
   headerKeyBtn.setAttribute("aria-haspopup","dialog");
-  headerKeyBtn.addEventListener("click",()=>{keyDialog.showModal();geminiApiKeyInput?.focus();});
+  headerKeyBtn.addEventListener("click",()=>openSettingsDialog());
   document.getElementById("stickyRefreshBtn")?.before(headerKeyBtn);
   keyDialog.addEventListener("click",event=>{if(event.target===keyDialog){const r=keyDialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)keyDialog.close();}});
   function renderGeminiKeyState(message=""){const connected=!!getGeminiApiKey();if(geminiKeyState){geminiKeyState.textContent=connected?"Gemini đã kết nối ✓":"Chưa kết nối";geminiKeyState.classList.toggle("connected",connected);}if(geminiApiKeyInput)geminiApiKeyInput.value="";if(message&&geminiKeyMessage)geminiKeyMessage.textContent=message;}
   document.getElementById("saveGeminiKeyBtn")?.addEventListener("click",async()=>{const key=String(geminiApiKeyInput?.value||"").trim();if(!key){if(geminiKeyMessage)geminiKeyMessage.textContent="Hãy dán API key Gemini trước.";return;}const btn=document.getElementById("saveGeminiKeyBtn");btn.disabled=true;if(geminiKeyMessage)geminiKeyMessage.textContent="Đang kiểm tra kết nối Gemini…";try{await callGeminiFoodParser(["1 quả trứng gà"],key);localStorage.setItem(GEMINI_API_KEY_STORAGE,key);renderGeminiKeyState("Đã lưu key trên trình duyệt này. Món lạ sẽ được Gemini nhận diện khi cập nhật Sheet.");if(rawRows.length)await resolveUnknownFoods(rawRows);}catch(error){if(geminiKeyMessage)geminiKeyMessage.textContent=error.message||"Không kết nối được Gemini.";}finally{btn.disabled=false;}});
   document.getElementById("deleteGeminiKeyBtn")?.addEventListener("click",()=>{try{localStorage.removeItem(GEMINI_API_KEY_STORAGE);}catch(_){}renderGeminiKeyState("Đã xóa API key khỏi trình duyệt này.");});
+  /* =================== V69 · BẢNG CÀI ĐẶT ===================
+     Một hộp thoại duy nhất chứa cả ba thứ người dùng cần tự nhập:
+     link Google Sheet, Gemini API key và thông số cơ thể.
+     Thông số cơ thể áp dụng NGAY khi sửa xong ô — không có nút "Tính lại". */
+  const settingsPanel=document.getElementById("settingsPanel");
+  const sheetLinkInput=document.getElementById("sheetLinkInput"),sheetNameInput=document.getElementById("sheetNameInput");
+  const sheetMessage=document.getElementById("sheetMessage"),settingsSheetState=document.getElementById("settingsSheetState");
+  const PROFILE_FIELDS=[
+    ["setSex","sex","text"],["setAge","age","number"],["setHeight","height","number"],
+    ["setWeight","defaultWeight","number"],["setStartFat","startBodyFat","number"],
+    ["setTargetFat","targetBodyFat","number"],["setActivity","activityFactor","number"]
+  ];
+  function fillSettingsForm(){
+    if(sheetLinkInput) sheetLinkInput.value=sheetUrl();
+    if(sheetNameInput) sheetNameInput.value=sheetName();
+    for(const [id,key] of PROFILE_FIELDS){
+      const el=document.getElementById(id);
+      if(el) el.value=String(SETTINGS[key]);
+    }
+    renderSheetState();
+  }
+  function renderSheetState(message=""){
+    if(settingsSheetState){
+      settingsSheetState.textContent=hasSheet()?"Sheet đã kết nối ✓":"Chưa kết nối Sheet";
+      settingsSheetState.classList.toggle("connected",hasSheet());
+    }
+    headerKeyBtn?.classList.toggle("needs-setup",!hasSheet());
+    if(message&&sheetMessage) sheetMessage.textContent=message;
+  }
+  function openSettingsDialog(){
+    fillSettingsForm();
+    keyDialog.showModal();
+    (hasSheet()?document.getElementById("setSex"):sheetLinkInput)?.focus();
+  }
+  document.getElementById("saveSheetBtn")?.addEventListener("click",async()=>{
+    const id=extractSheetId(sheetLinkInput?.value||"");
+    if(!id){renderSheetState("Link chưa đúng. Dán nguyên đường link Google Sheet (có /spreadsheets/d/…) hoặc dán riêng phần ID.");return;}
+    const tab=String(sheetNameInput?.value||"").trim()||"Sheet1";
+    const changedSheet=id!==sheetId()||tab!==sheetName();
+    const button=document.getElementById("saveSheetBtn");
+    button.disabled=true;
+    renderSheetState("Đang thử đọc Sheet…");
+    writeSettings({sheetId:id,sheetName:tab});
+    if(changedSheet){
+      /* Đổi Sheet thì phải quên sạch dữ liệu của Sheet cũ, nếu không dashboard sẽ
+         trộn số của hai người. */
+      rawRows=[];computedDays=[];
+      invalidateFoodIndex();
+    }
+    try{
+      const ok=await refreshData();
+      if(ok&&rawRows.length) renderSheetState(`Đã đọc ${rawRows.length} dòng từ Sheet.`);
+      else if(ok) renderSheetState("Đọc được Sheet nhưng chưa thấy dòng ngày hợp lệ ở cột A — kiểm tra lại định dạng ngày và tên tab.");
+      else renderSheetState(`Chưa đọc được Sheet. Kiểm tra: (1) đã Chia sẻ › Bất kỳ ai có đường liên kết › Người xem chưa, (2) tên tab có đúng "${tab}" không. ${lastSheetError}`.trim());
+    }finally{
+      button.disabled=false;
+      fillSettingsForm();
+    }
+  });
+  document.getElementById("clearSheetBtn")?.addEventListener("click",()=>{
+    try{localStorage.removeItem(cacheKey());localStorage.removeItem(snapshotKey());}catch(_){}
+    writeSettings({sheetId:""});
+    rawRows=[];computedDays=[];
+    if(sheetLinkInput) sheetLinkInput.value="";
+    render();
+    renderSheetState("Đã xóa link Sheet khỏi trình duyệt này.");
+    setSync("loading","Chưa kết nối Google Sheet");
+    showBanner("Chưa kết nối Google Sheet. Bấm nút Cài đặt ở góc trên để dán link Sheet của bạn.");
+  });
+  /* Dựng Sheet trống mất nhiều thao tác nhất, nên rút còn hai nút:
+     mở Sheet mới, rồi dán một dòng tiêu đề là có đủ 6 cột đúng thứ tự. */
+  const SHEET_HEADER_ROW="Ngày\tĐồ ăn\tTập tạ\tCardio\tCân nặng (kg)\tVòng eo (cm)";
+  document.getElementById("copyHeaderBtn")?.addEventListener("click",async()=>{
+    const button=document.getElementById("copyHeaderBtn");
+    try{
+      await navigator.clipboard.writeText(SHEET_HEADER_ROW);
+      button.textContent="Đã copy ✓";
+    }catch(_){
+      /* Trình duyệt chặn clipboard: chọn sẵn chữ để người dùng copy tay. */
+      const box=document.createElement("textarea");
+      box.value=SHEET_HEADER_ROW;box.setAttribute("readonly","");
+      box.style.cssText="width:100%;min-height:52px;margin-top:8px;font-size:12px";
+      button.after(box);box.select();
+      button.textContent="Copy dòng bên dưới";
+    }
+    setTimeout(()=>{button.textContent="Copy 6 tiêu đề cột";},2400);
+  });
+  document.getElementById("newSheetBtn")?.addEventListener("click",()=>window.open("https://sheets.new","_blank","noopener"));
+  /* Sửa thông số cơ thể là tính lại ngay, không cần bấm Lưu. */
+  let profileApplyTimer=null;
+  function applyProfileFromForm(){
+    const next={};
+    for(const [id,key,kind] of PROFILE_FIELDS){
+      const el=document.getElementById(id);
+      if(!el) continue;
+      const raw=String(el.value||"").trim();
+      if(!raw) continue;
+      next[key]=kind==="number"?Number(raw.replace(",",".")):raw;
+    }
+    writeSettings(next);
+    try{localStorage.removeItem(snapshotKey());}catch(_){}
+    render();
+  }
+  PROFILE_FIELDS.forEach(([id])=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.addEventListener("change",()=>{clearTimeout(profileApplyTimer);profileApplyTimer=setTimeout(()=>{applyProfileFromForm();fillSettingsForm();},60);});
+  });
   renderGeminiKeyState();
+  fillSettingsForm();
   document.getElementById("refreshBtn").addEventListener("click", refreshData);
   document.getElementById("stickyRefreshBtn").addEventListener("click", refreshData);
   document
     .getElementById("openSheetBtn")
-    .addEventListener("click", () =>
-      window.open(SHEET_URL, "_blank", "noopener"),
-    );
+    .addEventListener("click", () => {
+      const url = sheetUrl();
+      if (url) window.open(url, "_blank", "noopener");
+      else openSettingsDialog();
+    });
   window.addEventListener("resize", () => {
     if (currentPage === "charts")
       renderCharts(computedDays.filter((d) => d.complete));

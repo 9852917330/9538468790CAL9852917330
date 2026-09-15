@@ -1,0 +1,93 @@
+V69 — AI CŨNG DÙNG ĐƯỢC: SHEET, API KEY VÀ THÔNG SỐ CƠ THỂ NHẬP TRÊN WEB
+15/09/2026 · build 2026-09-15-v69-multi-user
+
+════════════════════════════════════════════════════════════════
+A. VẤN ĐỀ
+════════════════════════════════════════════════════════════════
+Web trước V69 chỉ dùng được cho đúng một người, vì ba thứ nằm cứng trong mã nguồn:
+
+  1. SHEET_ID   — ai mở web cũng đọc đúng một Google Sheet
+  2. PROFILE    — nam, 35 tuổi, cao 160 cm, mỡ đầu 28%, mục tiêu 12%, hệ số 1,2
+  3. Các nhãn   — "Tiến độ 28% → 12% mỡ", "đạt 12% mỡ", "Mục tiêu 12%"
+
+Điểm 2 nguy hiểm nhất và khó thấy nhất: TDEE tính bằng Katch-McArdle dựa trên khối
+nạc (suy từ % mỡ khởi điểm), còn % mỡ hằng ngày tính bằng RFM dựa trên CHIỀU CAO và
+vòng eo. Người khác dùng thì cả TDEE, % mỡ, thâm hụt lũy kế và dự báo cân nặng đều
+sai — nhưng vẫn hiện ra số đẹp nên không ai biết là sai.
+
+════════════════════════════════════════════════════════════════
+B. CÁCH SỬA
+════════════════════════════════════════════════════════════════
+
+1. MỘT OBJECT CẤU HÌNH DUY NHẤT
+   Toàn bộ thứ riêng của từng người gom vào localStorage khóa "inAndOutSettingsV1":
+     sheetId · sheetName · sex · age · height · defaultWeight
+     startBodyFat · targetBodyFat · activityFactor
+   Mã nguồn KHÔNG còn chứa dữ liệu cá nhân của ai. Đẩy code lên GitHub là public,
+   nên để Sheet ID trong đó đồng nghĩa ai mở web cũng thấy nhật ký ăn uống của mình.
+
+   Mọi chỗ trong app đọc qua một cửa: sheetId(), sheetName(), sheetUrl(), PROFILE.
+   Sửa cấu hình là PROFILE được nạp lại, không có bản sao nào đi lạc.
+
+2. CACHE TÁCH RIÊNG THEO TỪNG SHEET
+   Khóa cache đổi thành "inAndOutSheetCacheV2::<sheetId>".
+   Nếu dùng chung một khóa, người đổi sang Sheet khác sẽ thấy số liệu của Sheet cũ
+   trong lúc chờ tải — hai người trộn dữ liệu vào nhau.
+
+3. BẢNG CÀI ĐẶT — nút "Cài đặt" ở góc trên, ba khối trong một hộp thoại
+   1 · Google Sheet     dán nguyên link (kể cả link có #gid=…) hoặc dán riêng ID,
+                        chọn tên tab. Có nút "Copy 6 tiêu đề cột" và "Tạo Sheet mới".
+   2 · Gemini AI        như cũ, tùy chọn, bỏ qua được.
+   3 · Thông số cơ thể  giới tính, tuổi, chiều cao, cân khởi điểm, % mỡ khởi điểm,
+                        % mỡ mục tiêu, hệ số vận động.
+
+   Thông số cơ thể áp dụng NGAY khi rời ô, không có nút "Tính lại".
+   Chỉ khối Sheet có nút Lưu vì nó phải gọi mạng.
+
+4. CÁC NHÃN ĐI THEO NGƯỜI DÙNG
+   "Tiến độ 25% → 15% mỡ", "Ước lượng số ngày đạt 15% mỡ", chú thích biểu đồ
+   "Mục tiêu 15%" và câu "chưa đủ để chạm mốc … % mỡ" đều sinh từ cấu hình.
+
+5. CHƯA CẤU HÌNH KHÔNG CÒN LÀ LỖI
+   Trước đây người mới mở web thấy báo đỏ "Không tải được Google Sheet".
+   Nay hiện đúng bản chất: "Chưa kết nối Google Sheet. Bấm nút Cài đặt…",
+   nút Cài đặt viền cam nhắc việc, và nút "Sheet ↗" mở thẳng bảng Cài đặt.
+
+6. BÁO LỖI NÓI ĐÚNG NGUYÊN NHÂN
+   Lưu Sheet xong, thông báo phân biệt ba trường hợp:
+     · đọc được N dòng
+     · đọc được nhưng cột A không có ngày hợp lệ → xem lại định dạng ngày / tên tab
+     · không đọc được → nhắc kiểm tra quyền "Bất kỳ ai có đường liên kết › Người xem"
+
+════════════════════════════════════════════════════════════════
+C. NGƯỜI MỚI CẦN LÀM GÌ (3 bước)
+════════════════════════════════════════════════════════════════
+  1. Tạo Google Sheet, dán dòng tiêu đề 6 cột vào ô A1
+     (bấm "Copy 6 tiêu đề cột" trong Cài đặt rồi dán vào A1 là xong cả 6 cột):
+       A Ngày | B Đồ ăn | C Tập tạ | D Cardio | E Cân nặng (kg) | F Vòng eo (cm)
+  2. Chia sẻ › Bất kỳ ai có đường liên kết › Người xem
+  3. Mở web › Cài đặt › dán link › Lưu & tải › điền thông số cơ thể
+
+  Cách ghi trong Sheet:
+     Đồ ăn   150g ức gà, 1 bát cơm, 2 quả trứng   (ngăn nhau bằng dấu phẩy)
+     Tập tạ  45 phút   hoặc   300 kcal
+     Cardio  1 giờ     hoặc   250 kcal
+     Cân nặng / Vòng eo: để trống những ngày không đo
+
+════════════════════════════════════════════════════════════════
+D. LƯU Ý CHO NGƯỜI ĐANG DÙNG BẢN CŨ
+════════════════════════════════════════════════════════════════
+  Sheet ID cũ đã được gỡ khỏi mã nguồn, nên sau khi cập nhật cần vào Cài đặt dán
+  lại link Sheet MỘT LẦN trên mỗi thiết bị, và điền lại thông số cơ thể
+  (mặc định mới là 165 cm · 25% → 15%, không còn là 160 cm · 28% → 12%).
+
+  Đây là cái giá phải trả để đưa web cho người khác dùng: nếu vẫn để Sheet của mình
+  làm mặc định thì ai mở link cũng thấy dữ liệu của mình.
+
+  Dữ liệu vẫn nằm nguyên trong Google Sheet, không mất gì.
+
+E. KIỂM TRA TRƯỚC KHI DEPLOY
+  npm i jsdom && node test-food-v68.js      → 63 phép kiểm tra nhận diện/tính calo
+  Đã chạy lại trên trình duyệt thật: lần đầu chưa cấu hình, dán link sai, dán link
+  đúng, đổi thông số cơ thể (TDEE và % mỡ đổi theo ngay), đổi Sheet, xóa Sheet,
+  cả giao diện sáng và tối, khổ màn hình 390 px.

@@ -1200,10 +1200,35 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .food-page-shell{display:grid;gap:18px}
   #geminiKeyDialog{width:min(560px,calc(100% - 24px));max-height:85dvh;padding:0;border:1px solid var(--line);border-radius:20px;color:var(--text);background:var(--panel);overflow:auto}
   #geminiKeyDialog::backdrop{background:rgba(0,0,0,.65)}
-  #geminiKeyDialog .ai-key-panel{margin:0;border:0}
+  #geminiKeyDialog .ai-key-panel,#geminiKeyDialog .settings-panel{margin:0;border:0}
+  /* Khối Gemini nằm lồng trong bảng Cài đặt nên phải trông giống hai khối kia. */
+  .settings-panel .ai-key-panel{gap:9px;margin:0;padding:14px 0 0;border:0;border-top:1px solid var(--line,#dce5ec);border-radius:0;background:none}
+  .settings-panel .ai-key-panel-head h3{font-size:.95rem;letter-spacing:-.2px}
+  #geminiKeyDialog .settings-panel{padding-bottom:4px}
+  #geminiKeyDialog input,#geminiKeyDialog select{background:var(--panel2);color:var(--text)}
   #geminiKeyDialog input{background:var(--panel2);color:var(--text)}
   #geminiKeyDialog .ai-key-note{color:var(--muted)}
   .header-api-key-btn{flex-shrink:0;padding:12px 10px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);font-weight:800;font-size:12px;white-space:nowrap}
+  .header-api-key-btn.needs-setup{border-color:var(--amber,#ffb84d);box-shadow:0 0 0 2px rgba(255,184,77,.25)}
+  /* V69 · bảng Cài đặt: một hộp thoại, ba khối, đọc được trên điện thoại */
+  .settings-panel{display:grid;gap:16px;margin:0 0 16px;padding:16px;border:1px solid var(--line,#dce5ec);border-radius:16px;background:var(--panel,#fff)}
+  .settings-block{display:grid;gap:9px;padding-top:14px;border-top:1px solid var(--line,#dce5ec)}
+  .settings-block:first-of-type{padding-top:0;border-top:0}
+  .settings-block h4{margin:0;font-size:.95rem;letter-spacing:-.2px}
+  .settings-grid{display:grid;gap:9px}
+  .settings-grid.two{grid-template-columns:1fr 1fr}
+  .settings-grid label{display:grid;gap:5px;min-width:0;color:var(--muted,#64748b);font-size:.76rem;font-weight:700}
+  .settings-grid label.wide{grid-column:1/-1}
+  .settings-grid input,.settings-grid select{width:100%;min-width:0;min-height:44px;padding:10px 11px;border:1px solid var(--line,#dce5ec);border-radius:10px;background:var(--panel2,#fff);color:var(--text,#17372f);font-size:14px;font-weight:700}
+  .settings-help{margin:0;padding:11px 12px;border:1px solid var(--line,#dce5ec);border-radius:12px;background:rgba(255,255,255,.03)}
+  .settings-help summary{cursor:pointer;color:var(--mint,#0b9f75);font-size:.8rem;font-weight:800}
+  .settings-help p{margin:9px 0 0;color:var(--muted,#64748b);font-size:.78rem;line-height:1.55}
+  .settings-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}
+  .settings-cols span{padding:7px 9px;border-radius:9px;background:rgba(127,127,127,.12);color:var(--text,#17372f);font-size:.74rem;font-weight:700}
+  .settings-cols b{display:inline-block;min-width:15px;color:var(--mint,#0b9f75)}
+  .settings-help-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+  .settings-help-actions button{min-height:42px;padding:10px 12px;border:0;border-radius:10px;font-weight:800;font-size:.78rem;cursor:pointer}
+  @media(max-width:420px){.settings-cols{grid-template-columns:1fr}}
   @media(max-width:420px){.header-tools{gap:6px!important}.header-api-key-btn{padding:10px 7px;font-size:11px}.header-tools .header-refresh-btn{padding:10px!important;font-size:11px!important}.header-tools .header-refresh-btn span{display:none}}
   .ai-key-panel{display:grid;gap:12px;margin:0 0 16px;padding:16px;border:1px solid var(--line,#dce5ec);border-radius:16px;background:var(--panel,#fff)}
   .ai-key-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.ai-key-panel-head h3{margin:0;font-size:1rem}.ai-key-state{font-size:.82rem;font-weight:700;color:#64748b}.ai-key-state.connected{color:#0f9f75}
@@ -1968,7 +1993,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
     <section class="overview-progress">
       <div class="overview-progress-head">
-        <span>Tiến độ 28% → 12% mỡ</span>
+        <span id="progressRangeLabel">Tiến độ mỡ</span>
         <b id="progressPercent">0%</b>
       </div>
       <div id="fatProgressTrack" class="fat-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -1990,7 +2015,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
     <section class="overview-forecast">
       <div class="overview-forecast-head">
-        <strong>Ước lượng số ngày đạt 12% mỡ</strong>
+        <strong id="forecastTargetLabel">Ước lượng số ngày đạt mục tiêu</strong>
         <span>theo mức thâm hụt/ngày</span>
       </div>
       <div id="targetDates" class="overview-forecast-grid"></div>
@@ -2002,7 +2027,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   <article class="panel chart-card"><div class="chart-title"><div><h3>Calo ròng sau tập</h3><p>Calo ăn vào − calo đốt do tập luyện; không trừ TDEE.</p></div><div class="legend"><span><i style="background:#ff6b6b"></i>kcal ròng</span></div></div><canvas id="calorieChart"></canvas></article>
   <article class="panel chart-card"><div class="chart-title"><div><h3>Cân nặng</h3><p>Ước tính theo cân bằng năng lượng và số cân thực tế.</p></div><div class="legend"><span><i style="background:#20c997"></i>Ước tính</span><span><i style="background:#4263eb"></i>Cân thật</span></div></div><canvas id="weightChart"></canvas></article>
   <article class="panel chart-card"><div class="chart-title"><div><h3>Vòng eo</h3><p>Xu hướng số đo vòng eo theo ngày.</p></div><div class="legend"><span><i style="background:#15aabf"></i>cm</span></div></div><canvas id="waistChart"></canvas></article>
-  <article class="panel chart-card"><div class="chart-title"><div><h3>Tỷ lệ mỡ ước tính</h3><p>Ước tính từ cân nặng, vòng eo và khối nạc nền.</p></div><div class="legend"><span><i style="background:#845ef7"></i>% mỡ</span><span><i style="background:#ff4d6d"></i>Mục tiêu 12%</span></div></div><canvas id="bodyFatChart"></canvas></article>
+  <article class="panel chart-card"><div class="chart-title"><div><h3>Tỷ lệ mỡ ước tính</h3><p>Ước tính từ cân nặng, vòng eo và khối nạc nền.</p></div><div class="legend"><span><i style="background:#845ef7"></i>% mỡ</span><span><i style="background:#ff4d6d"></i><b id="bodyFatTargetLegend">Mục tiêu</b></span></div></div><canvas id="bodyFatChart"></canvas></article>
 </div></section></section>
 <section id="page-history" class="page"><section class="section" style="margin-top:0"><div class="section-head"><div><h2>Lịch sử calo In / Out</h2><p>Mỗi ngày hiển thị calo ăn, calo tập, tổng đạm, TDEE và kết quả năng lượng.</p></div><span class="tag">FULL HISTORY</span></div><div class="history-toolbar"><strong>Toàn bộ ngày trong Sheet</strong><span id="historyCount">0 ngày</span></div><div id="historyList" class="history-list"></div></section></section>
 
@@ -2010,8 +2035,58 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   <section class="section lookup-section" style="margin-top:0">
     <div class="section-head"><div><h2>Thực phẩm</h2></div></div>
     <div class="nutrition-lookup-shell">
+      <section class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle">
+        <div class="ai-key-panel-head"><h3 id="settingsTitle">Cài đặt</h3><span id="settingsSheetState" class="ai-key-state">Chưa kết nối Sheet</span></div>
+
+        <div class="settings-block">
+          <h4>1 · Google Sheet của bạn</h4>
+          <div class="ai-key-row">
+            <input id="sheetLinkInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Dán link Google Sheet…" aria-label="Link Google Sheet">
+            <button id="saveSheetBtn" class="ai-key-save" type="button">Lưu &amp; tải</button>
+            <button id="clearSheetBtn" class="ai-key-delete" type="button">Xóa</button>
+          </div>
+          <div class="settings-grid">
+            <label for="sheetNameInput">Tên tab trong Sheet<input id="sheetNameInput" type="text" autocomplete="off" spellcheck="false" placeholder="Sheet1"></label>
+          </div>
+          <p id="sheetMessage" class="ai-key-note">Link chỉ lưu trên trình duyệt này. Mỗi người dùng Sheet của riêng mình.</p>
+          <details class="settings-help">
+            <summary>Sheet cần chuẩn bị thế nào?</summary>
+            <p><b>Bước 1 — Chia sẻ:</b> mở Sheet › Chia sẻ › Bất kỳ ai có đường liên kết › <b>Người xem</b>. Không mở quyền này thì web không đọc được.</p>
+            <p><b>Bước 2 — Sáu cột theo đúng thứ tự,</b> dòng 1 là tiêu đề:</p>
+            <div class="settings-cols">
+              <span><b>A</b> Ngày</span><span><b>B</b> Đồ ăn</span><span><b>C</b> Tập tạ</span>
+              <span><b>D</b> Cardio</span><span><b>E</b> Cân nặng (kg)</span><span><b>F</b> Vòng eo (cm)</span>
+            </div>
+            <div class="settings-help-actions">
+              <button id="copyHeaderBtn" class="ai-key-save" type="button">Copy 6 tiêu đề cột</button>
+              <button id="newSheetBtn" class="ai-key-delete" type="button">Tạo Sheet mới ↗</button>
+            </div>
+            <p><b>Cách ghi:</b> Đồ ăn ghi tự nhiên, cách nhau bằng dấu phẩy — <i>150g ức gà, 1 bát cơm, 2 quả trứng</i>. Tập tạ và Cardio ghi số phút (<i>45 phút</i>) hoặc ghi thẳng calo (<i>300 kcal</i>). Cân nặng và Vòng eo để trống những ngày không đo.</p>
+          </details>
+        </div>
+
+        <div class="settings-block">
+          <h4>3 · Thông số cơ thể</h4>
+          <p class="ai-key-note">Dùng để tính TDEE, % mỡ và dự báo cân nặng. Sửa xong là số liệu tính lại ngay.</p>
+          <div class="settings-grid two">
+            <label for="setSex">Giới tính<select id="setSex"><option value="male">Nam</option><option value="female">Nữ</option></select></label>
+            <label for="setAge">Tuổi<input id="setAge" type="number" inputmode="numeric" min="10" max="100" step="1"></label>
+            <label for="setHeight">Chiều cao (cm)<input id="setHeight" type="number" inputmode="decimal" min="120" max="220" step="1"></label>
+            <label for="setWeight">Cân nặng khởi điểm (kg)<input id="setWeight" type="number" inputmode="decimal" min="30" max="250" step="0.1"></label>
+            <label for="setStartFat">% mỡ khởi điểm<input id="setStartFat" type="number" inputmode="decimal" min="3" max="60" step="0.5"></label>
+            <label for="setTargetFat">% mỡ mục tiêu<input id="setTargetFat" type="number" inputmode="decimal" min="3" max="45" step="0.5"></label>
+            <label class="wide" for="setActivity">Hệ số vận động ngoài tập luyện<select id="setActivity">
+              <option value="1.2">1,2 · ngồi nhiều, ít đi lại</option>
+              <option value="1.375">1,375 · đi lại nhẹ trong ngày</option>
+              <option value="1.55">1,55 · đứng/đi nhiều</option>
+              <option value="1.725">1,725 · lao động chân tay</option>
+            </select></label>
+          </div>
+          <p class="ai-key-note">Calo tập tạ và cardio được cộng riêng theo số phút bạn ghi trong Sheet, nên hệ số này chỉ tính phần vận động ngoài buổi tập — chọn cao quá sẽ bị tính trùng.</p>
+        </div>
+      </section>
       <section class="ai-key-panel" aria-labelledby="aiKeyTitle">
-        <div class="ai-key-panel-head"><h3 id="aiKeyTitle">Gemini nhận diện món ăn</h3><span id="geminiKeyState" class="ai-key-state">Chưa kết nối</span></div>
+        <div class="ai-key-panel-head"><h3 id="aiKeyTitle">2 · Gemini AI (tùy chọn)</h3><span id="geminiKeyState" class="ai-key-state">Chưa kết nối</span></div>
         <div class="ai-key-row"><input id="geminiApiKeyInput" type="password" autocomplete="off" spellcheck="false" placeholder="Dán Gemini API key…" aria-label="Gemini API key"><button id="saveGeminiKeyBtn" class="ai-key-save" type="button">Lưu & kiểm tra</button><button id="deleteGeminiKeyBtn" class="ai-key-delete" type="button">Xóa key</button></div>
         <p id="geminiKeyMessage" class="ai-key-note">Key chỉ được lưu trên trình duyệt này, không nằm trong mã nguồn hoặc Google Sheet.</p>
       </section>
