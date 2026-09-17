@@ -1758,8 +1758,13 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   #page-overview .overview-compact{
     display:grid;gap:9px;max-width:1180px;margin:0 auto;
     min-height:calc(100dvh - 136px);
-    grid-template-rows:auto minmax(205px,.95fr) auto auto auto minmax(150px,1.05fr);
+    grid-template-rows:auto minmax(205px,.95fr) auto auto minmax(150px,1.05fr);
   }
+  /* V72: khối dự báo được lưới kéo cao cho kín màn hình, nhưng bảng ngày bên trong
+     lại chỉ cao bằng nội dung nên để hở một mảng trống ở đáy trang. Cho khối này
+     thành cột flex và bảng ngày chiếm hết phần dư thì các thẻ ngày giãn ra theo. */
+  #page-overview .overview-forecast{display:flex;flex-direction:column;min-height:0}
+  #page-overview .overview-forecast-grid{flex:1 1 auto;min-height:0;align-content:stretch}
   #page-overview .overview-bar{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:43px;padding:7px 10px;border:1px solid rgba(25,93,77,.12);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 8px 22px rgba(45,94,81,.07)}
   #page-overview .overview-status{display:flex;align-items:center;gap:7px;min-width:0;color:#607a72;font-size:10px;white-space:nowrap;overflow:hidden}
   #page-overview .overview-status strong{color:#173d32;font-size:14px;letter-spacing:-.2px}
@@ -1847,7 +1852,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     body:has(#page-overview.active) main{padding-bottom:8px!important}
     #page-overview .overview-compact{
       min-height:calc(100dvh - 150px);
-      grid-template-rows:37px minmax(210px,.95fr) 60px 59px 63px minmax(205px,1.05fr);
+      grid-template-rows:37px minmax(210px,.95fr) 60px 59px minmax(205px,1.05fr);
       gap:7px;
     }
     #page-overview .overview-bar{min-height:37px;padding:5px 8px;border-radius:11px}

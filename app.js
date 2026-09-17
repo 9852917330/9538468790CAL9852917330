@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-17-v71-world-foods";
+  const APP_BUILD = "2026-09-17-v72-full-frame";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);

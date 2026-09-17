@@ -1,0 +1,51 @@
+V72 — TỔNG QUAN LẤP KÍN KHUNG HÌNH
+17/09/2026 · build 2026-09-17-v72-full-frame
+
+════════════════════════════════════════════════════════════════
+VẤN ĐỀ
+════════════════════════════════════════════════════════════════
+Sau khi bỏ khối "Hũ tiền $" ở V71, trang Tổng quan chừa một mảng trống lớn ở đáy.
+
+Hai nguyên nhân độc lập, phải sửa cả hai mới hết:
+
+1. LƯỚI VẪN KHAI BÁO 6 HÀNG TRONG KHI CHỈ CÒN 5 KHỐI
+   Tổng quan là một CSS grid cao bằng màn hình, chia sẵn từng hàng cho từng khối:
+     37px            → thanh tiêu đề
+     minmax(210px,.95fr) → hai thẻ số lớn
+     60px            → dải chỉ số cơ thể
+     59px            → thanh tiến độ
+     63px            → HŨ TIỀN   ← khối đã bị gỡ
+     minmax(205px,1.05fr) → khối dự báo
+   Gỡ khối mà quên gỡ hàng của nó, nên khối dự báo bị đẩy lên chiếm hàng 63px cứng,
+   còn hàng co giãn cuối cùng thành một dải trống nằm im ở đáy trang.
+   → Xóa hàng thừa ở cả bản mobile lẫn desktop. Phần dư giờ chảy vào hai hàng co
+     giãn: hai thẻ số lớn và khối dự báo cùng cao lên.
+
+2. KHỐI DỰ BÁO CAO LÊN NHƯNG BẢNG NGÀY BÊN TRONG THÌ KHÔNG
+   Bảng 4 mốc ngày có flex:1 để chiếm hết phần dư, nhưng thẻ cha lại đang tính là
+   display:block chứ không phải flex — trong block thì flex:1 vô nghĩa. Kết quả:
+   thẻ cao 305px mà ruột chỉ 164px, hở 121px ngay bên trong.
+   → Khai báo rõ thẻ dự báo là cột flex và bảng ngày chiếm hết phần dư.
+
+════════════════════════════════════════════════════════════════
+KẾT QUẢ ĐO
+════════════════════════════════════════════════════════════════
+  Máy            Trống ở đáy   Thừa trong khối dự báo   Phải cuộn
+  412 × 915           26 px            0 px               không
+  390 × 844           26 px            0 px               không
+  360 × 800           26 px            0 px               không
+  430 × 932           26 px            0 px               không
+  412 × 732 (thấp)     0 px            0 px               6 px
+  1280 × 800           45 px           0 px               không
+
+  26 px còn lại chính là khoảng đệm dưới cùng của trang, cố ý giữ.
+  Trang Tổng quan nay cao đúng bằng một khung hình: scrollHeight = viewport.
+  Máy thấp dưới ~730 px thì trang tự cuộn nhẹ thay vì bóp méo nội dung.
+
+  Các trang khác (Lịch năm, Biểu đồ, Lịch sử, Thực phẩm) không đụng tới —
+  luật mới chỉ nằm trong phạm vi #page-overview.
+
+KIỂM TRA
+  node test-food.js → 103 đạt · 0 lỗi
+  Trình duyệt thật: 6 khổ máy × 2 giao diện sáng/tối, cả khi có và không có banner
+  lỗi Sheet (banner chiếm 55 px — bỏ banner thì phần dư tự chảy vào hai hàng co giãn).
