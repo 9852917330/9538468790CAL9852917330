@@ -47,6 +47,6 @@ Khóa cấu hình đổi sang "inAndOutSettingsV2".
     chứ không phải số người dùng nhập. Mở Cài đặt › mục 3 điền một lần.
 
 4. KIỂM TRA
-  node test-food-v68.js → 63/63 đạt
+  node test-food.js → 63/63 đạt
   Trình duyệt thật: lần đầu trắng trơn, điền từng ô một, đủ ô cuối thì số hiện ra,
   link có gid, link không gid, đổi sang gid khác, giữ link cũ từ V69.

@@ -1,0 +1,102 @@
+V71 — BỎ HŨ TIỀN · MỞ RỘNG CSDL MÓN ĂN 5 NỀN ẨM THỰC
+17/09/2026 · build 2026-09-17-v71-world-foods
+
+════════════════════════════════════════════════════════════════
+1. BỎ KHỐI "HŨ TIỀN $"
+════════════════════════════════════════════════════════════════
+Gỡ sạch: markup, CSS, hàm updateCalorieJar và hai id trong ảnh chụp nhanh dashboard.
+Không còn dấu vết nào, phần Tổng quan khép lại liền mạch.
+
+════════════════════════════════════════════════════════════════
+2. MỞ RỘNG CSDL — 352 → 442 MÓN
+════════════════════════════════════════════════════════════════
+Cách làm: không thêm bừa. Quét thử 223 tên món của 5 nền ẩm thực bằng chính bộ
+nhận diện của web, xem món nào trượt và món nào bị nhận nhầm, rồi mới bổ sung.
+
+Kết quả quét ban đầu:
+  Việt   thiếu 31/102      Thái  thiếu 14/23      Nhật  thiếu 18/31
+  Ý      thiếu 14/24       Mỹ    thiếu 15/43
+  Cộng thêm 7 món nhận NHẦM sang món khác (xem mục 3).
+
+Đã thêm 90 hồ sơ mới, món nào cũng có cả tên tiếng Việt lẫn tên tiếng Anh/tên gốc:
+
+  VIỆT (33)  bún ốc · bún nem · bún măng vịt · súp cua · súp gà ngô · mì xào giòn
+             cơm chiên Dương Châu · bánh nậm · bánh tẻ · bánh căn
+             gà kho gừng · bò lá lốt · ốc luộc · chân gà nướng · đậu sốt cà chua
+             trứng đúc thịt · canh bí · canh cải · canh khổ qua
+             gỏi gà · gỏi ngó sen · nộm đu đủ · nộm hoa chuối
+             chè khoai dẻo · sữa chua đá · kem xôi · chè trôi nước
+             trà đào · trà tắc · trà chanh · nước mơ · rượu nếp · bia hơi
+
+  THÁI (12)  tom yum goong · cà ri đỏ · massaman · cơm chiên Thái · xôi xoài
+             satay · larb · pad krapow · tom kha gai · pad see ew · panang
+             trà sữa Thái
+
+  NHẬT (15)  tonkatsu · katsu curry · gyudon · katsudon · oyakodon · onigiri
+             súp miso · takoyaki · okonomiyaki · gyoza · chirashi · unagi don
+             matcha latte · edamame · chả cá Nhật
+
+  Ý (13)     pesto · aglio e olio · arrabbiata · penne sốt cà · risotto · gnocchi
+             bruschetta · focaccia · minestrone · ravioli · calzone
+             mì Ý hải sản · panna cotta
+
+  MỸ (17)    BBQ ribs · nachos · philly cheesesteak · clam chowder · cornbread
+             milkshake · onion rings · coleslaw · pulled pork · meatloaf
+             chili con carne · pastrami sandwich · smoothie bowl · thanh granola
+             trứng ốp lết · trứng bác · bánh quy sô cô la
+
+Thêm bí danh cho món đã có: cà ri xanh · miso/shoyu/tonkotsu ramen · japanese curry
+· fettuccine · mì xào thái → Pad Thai · spaghetti · sashimi · canh chua thái
+· gỏi đu đủ thái.
+
+Quy ước số liệu giữ nguyên như các bản trước: nguyên liệu tính theo 100 g, món ăn
+theo suất thì ghi rõ khẩu phần thật (1 bát · 500 g). Món hàng quán là giá trị
+tham chiếu trung bình — dầu, sốt và cỡ suất mỗi nơi mỗi khác.
+
+════════════════════════════════════════════════════════════════
+3. SỬA 7 MÓN TRƯỚC ĐÂY NHẬN NHẦM
+════════════════════════════════════════════════════════════════
+  thai iced tea         → Lipton Ice Tea       nay → Trà sữa Thái     250 kcal
+  trà chanh             → Lipton Ice Tea       nay → Trà chanh         90 kcal
+  panna cotta           → Chè khúc bạch        nay → Panna cotta      320 kcal
+  chocolate chip cookie → Sô cô la (thanh)     nay → Bánh quy sô cô la 145 kcal
+  scrambled eggs        → Trứng gà nguyên quả  nay → Trứng bác        220 kcal
+  chân gà nướng         → Thịt gà              nay → Chân gà nướng    215 kcal
+  mì xào thái           → Mì (chỉ sợi mì)      nay → Pad Thai         750 kcal
+Nguyên tắc: hồ sơ khớp chính xác luôn thắng khớp một phần, nên chỉ cần thêm đúng
+món là hết nhầm, không phải sửa luật khớp.
+
+════════════════════════════════════════════════════════════════
+4. SỬA MỘT LỖ HỔNG CỦA BỘ NHẬN DIỆN (phát hiện khi thêm món Mỹ)
+════════════════════════════════════════════════════════════════
+Bí danh mô tả của Philly cheesesteak có cụm "bánh mì bò phô mai", nên truy vấn
+"bánh mì" bị cụm đó hút mất — một lát bánh mì thành 780 kcal.
+
+Gốc rễ: tầng khớp theo chuỗi bí danh chỉ phạt theo độ dài tên món, không phân biệt
+cụm tìm được nằm trong TÊN món hay chỉ nằm trong phần mô tả.
+Từ V71: cụm nằm trong chính tên món được cộng điểm mạnh; món chỉ khớp ở phần bí
+danh mô tả bị đẩy xuống dưới. "bánh mì" → Bánh mì baguette, "bánh mì bò kho" →
+Bánh mì bò kho, "bánh mì bò phô mai" → Philly cheesesteak. Cả ba đều đúng.
+
+════════════════════════════════════════════════════════════════
+5. SỐ LỚN 6 CHỮ SỐ KHÔNG CÒN TRÀN THẺ
+════════════════════════════════════════════════════════════════
+Khi calo cần thâm hụt vượt 100.000, số bị tràn ra ngoài thẻ và mất luôn chữ "kcal"
+trên màn hình hẹp. Cỡ chữ trong CSS là số cố định nên không thể tự co.
+Nay web đo chiều rộng thật rồi thu cỡ chữ cho vừa thẻ — đúng với mọi độ dài số và
+mọi khổ máy; màn rộng vẫn giữ nguyên cỡ chữ lớn nhất. Đã đo ở 360 / 390 / 430 / 900 px.
+
+════════════════════════════════════════════════════════════════
+6. KIỂM TRA
+════════════════════════════════════════════════════════════════
+  npm i jsdom && node test-food.js        (file đổi tên từ test-food-v68.js)
+  → 103 phép kiểm tra, tăng từ 63: thêm hẳn một nhóm "5 nền ẩm thực" và 6 bẫy mới.
+
+  Quét toàn kho 442 món:
+    gõ đúng tên mà không nhận ra          0
+    nhận nhầm sang món khác                0
+    "100g <tên>" lệch so với bảng >15%     0
+    lệch năng lượng 4-4-9 > 20%            0
+      (trừ rượu bia — năng lượng từ cồn, và rau nhiều xơ — đúng về sinh lý)
+  Quét lại 223 tên món 5 nền ẩm thực: nhận ra 223/223.
+  Trình duyệt thật: Tổng quan, Lịch sử, Biểu đồ, Thực phẩm — không lỗi.

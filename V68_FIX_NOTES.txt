@@ -114,7 +114,7 @@ C. SỐ LIỆU TRƯỚC / SAU
 D. CHẠY TEST TRƯỚC MỖI LẦN DEPLOY
 ════════════════════════════════════════════════════════════════
   npm i jsdom
-  node test-food-v68.js
+  node test-food.js
   → 63 phép kiểm tra: nhận diện, khối lượng, bẫy nhập nhằng (bò/bơ, cơm/cốm),
     tách nhiều món, và độ khớp năng lượng 4-4-9.
   File test KHÔNG ảnh hưởng web, chỉ để kiểm tra trước khi đẩy code.

@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-15-v70-no-defaults";
+  const APP_BUILD = "2026-09-17-v71-world-foods";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -5945,11 +5945,17 @@
       } else if(!v68AccentPreferenceOk(tokens,entry.accentText,entry.food?.name)) continue;
       const words=hit.split(" ").length;
       const canonical=normalizePhrase(entry.food?.name||"");
-      /* Cụm "bánh mì" nằm trong cả "Bánh mì baguette" lẫn "Bánh mì bò kho".
-         Phạt theo số chữ thừa của tên món để "1 lát bánh mì" không thành suất bò kho. */
+      /* Cụm tìm được nằm trong chuỗi bí danh thì chưa chắc là món đúng: "bánh mì"
+         có mặt cả trong "Bánh mì baguette" lẫn trong bí danh mô tả của
+         "Philly cheesesteak" (bánh mì bò phô mai). Món mà cụm đó nằm ngay trong
+         TÊN mới là món người dùng muốn — món chỉ khớp ở phần bí danh mô tả bị đẩy
+         xuống dưới. Sau đó mới phạt theo số chữ thừa của tên để chọn bản gọn nhất. */
       const canonicalWords=canonical.split(" ").filter(Boolean).length;
-      const specificity=-Math.max(0,canonicalWords-words)*120000;
-      const score=(entry.curated?30000:0)+(canonical===hit?400000:0)+specificity+words*50000+hit.length*300+entry.sourceScore*10;
+      const hitPattern=new RegExp(`(^|[^a-z0-9])${escapeRegExp(hit).replace(/\s+/g,"\\s+")}(?=$|[^a-z0-9])`,"i");
+      const inCanonical=hitPattern.test(canonical);
+      const nameBoost=canonical===hit?400000:inCanonical?200000:0;
+      const specificity=inCanonical?-Math.max(0,canonicalWords-words)*120000:-300000;
+      const score=(entry.curated?30000:0)+nameBoost+specificity+words*50000+hit.length*300+entry.sourceScore*10;
       if(!best||score>best.score) best={food:entry.food,matchedAlias:hit,score,catalogAlias:true};
     }
     return best;
@@ -7947,7 +7953,7 @@
     "latestStatus","targetBurnKcal","targetBurnSub","targetBurnWeight","targetBurnFatKg",
     "targetBurnWalkTime","targetBurnWalkSub","targetBurnRate",
     "kpiWeight","kpiBodyFat","kpiWaist","kpiTdee","progressPercent",
-    "calorieJarValue","calorieJarSub","progressRangeLabel","forecastTargetLabel"
+    "progressRangeLabel","forecastTargetLabel"
   ];
   function renderProfileMissing() {
     computedDays = [];
@@ -7955,7 +7961,6 @@
     setText("latestDate", "Chưa nhập thông số cơ thể");
     setText("progressRangeLabel", "Chưa có mục tiêu mỡ");
     setText("forecastTargetLabel", "Chưa nhập thông số cơ thể");
-    setText("calorieJarValue", "—");
     const fill = document.getElementById("fatProgressFill");
     if (fill) fill.style.width = "0%";
     const targetDates = document.getElementById("targetDates");
@@ -7966,6 +7971,22 @@
     });
     showBanner("Chưa nhập thông số cơ thể. Bấm Cài đặt › mục 3 để điền giới tính, tuổi, chiều cao, cân nặng và % mỡ — TDEE và % mỡ không tính được nếu thiếu.");
     headerKeyBtn?.classList.add("needs-setup");
+  }
+  /* Hai con số lớn nhất Tổng quan có thể dài 6 chữ số ("109.142"). Cỡ chữ cố định
+     trong CSS thì tới lúc đó bị tràn ra ngoài thẻ và mất luôn chữ "kcal". Đo thật
+     rồi thu cỡ chữ cho vừa là cách duy nhất đúng với mọi độ dài số và mọi màn hình. */
+  function fitHeroValues() {
+    document.querySelectorAll(".overview-primary-value").forEach((el) => {
+      const box = el.parentElement || el;
+      el.style.fontSize = "";
+      let size = parseFloat(getComputedStyle(el).fontSize);
+      if (!Number.isFinite(size)) return;
+      let guard = 60;
+      while (guard-- > 0 && size > 20 && el.scrollWidth > box.clientWidth + 1) {
+        size -= Math.max(1, size * 0.04);
+        el.style.fontSize = `${size}px`;
+      }
+    });
   }
   function render() {
     if (!profileReady()) { renderProfileMissing(); return; }
@@ -7989,6 +8010,7 @@
         startWeight,
       initialWaist = computedDays.find((d) => d.waist !== null)?.waist ?? null;
     renderProfileLabels(PROFILE.startBodyFat);
+    requestAnimationFrame(fitHeroValues);
     setText(
       "latestDate",
       latest
@@ -8035,7 +8057,6 @@
         : "Chưa đủ dữ liệu",
     );
     updateTargetBurnHighlight(currentWeight, currentBf, cumulative, totalGoal, targetWeight);
-    updateCalorieJar(cumulative, totalGoal);
     updateSlope(progress, cumulative, totalGoal, targetWeight);
     const todayData =
       computedDays.find((d) => dateKey(d.date) === dateKey(today)) || null;
@@ -8214,19 +8235,6 @@
     setText("targetBurnSessions90", `${fmt(Math.ceil(plan.walkMinutes / 90))} buổi`);
   }
 
-  function updateCalorieJar(cumulative, totalGoal) {
-    const saved = Math.max(0, Math.round(cumulative));
-    const percent = totalGoal > 0 ? clamp(saved / totalGoal, 0, 1) * 100 : 0;
-    setText("calorieJarValue", `$${fmt(saved)}`);
-    setText(
-      "calorieJarSub",
-      cumulative > 0
-        ? `Đã tích ${fmt(percent, 1)}% mục tiêu · còn ${fmt(Math.max(0, totalGoal - cumulative))} kcal`
-        : cumulative < 0
-          ? `Hũ về $0 · đang dư lũy kế ${fmt(Math.abs(cumulative))} kcal`
-          : "Chưa tích được tiền kcal nào",
-    );
-  }
 
   function renderTargetDates(
     cumulative,
@@ -8769,7 +8777,6 @@
         "targetBurnKcal", "targetBurnSub", "targetBurnWeight", "targetBurnFatKg",
         "targetBurnWalkTime", "targetBurnWalkSub", "targetBurnRate",
         "kpiWeight", "kpiBodyFat", "kpiWaist", "kpiTdee", "progressPercent",
-        "calorieJarValue", "calorieJarSub"
       ];
       const text = {};
       ids.forEach((id) => {
@@ -9492,7 +9499,18 @@
     "sữa chua có đường":["sữa chua"],
     "quả bơ":["bơ","trái bơ"],
     "tôm bóc vỏ":["tôm"],
-    "trứng gà nguyên quả":["trứng","trứng gà"]
+    "trứng gà nguyên quả":["trứng","trứng gà"],
+    /* V71: tên gọi tắt và biến thể của món ngoại — món nào đã có hồ sơ thì chỉ
+       cần thêm bí danh, không tạo thêm dòng trùng lặp trong bảng Thực phẩm. */
+    "cà ri xanh thái":["cà ri xanh","green curry","gaeng keow wan"],
+    "ramen":["miso ramen","shoyu ramen","tonkotsu ramen","mì ramen nhật","ramen nhật"],
+    "cơm cà ri nhật":["japanese curry","curry rice","cà ri nhật","kare raisu"],
+    "mì ý sốt kem":["fettuccine","fettuccine alfredo","mì ý sốt alfredo"],
+    "pad thai":["mì xào thái","phở xào thái","mì pad thai"],
+    "mì ý bò bằm":["spaghetti","spaghetti bolognese","mì ý bolognese"],
+    "sashimi cá hồi":["sashimi","cá hồi sống"],
+    "tom yum":["canh chua thái","súp tom yum"],
+    "som tam":["gỏi đu đủ thái","nộm đu đủ thái","papaya salad"]
   }));
 
   function aliasVariantsV50(name="") {
@@ -9704,6 +9722,125 @@
   /* Chỉ những món 0 kcal được khai báo ở đây mới được nhận diện. Nếu mở cho mọi
      dòng 0 kcal thì các dòng trống trong CSDL cũ sẽ cướp mất tên "cơm", "bơ". */
 
+  /* =================== V71 · MỞ RỘNG CSDL MÓN ĂN ===================
+     Bổ sung theo kết quả đo thực tế: quét 223 tên món của 5 nền ẩm thực rồi chỉ
+     thêm đúng những món chưa có, cộng vài món trước đây bị nhận nhầm sang món khác
+     (trà chanh → Lipton, panna cotta → chè khúc bạch, chân gà nướng → thịt gà…):
+     hồ sơ khớp chính xác luôn thắng khớp một phần nên chỉ cần thêm là hết nhầm.
+
+     Món nguyên liệu ghi theo 100 g. Món ăn theo suất ghi rõ khẩu phần vì đó mới là
+     cách người ta ăn thật. Món hàng quán luôn là giá trị tham chiếu trung bình —
+     lượng dầu, sốt và cỡ suất mỗi nơi mỗi khác. */
+  const CURATED_CATALOG_V71 = [
+    /* ---------- VIỆT NAM · bún, miến, cháo, súp ---------- */
+    curatedCatalogFood("bun_oc","Bún ốc","restaurant",420,22,62,9,"1 bát · 500 g","🍜","bún ốc bun oc snail rice noodle soup vietnamese snail noodle","noodle-soup"),
+    curatedCatalogFood("bun_nem","Bún nem","restaurant",560,20,78,19,"1 bát · 450 g","🍜","bún nem bún chả giò rice noodles with fried spring rolls","noodle-soup"),
+    curatedCatalogFood("bun_mang_vit","Bún măng vịt","restaurant",480,28,58,15,"1 bát · 500 g","🍜","bún măng vịt duck bamboo shoot noodle soup duck noodle soup","noodle-soup"),
+    curatedCatalogFood("sup_cua","Súp cua","restaurant",220,16,22,7,"1 bát · 300 g","🥣","súp cua soup cua crab soup vietnamese crab soup thick crab soup","soup"),
+    curatedCatalogFood("sup_ga_ngo","Súp gà ngô","restaurant",180,12,22,5,"1 bát · 300 g","🥣","súp gà ngô súp bắp gà chicken corn soup sweetcorn chicken soup","soup"),
+    curatedCatalogFood("mi_xao_gion","Mì xào giòn","restaurant",650,24,72,30,"1 đĩa · 350 g","🍜","mì xào giòn mì xào hải sản crispy fried noodles crispy chow mein","noodle-dish"),
+
+    /* ---------- VIỆT NAM · cơm và bánh ---------- */
+    curatedCatalogFood("com_chien_duong_chau","Cơm chiên Dương Châu","restaurant",620,22,82,22,"1 đĩa · 350 g","🍚","cơm chiên dương châu cơm rang thập cẩm yangzhou fried rice special fried rice","rice-dish"),
+    curatedCatalogFood("banh_nam","Bánh nậm","restaurant",90,3,15,2,"1 cái · 60 g","🍥","bánh nậm banh nam flat steamed rice dumpling hue rice cake","steamed-cake"),
+    curatedCatalogFood("banh_te","Bánh tẻ","restaurant",175,5,30,4,"1 cái · 100 g","🍥","bánh tẻ bánh răng bừa steamed rice roll with pork","steamed-cake"),
+    curatedCatalogFood("banh_can","Bánh căn","restaurant",380,14,45,15,"1 phần · 6 cái · 180 g","🥞","bánh căn banh can mini rice pancakes phan thiet pancake","pancake-dish"),
+
+    /* ---------- VIỆT NAM · món mặn, món nhậu ---------- */
+    curatedCatalogFood("ga_kho_gung","Gà kho gừng","restaurant",330,30,8,19,"1 phần · 200 g","🍗","gà kho gừng ginger braised chicken chicken braised with ginger","braised"),
+    curatedCatalogFood("bo_la_lot","Bò lá lốt","restaurant",320,24,4,23,"1 phần · 5 cuốn · 150 g","🥩","bò lá lốt bò nướng lá lốt grilled beef in betel leaf beef betel leaf rolls","grilled"),
+    curatedCatalogFood("oc_luoc","Ốc luộc","fish",90,15,5,1.5,"100 g · phần thịt","🐌","ốc luộc ốc hấp boiled snails steamed sea snails","other-seafood"),
+    curatedCatalogFood("chan_ga_nuong","Chân gà nướng","meat",215,19,2,14,"100 g","🍗","chân gà nướng chân gà chiên grilled chicken feet chicken feet","poultry"),
+    curatedCatalogFood("dau_sot_ca_chua","Đậu sốt cà chua","restaurant",230,14,12,14,"1 phần · 200 g","🍅","đậu sốt cà chua đậu phụ sốt cà tofu in tomato sauce fried tofu tomato","tofu-dish"),
+    curatedCatalogFood("trung_duc_thit","Trứng đúc thịt","restaurant",300,20,3,23,"1 phần · 150 g","🍳","trứng đúc thịt trứng chưng thịt steamed egg with minced pork pork egg meatloaf","egg-dish"),
+
+    /* ---------- VIỆT NAM · canh và gỏi ---------- */
+    curatedCatalogFood("canh_bi_xanh","Canh bí xanh","restaurant",60,5,5,2,"1 bát · 250 g","🥣","canh bí canh bí xanh canh bí đao winter melon soup","soup"),
+    curatedCatalogFood("canh_cai_thit_bam","Canh cải thịt bằm","restaurant",70,6,4,3,"1 bát · 250 g","🥣","canh cải canh rau cải mustard greens soup pork greens soup","soup"),
+    curatedCatalogFood("canh_kho_qua","Canh khổ qua nhồi thịt","restaurant",150,12,8,8,"1 bát · 300 g","🥣","canh khổ qua khổ qua nhồi thịt stuffed bitter melon soup bitter gourd soup","soup"),
+    curatedCatalogFood("goi_ga","Gỏi gà","restaurant",280,24,16,13,"1 đĩa · 250 g","🥗","gỏi gà nộm gà bắp cải vietnamese chicken salad shredded chicken salad","salad"),
+    curatedCatalogFood("goi_ngo_sen","Gỏi ngó sen tôm thịt","restaurant",300,18,26,14,"1 đĩa · 250 g","🥗","gỏi ngó sen lotus stem salad lotus root salad shrimp pork","salad"),
+    curatedCatalogFood("nom_du_du","Nộm đu đủ bò khô","restaurant",230,14,30,6,"1 đĩa · 200 g","🥗","nộm đu đủ nộm bò khô green papaya salad with beef jerky","salad"),
+    curatedCatalogFood("nom_hoa_chuoi","Nộm hoa chuối","restaurant",210,10,24,9,"1 đĩa · 200 g","🥗","nộm hoa chuối gỏi bắp chuối banana blossom salad banana flower salad","salad"),
+
+    /* ---------- VIỆT NAM · chè, tráng miệng, đồ uống ---------- */
+    curatedCatalogFood("che_khoai_deo","Chè khoai dẻo","sweet-soups",330,3,66,7,"1 cốc · 300 g","🍧","chè khoai dẻo taro ball dessert sweet potato ball dessert","sweet-soup"),
+    curatedCatalogFood("sua_chua_da","Sữa chua đá","sweet-soups",180,6,28,5,"1 cốc · 200 g","🍧","sữa chua đá sữa chua đánh đá iced yogurt vietnamese yogurt ice","dessert"),
+    curatedCatalogFood("kem_xoi","Kem xôi","sweet-cakes",380,6,52,16,"1 phần · 180 g","🍨","kem xôi sticky rice with ice cream coconut ice cream sticky rice","ice-cream"),
+    curatedCatalogFood("che_troi_nuoc","Chè trôi nước","sweet-soups",330,5,60,8,"1 bát · 250 g","🍡","chè trôi nước bánh trôi tàu glutinous rice balls ginger syrup","sweet-soup"),
+    curatedCatalogFood("tra_dao","Trà đào","drinks",180,0.5,44,0,"1 cốc · 350 ml","🍑","trà đào trà đào cam sả peach tea peach iced tea","tea"),
+    curatedCatalogFood("tra_tac","Trà tắc","drinks",120,0.3,30,0,"1 cốc · 350 ml","🍋","trà tắc trà quất kumquat tea calamansi tea","tea"),
+    curatedCatalogFood("tra_chanh","Trà chanh","drinks",90,0.2,22,0,"1 cốc · 350 ml","🍋","trà chanh lemon iced tea vietnamese lemon tea","tea"),
+    curatedCatalogFood("nuoc_mo","Nước mơ","drinks",150,0.3,37,0,"1 cốc · 300 ml","🥤","nước mơ nước mơ ngâm apricot drink pickled apricot juice","juice"),
+    curatedCatalogFood("ruou_nep","Rượu nếp","drinks",170,3,32,0.5,"100 g","🍶","rượu nếp cơm rượu fermented sticky rice sweet rice wine","alcohol"),
+    curatedCatalogFood("bia_hoi","Bia hơi","drinks",35,0.3,2.6,0,"100 ml","🍺","bia hơi bia tươi draft beer fresh beer vietnamese draught beer","alcohol"),
+
+    /* ---------- THÁI LAN ---------- */
+    curatedCatalogFood("tom_yum_goong","Tom yum goong","restaurant",340,28,16,18,"1 bát · 400 g","🍲","tom yum goong tom yum tôm canh chua thái spicy shrimp soup thai hot sour soup","thai"),
+    curatedCatalogFood("cari_do_thai","Cà ri đỏ Thái","restaurant",480,24,18,36,"1 phần · 350 g","🍛","cà ri đỏ red curry thai red curry gaeng phet","thai"),
+    curatedCatalogFood("massaman","Cà ri Massaman","restaurant",550,26,26,38,"1 phần · 350 g","🍛","massaman curry cà ri massaman thai massaman beef curry","thai"),
+    curatedCatalogFood("khao_pad","Cơm chiên Thái","restaurant",600,20,80,21,"1 đĩa · 350 g","🍚","khao pad cơm chiên thái thai fried rice","thai"),
+    curatedCatalogFood("xoi_xoai","Xôi xoài","sweet-cakes",480,6,80,15,"1 phần · 250 g","🥭","xôi xoài mango sticky rice khao niaow ma muang thai mango rice","thai-dessert"),
+    curatedCatalogFood("satay","Satay","restaurant",350,28,10,22,"1 phần · 4 xiên · 150 g","🍢","satay sate thịt xiên nướng sốt lạc chicken satay peanut satay skewers","thai"),
+    curatedCatalogFood("larb","Larb","restaurant",280,24,10,16,"1 đĩa · 200 g","🥗","larb laab gỏi thịt bằm thái thai minced meat salad","thai"),
+    curatedCatalogFood("pad_krapow","Pad krapow","restaurant",620,28,72,24,"1 đĩa · 350 g","🍚","pad krapow pad kra pao cơm gà xào húng quế thai basil chicken rice","thai"),
+    curatedCatalogFood("tom_kha_gai","Tom kha gai","restaurant",380,22,12,28,"1 bát · 350 g","🍲","tom kha gai súp gà nước cốt dừa coconut chicken soup thai coconut soup","thai"),
+    curatedCatalogFood("pad_see_ew","Pad see ew","restaurant",660,22,88,24,"1 đĩa · 350 g","🍜","pad see ew phở xào thái thai stir fried wide noodles","thai"),
+    curatedCatalogFood("panang","Cà ri Panang","restaurant",460,24,16,34,"1 phần · 300 g","🍛","panang curry cà ri panang thai panang","thai"),
+    curatedCatalogFood("thai_tea","Trà sữa Thái","drinks",250,3,42,8,"1 cốc · 350 ml","🧋","thai iced tea trà sữa thái cha yen thai milk tea","tea"),
+
+    /* ---------- NHẬT BẢN ---------- */
+    curatedCatalogFood("tonkatsu","Tonkatsu","restaurant",450,26,22,28,"1 phần · 180 g","🍖","tonkatsu thịt heo chiên xù japanese pork cutlet breaded pork","japanese"),
+    curatedCatalogFood("katsu_curry","Katsu curry","restaurant",900,32,110,36,"1 đĩa · 450 g","🍛","katsu curry cơm cà ri thịt chiên xù japanese katsu curry rice","japanese"),
+    curatedCatalogFood("gyudon","Gyudon","restaurant",730,28,105,22,"1 bát · 450 g","🍚","gyudon cơm thịt bò nhật japanese beef bowl beef rice bowl","japanese"),
+    curatedCatalogFood("katsudon","Katsudon","restaurant",870,34,110,32,"1 bát · 450 g","🍚","katsudon cơm thịt chiên xù pork cutlet rice bowl","japanese"),
+    curatedCatalogFood("oyakodon","Oyakodon","restaurant",680,34,95,18,"1 bát · 450 g","🍚","oyakodon cơm gà trứng nhật chicken and egg rice bowl","japanese"),
+    curatedCatalogFood("onigiri","Onigiri","starch",180,4,36,1.5,"1 cái · 110 g","🍙","onigiri cơm nắm nhật japanese rice ball","rice"),
+    curatedCatalogFood("miso_soup","Súp miso","restaurant",45,3,5,1.5,"1 bát · 200 ml","🥣","miso soup súp miso canh miso japanese miso soup","japanese"),
+    curatedCatalogFood("takoyaki","Takoyaki","snacks",350,12,36,17,"1 phần · 6 viên · 180 g","🐙","takoyaki bánh bạch tuộc octopus balls japanese octopus balls","fried-snack"),
+    curatedCatalogFood("okonomiyaki","Okonomiyaki","restaurant",560,22,58,26,"1 cái · 300 g","🥞","okonomiyaki bánh xèo nhật japanese savory pancake","japanese"),
+    curatedCatalogFood("gyoza","Gyoza","restaurant",380,16,38,18,"1 phần · 6 cái · 180 g","🥟","gyoza há cảo nhật bánh xếp nhật japanese dumplings potstickers","japanese"),
+    curatedCatalogFood("chirashi","Chirashi","restaurant",520,32,68,12,"1 bát · 350 g","🍣","chirashi chirashi don cơm cá sống scattered sushi bowl sashimi rice bowl","japanese"),
+    curatedCatalogFood("unagi_don","Unagi don","restaurant",720,34,96,22,"1 bát · 400 g","🍱","unagi unagi don unadon cơm lươn nướng grilled eel rice bowl","japanese"),
+    curatedCatalogFood("matcha_latte","Matcha latte","drinks",200,7,30,6,"1 cốc · 350 ml","🍵","matcha latte trà xanh sữa green tea latte","tea"),
+    curatedCatalogFood("edamame","Đậu nành Nhật (edamame)","beans",122,11,10,5,"100 g · đã luộc, bỏ vỏ","🫛","edamame đậu nành nhật đậu edamame green soybeans","bean"),
+    curatedCatalogFood("cha_ca_nhat","Chả cá Nhật","fish",120,12,12,3,"100 g","🍥","chả cá nhật kamaboko satsuma age surimi fish cake japanese fish cake","processed-fish"),
+
+    /* ---------- Ý ---------- */
+    curatedCatalogFood("pesto_pasta","Mì Ý sốt pesto","restaurant",700,20,82,32,"1 đĩa · 350 g","🍝","pesto pasta mì ý sốt pesto spaghetti pesto basil pesto pasta","italian"),
+    curatedCatalogFood("aglio_olio","Mì Ý aglio e olio","restaurant",600,16,82,22,"1 đĩa · 320 g","🍝","aglio e olio aglio olio mì ý tỏi ớt garlic oil spaghetti","italian"),
+    curatedCatalogFood("arrabbiata","Mì Ý arrabbiata","restaurant",520,16,84,14,"1 đĩa · 350 g","🍝","arrabbiata mì ý sốt cà chua cay penne arrabbiata spicy tomato pasta","italian"),
+    curatedCatalogFood("penne_ca_chua","Mì ống sốt cà chua","restaurant",480,15,80,11,"1 đĩa · 350 g","🍝","penne mì ống sốt cà chua mì ý sốt cà chua penne pomodoro tomato pasta","italian"),
+    curatedCatalogFood("risotto","Risotto","restaurant",560,14,76,20,"1 đĩa · 350 g","🍚","risotto cơm ý risotto nấm italian rice dish","italian"),
+    curatedCatalogFood("gnocchi","Gnocchi","restaurant",480,12,76,14,"1 đĩa · 300 g","🥟","gnocchi bánh khoai tây ý potato dumplings italian gnocchi","italian"),
+    curatedCatalogFood("bruschetta","Bruschetta","snacks",250,6,32,11,"1 phần · 2 lát · 120 g","🥖","bruschetta bánh mì nướng cà chua toasted bread tomato","italian"),
+    curatedCatalogFood("focaccia","Focaccia","starch",290,7,40,11,"100 g","🍞","focaccia bánh mì focaccia italian flatbread olive oil bread","bread"),
+    curatedCatalogFood("minestrone","Minestrone","restaurant",180,8,26,5,"1 bát · 350 g","🥣","minestrone súp rau ý italian vegetable soup","italian"),
+    curatedCatalogFood("ravioli","Ravioli","restaurant",520,22,62,20,"1 đĩa · 300 g","🥟","ravioli mì ý nhân thịt stuffed pasta italian filled pasta","italian"),
+    curatedCatalogFood("calzone","Calzone","restaurant",750,32,82,32,"1 cái · 300 g","🥟","calzone pizza gấp folded pizza italian stuffed pizza","italian"),
+    curatedCatalogFood("mi_y_hai_san","Mì Ý hải sản","restaurant",620,30,78,20,"1 đĩa · 380 g","🍝","mì ý hải sản spaghetti hải sản seafood spaghetti frutti di mare","italian"),
+    curatedCatalogFood("panna_cotta","Panna cotta","sweet-cakes",320,4,28,21,"1 phần · 120 g","🍮","panna cotta kem sữa ý italian cream dessert","dessert"),
+
+    /* ---------- MỸ ---------- */
+    curatedCatalogFood("bbq_ribs","Sườn nướng BBQ","meat",290,22,8,19,"100 g","🍖","bbq ribs sườn nướng bbq barbecue ribs pork ribs spare ribs","pork"),
+    curatedCatalogFood("nachos","Nachos","snacks",720,20,68,42,"1 phần · 250 g","🧀","nachos bánh ngô phô mai loaded nachos tortilla chips cheese","fried-snack"),
+    curatedCatalogFood("philly_cheesesteak","Philly cheesesteak","fastfood",780,40,62,40,"1 cái · 300 g","🥪","philly cheesesteak bánh mì bò phô mai cheesesteak steak sandwich","sandwich"),
+    curatedCatalogFood("clam_chowder","Clam chowder","restaurant",320,12,26,18,"1 bát · 300 g","🥣","clam chowder súp ngao kem new england clam chowder","soup"),
+    curatedCatalogFood("cornbread","Bánh ngô Mỹ","starch",330,7,48,12,"100 g","🌽","cornbread bánh ngô mỹ corn bread southern cornbread","bread"),
+    curatedCatalogFood("milkshake","Milkshake","drinks",450,10,68,15,"1 cốc · 350 ml","🥤","milkshake sữa lắc sinh tố kem thick shake","dairy-drink"),
+    curatedCatalogFood("onion_rings","Onion rings","snacks",410,5,45,23,"100 g","🧅","onion rings hành tây chiên fried onion rings","fried-snack"),
+    curatedCatalogFood("coleslaw","Coleslaw","vegetables",150,1.3,13,11,"100 g","🥬","coleslaw salad bắp cải trộn cabbage salad creamy slaw","salad"),
+    curatedCatalogFood("pulled_pork","Pulled pork","meat",240,22,8,13,"100 g","🍖","pulled pork thịt heo xé bbq pulled pork shredded pork","pork"),
+    curatedCatalogFood("meatloaf","Meatloaf","meat",250,18,9,16,"100 g","🍖","meatloaf thịt bằm nướng khuôn american meatloaf","processed-meat"),
+    curatedCatalogFood("chili_con_carne","Chili con carne","restaurant",420,28,32,20,"1 bát · 350 g","🌶️","chili con carne chili bò đậu cay beef chili bean chili","american"),
+    curatedCatalogFood("pastrami_sandwich","Pastrami sandwich","fastfood",650,38,58,28,"1 cái · 280 g","🥪","pastrami sandwich bánh mì pastrami deli sandwich","sandwich"),
+    curatedCatalogFood("smoothie_bowl","Smoothie bowl","drinks",380,10,62,11,"1 bát · 350 g","🥣","smoothie bowl sinh tố bát acai bowl fruit smoothie bowl","smoothie"),
+    curatedCatalogFood("granola_bar","Thanh granola","snacks",170,3,27,6,"1 thanh · 40 g","🍫","granola bar thanh granola thanh ngũ cốc cereal bar muesli bar","bar"),
+    curatedCatalogFood("omelette","Trứng ốp lết","eggs",260,17,3,20,"1 phần · 150 g","🍳","omelette trứng ốp lết trứng tráng french omelette cheese omelette","egg-dish"),
+    curatedCatalogFood("scrambled_eggs","Trứng bác","eggs",220,14,2,17,"1 phần · 130 g","🍳","scrambled eggs trứng bác trứng đánh bông scrambled egg","egg-dish"),
+    curatedCatalogFood("choc_chip_cookie","Bánh quy sô cô la","sweet-cakes",145,1.7,19,7,"1 cái · 30 g","🍪","chocolate chip cookie bánh quy sô cô la cookie choco chip","cookie")
+  ];
+
   function buildUnifiedFoodCatalog() {
     const candidates=[];
     FREQUENT_FOODS.forEach((food)=>{const x=normalizeFrequentFood(food);if(x)candidates.push(x);});
@@ -9716,6 +9853,7 @@
     ].forEach(([rows,source])=>rows.forEach((food)=>{const x=normalizeLegacyFood(food,source);if(x)candidates.push(x);}));
     candidates.push(...CURATED_CATALOG_V47);
     candidates.push(...CURATED_CATALOG_V68);
+    candidates.push(...CURATED_CATALOG_V71);
     /* Không gộp ở đây: lọc và chọn bản ưu tiên tại renderUnifiedFoodCatalog. */
     return candidates;
   }
@@ -10320,6 +10458,7 @@
       else openSettingsDialog();
     });
   window.addEventListener("resize", () => {
+    fitHeroValues();
     if (currentPage === "charts")
       renderCharts(computedDays.filter((d) => d.complete));
   });

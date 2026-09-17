@@ -87,7 +87,7 @@ D. LƯU Ý CHO NGƯỜI ĐANG DÙNG BẢN CŨ
   Dữ liệu vẫn nằm nguyên trong Google Sheet, không mất gì.
 
 E. KIỂM TRA TRƯỚC KHI DEPLOY
-  npm i jsdom && node test-food-v68.js      → 63 phép kiểm tra nhận diện/tính calo
+  npm i jsdom && node test-food.js      → 63 phép kiểm tra nhận diện/tính calo
   Đã chạy lại trên trình duyệt thật: lần đầu chưa cấu hình, dán link sai, dán link
   đúng, đổi thông số cơ thể (TDEE và % mỡ đổi theo ngay), đổi Sheet, xóa Sheet,
   cả giao diện sáng và tối, khổ màn hình 390 px.
