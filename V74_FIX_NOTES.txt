@@ -1,0 +1,51 @@
+V74 — GỠ THANH "TỔNG QUAN · NGÀY · ↻ · SHEET" VÀ DỒN LẠI CHO KHÍT
+18/09/2026 · build 2026-09-18-v74-tight-overview
+
+════════════════════════════════════════════════════════════════
+1. GỠ THANH TRÊN CÙNG CỦA TRANG TỔNG QUAN
+════════════════════════════════════════════════════════════════
+Thanh đó có bốn thứ, xử lý từng thứ chứ không vứt cả cụm:
+
+  "Tổng quan" + ngày   bỏ hẳn — ngày dữ liệu đã có ở trang Lịch sử
+  Nút ↻                bỏ — header đã có "Cập nhật ngay" làm đúng việc đó
+  Nút "Sheet ↗"        CHUYỂN vào Cài đặt › mục 1, ngay dưới ô dán link,
+                       thành nút "Mở Google Sheet ↗". Chưa có link thì nó
+                       nhắc dán link thay vì mở tab trống.
+  Băng cảnh báo        GIỮ — đây là chỗ duy nhất báo "Chưa kết nối Google Sheet"
+                       và "Chưa nhập thông số cơ thể". Bỏ nó là người mới mù tịt.
+
+Trang chủ nay bắt đầu thẳng bằng hai thẻ số lớn.
+
+════════════════════════════════════════════════════════════════
+2. DỒN LẠI CHO KHÍT
+════════════════════════════════════════════════════════════════
+Lưới Tổng quan còn 4 khối, khai báo lại đúng 4 hàng — không lặp lại lỗi của V71
+(gỡ khối mà quên gỡ hàng, để lại một dải trống nằm im ở đáy).
+
+Phần 42 px của thanh cũ cộng một khoảng cách 7 px được chia lại cho các khối:
+  hai thẻ số lớn   200 → 215 px (sàn)
+  dải chỉ số        70 → 72 px
+  thanh tiến độ     66 → 68 px
+  khối dự báo      215 → 225 px (sàn)
+
+Băng cảnh báo tách ra NGOÀI lưới. Lý do: nó chỉ hiện khi có việc; để trong lưới
+thì lúc ẩn sẽ chừa một hàng trống đúng y như khối Hũ tiền ngày trước.
+Để trang vẫn khít cả khi có lẫn không có băng cảnh báo, trang Tổng quan thành
+cột flex cao bằng khung hình — băng lấy phần của nó, lưới nhận đúng phần còn lại.
+
+Đo lại (không có băng cảnh báo, tức trạng thái thường ngày):
+  412×915   trống dưới 26 px · thừa trong khối dự báo 0 · không phải cuộn
+  390×844   26 px · 0 · không cuộn
+  360×800   26 px · 0 · không cuộn
+  430×932   26 px · 0 · không cuộn
+  412×732    6 px · 0 · cuộn 2 px   (máy rất thấp)
+  1280×800  41 px · 0 · cuộn 23 px  (desktop)
+  Không có chữ nào bị cắt ở bất kỳ khổ nào.
+
+Khi băng cảnh báo hiện: 412×915, 390×844, 430×932 vẫn khít; 360×800 cuộn 4 px.
+
+3. KIỂM TRA
+  node test-food.js → 103 đạt · 0 lỗi
+  Trình duyệt thật: chưa cấu hình (băng hiện đúng), đã cấu hình (băng ẩn, trang
+  khít), nút "Mở Google Sheet" mở đúng tab mới khi có link và nhắc dán link khi
+  chưa có, 5 trang × 2 giao diện sáng/tối — không lỗi.

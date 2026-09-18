@@ -36,7 +36,7 @@
 .nav{display:flex;justify-content:center;gap:5px;overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav-btn{flex:0 0 auto;border:1px solid transparent;border-radius:10px;padding:9px 13px;color:#a9cabf;background:transparent;font-size:11px;font-weight:900;white-space:nowrap}.nav-btn:hover{color:#fff;background:rgba(255,255,255,.05)}.nav-btn.active{color:#052018;background:linear-gradient(135deg,var(--mint),var(--mint2));box-shadow:0 8px 24px rgba(102,242,194,.18)}
 .status-wrap{display:grid;gap:4px;justify-items:end}.status{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:#b3d2c8;background:rgba(255,255,255,.025);font-size:10px;white-space:nowrap}.status-dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 12px currentColor}.status-dot.ok{background:var(--mint)}.status-dot.err{background:var(--red)}.lookup-state{color:#698f84;font-size:8px;max-width:210px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 main{max-width:1440px;margin:auto;padding:18px 18px 54px}.page{display:none;animation:fade .2s ease}.page.active{display:block}@keyframes fade{from{opacity:.3;transform:translateY(5px)}to{opacity:1;transform:none}}
-.dashboard-strip{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(480px,.9fr);gap:18px;padding:20px;border:1px solid rgba(102,242,194,.2);border-radius:22px;background:linear-gradient(130deg,rgba(102,242,194,.10),transparent 38%),rgba(8,28,23,.92);box-shadow:var(--shadow)}.strip-copy{display:flex;flex-direction:column;justify-content:center}.eyebrow{font-size:10px;font-weight:950;letter-spacing:1.6px;text-transform:uppercase;color:var(--mint)}.strip-copy h1{margin:7px 0 8px;font-size:clamp(24px,3vw,38px);line-height:1.05;letter-spacing:-1.5px}.strip-copy p{margin:0;color:#aed0c5;font-size:12px;line-height:1.6;max-width:700px}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}.btn{border:1px solid var(--line);border-radius:11px;padding:10px 14px;color:#effff9;background:rgba(255,255,255,.04);font-weight:900;font-size:11px}.btn.primary{border-color:transparent;color:#052018;background:linear-gradient(135deg,var(--mint),var(--mint2))}.btn:hover{transform:translateY(-1px)}.strip-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;align-content:center}.strip-stat{padding:13px;border:1px solid var(--line);border-radius:15px;background:rgba(1,10,8,.28)}.strip-stat span{display:block;color:var(--muted);font-size:9px}.strip-stat strong{display:block;margin-top:6px;font-size:12px;line-height:1.35}.strip-stat.wide{grid-column:1/-1}.banner{display:none;margin-top:11px;padding:10px 12px;border:1px solid rgba(255,113,133,.35);border-radius:11px;background:rgba(255,113,133,.08);color:#ffc5ce;font-size:11px;line-height:1.5}.banner.show{display:block}
+.dashboard-strip{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(480px,.9fr);gap:18px;padding:20px;border:1px solid rgba(102,242,194,.2);border-radius:22px;background:linear-gradient(130deg,rgba(102,242,194,.10),transparent 38%),rgba(8,28,23,.92);box-shadow:var(--shadow)}.strip-copy{display:flex;flex-direction:column;justify-content:center}.eyebrow{font-size:10px;font-weight:950;letter-spacing:1.6px;text-transform:uppercase;color:var(--mint)}.strip-copy h1{margin:7px 0 8px;font-size:clamp(24px,3vw,38px);line-height:1.05;letter-spacing:-1.5px}.strip-copy p{margin:0;color:#aed0c5;font-size:12px;line-height:1.6;max-width:700px}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}.btn{border:1px solid var(--line);border-radius:11px;padding:10px 14px;color:#effff9;background:rgba(255,255,255,.04);font-weight:900;font-size:11px}.btn.primary{border-color:transparent;color:#052018;background:linear-gradient(135deg,var(--mint),var(--mint2))}.btn:hover{transform:translateY(-1px)}.strip-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;align-content:center}.strip-stat{padding:13px;border:1px solid var(--line);border-radius:15px;background:rgba(1,10,8,.28)}.strip-stat span{display:block;color:var(--muted);font-size:9px}.strip-stat strong{display:block;margin-top:6px;font-size:12px;line-height:1.35}.strip-stat.wide{grid-column:1/-1}.banner{display:none;margin-top:0;padding:10px 12px;border:1px solid rgba(255,113,133,.35);border-radius:11px;background:rgba(255,113,133,.08);color:#ffc5ce;font-size:11px;line-height:1.5}.banner.show{display:block}
 .section{position:relative;margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,rgba(102,242,194,.035),transparent 34%),rgba(7,24,20,.90);box-shadow:0 16px 38px rgba(0,0,0,.16);overflow:hidden}.section:before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:3px;border-radius:4px;background:linear-gradient(var(--mint),transparent)}.section-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-end;margin-bottom:14px}.section-head h2{margin:0;font-size:20px;letter-spacing:-.5px}.section-head p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.5}.tag{padding:6px 9px;border:1px solid rgba(102,242,194,.24);border-radius:999px;color:var(--mint);background:rgba(102,242,194,.07);font-size:9px;font-weight:950;white-space:nowrap}.grid{display:grid;gap:11px}
 .kpi-grid{grid-template-columns:repeat(6,minmax(0,1fr))}.kpi{min-height:118px;padding:15px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(150deg,rgba(255,255,255,.045),rgba(255,255,255,.012));position:relative;overflow:hidden}.kpi:after{content:"";position:absolute;width:100px;height:100px;right:-50px;bottom:-58px;border-radius:50%;background:currentColor;opacity:.07}.kpi-label{font-size:9px;font-weight:950;letter-spacing:.55px;text-transform:uppercase;color:var(--muted)}.kpi-value{margin-top:10px;font-size:23px;font-weight:1000;letter-spacing:-.7px}.kpi-sub{margin-top:6px;color:#86aa9f;font-size:9px;line-height:1.45}.green,.cyan,.purple,.blue,.orange{color:var(--mint)}.red{color:var(--red)}
 .progress-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(330px,.82fr);gap:12px}.panel{border:1px solid var(--line);border-radius:18px;background:rgba(2,13,10,.45);box-shadow:0 12px 30px rgba(0,0,0,.12)}.progress-panel{padding:18px}.progress-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.progress-top h3{margin:0;font-size:16px}.progress-top p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.55}.progress-percent{font-size:28px;font-weight:1000;color:var(--mint);letter-spacing:-1px}.fat-progress-wrap{margin-top:22px}.fat-progress-track{position:relative;height:20px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:#020907;box-shadow:inset 0 4px 12px rgba(0,0,0,.5);overflow:visible}.fat-progress-fill{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#2bcf99,var(--mint),var(--mint2));box-shadow:0 0 24px rgba(102,242,194,.27);transition:width .7s cubic-bezier(.2,.8,.2,1)}.fat-progress-marker{position:absolute;top:50%;left:0;width:18px;height:18px;transform:translate(-50%,-50%);border:4px solid var(--mint);border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(102,242,194,.14),0 6px 16px rgba(0,0,0,.4);transition:left .7s cubic-bezier(.2,.8,.2,1)}.fat-progress-track.surplus .fat-progress-fill{background:linear-gradient(90deg,#ff7185,#ff9e83)}.fat-progress-track.surplus .fat-progress-marker{border-color:var(--red);box-shadow:0 0 0 5px rgba(255,113,133,.14),0 6px 16px rgba(0,0,0,.4)}.fat-progress-labels{display:flex;justify-content:space-between;gap:14px;margin-top:8px;color:var(--muted);font-size:9px}.fat-progress-labels span:last-child{text-align:right;color:#bfffe7}.progress-note{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.progress-note div{padding:11px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}.progress-note span{display:block;color:var(--muted);font-size:8px}.progress-note b{display:block;margin-top:4px;font-size:11px;line-height:1.35}.insight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}.insight{padding:10px;border:1px solid rgba(102,242,194,.12);border-radius:12px;background:rgba(102,242,194,.035)}.insight span{display:block;color:var(--muted);font-size:8px}.insight b{display:block;margin-top:4px;color:#eafff7;font-size:11px}.forecast-panel{padding:10px}.forecast-list{display:grid;gap:8px}.forecast-card{padding:12px;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,rgba(102,242,194,.055),rgba(255,255,255,.015))}.forecast-card-head{display:flex;justify-content:space-between;gap:10px}.forecast-card strong{font-size:11px}.forecast-card .days{color:var(--mint);font-weight:950;font-size:10px}.forecast-card p{margin:7px 0 0;color:var(--muted);font-size:9px;line-height:1.5}.forecast-card b{color:#fff}.forecast-today{border-color:rgba(102,242,194,.3);background:linear-gradient(135deg,rgba(102,242,194,.10),rgba(255,255,255,.02))}.forecast-today.surplus{border-color:rgba(255,113,133,.38);background:linear-gradient(135deg,rgba(255,113,133,.10),rgba(255,255,255,.02))}.today-label{display:inline-flex;margin-bottom:7px;padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.06);color:#cce9df;font-size:7px;font-weight:1000;letter-spacing:.7px;text-transform:uppercase}.forecast-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}.forecast-details span{display:block;padding:7px;border:1px solid var(--line);border-radius:9px;background:rgba(0,0,0,.12);color:var(--muted);font-size:8px}.forecast-details b{display:block;margin-top:3px;font-size:9px}
@@ -1230,6 +1230,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .profile-state{font-weight:800}
   .profile-state.missing{color:#f3a93c}
   .profile-state.ready{color:#0f9f75}
+  .settings-open-sheet{min-height:44px;padding:11px 12px;border:0;border-radius:10px;font-weight:800;font-size:.82rem;cursor:pointer}
   .settings-help-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
   .settings-help-actions button{min-height:42px;padding:10px 12px;border:0;border-radius:10px;font-weight:800;font-size:.78rem;cursor:pointer}
   @media(max-width:420px){.settings-cols{grid-template-columns:1fr}}
@@ -1754,11 +1755,15 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
 <style id="overview-compact-v62">
   /* V62 · Hai chỉ số chính chiếm thị giác, không để khoảng trống vô nghĩa. */
-  #page-overview{min-height:0}
+  /* V74: băng cảnh báo nằm NGOÀI lưới (để lúc ẩn không chừa hàng trống), nên
+     chiều cao màn hình phải chia cho cả hai: trang là cột flex cao bằng khung
+     hình, băng cảnh báo lấy phần của nó, lưới nhận đúng phần còn lại.
+     Nhờ vậy trang khít khung cả khi có lẫn không có băng cảnh báo. */
+  #page-overview.active{display:flex;flex-direction:column;gap:9px;min-height:calc(100dvh - 136px)}
   #page-overview .overview-compact{
-    display:grid;gap:9px;max-width:1180px;margin:0 auto;
-    min-height:calc(100dvh - 136px);
-    grid-template-rows:auto minmax(205px,.95fr) auto auto minmax(150px,1.05fr);
+    display:grid;gap:9px;max-width:1180px;width:100%;margin:0 auto;
+    min-height:0;flex:1 1 auto;
+    grid-template-rows:minmax(205px,.95fr) auto auto minmax(150px,1.05fr);
   }
   /* V72: khối dự báo được lưới kéo cao cho kín màn hình, nhưng bảng ngày bên trong
      lại chỉ cao bằng nội dung nên để hở một mảng trống ở đáy trang. Cho khối này
@@ -1850,9 +1855,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   @media(max-width:620px){
     main{padding-top:8px!important}
     body:has(#page-overview.active) main{padding-bottom:8px!important}
+    #page-overview.active{gap:7px;min-height:calc(100dvh - 150px)}
     #page-overview .overview-compact{
-      min-height:calc(100dvh - 150px);
-      grid-template-rows:42px minmax(200px,.95fr) 70px 66px minmax(215px,1.05fr);
+      min-height:0;
+      grid-template-rows:minmax(215px,.95fr) 72px 68px minmax(225px,1.05fr);
       gap:7px;
     }
     #page-overview .overview-bar{min-height:42px;padding:6px 9px;border-radius:12px}
@@ -1922,6 +1928,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
 
   @media(max-width:620px) and (max-height:650px){
+    #page-overview.active{min-height:0}
     #page-overview .overview-compact{min-height:0;grid-template-rows:auto}
   }
 </style>
@@ -1982,21 +1989,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 </div></header>
 <main>
 <section id="page-overview" class="page active">
+  <div id="dataBanner" class="banner"></div>
   <div class="overview-compact" aria-live="polite">
-    <section class="overview-bar">
-      <div class="overview-status">
-        <strong>Tổng quan</strong>
-        <span id="latestDate">—</span>
-        <span class="overview-dot">•</span>
-        <span id="latestStatus">—</span>
-      </div>
-      <div class="overview-actions">
-        <button id="refreshBtn" class="overview-icon-btn" type="button" aria-label="Cập nhật dữ liệu" title="Cập nhật dữ liệu">↻</button>
-        <button id="openSheetBtn" class="overview-sheet-btn" type="button">Sheet ↗</button>
-      </div>
-      <div id="dataBanner" class="banner"></div>
-    </section>
-
     <section class="overview-primary-grid">
       <article class="overview-primary-card deficit-card">
         <div class="overview-primary-label">🔥 CALO CẦN THÂM HỤT</div>
@@ -2072,6 +2066,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
             <button id="saveSheetBtn" class="ai-key-save" type="button">Lưu &amp; tải</button>
             <button id="clearSheetBtn" class="ai-key-delete" type="button">Xóa</button>
           </div>
+          <button id="openSheetFromSettings" class="ai-key-delete settings-open-sheet" type="button">Mở Google Sheet ↗</button>
           <p id="sheetMessage" class="ai-key-note">Mở đúng tab chứa dữ liệu rồi copy link trên thanh địa chỉ — web tự nhận tab đó. Link chỉ lưu trên trình duyệt này.</p>
           <details class="settings-help">
             <summary>Sheet cần chuẩn bị thế nào?</summary>

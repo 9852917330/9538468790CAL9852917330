@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-18-v73-brand-readability";
+  const APP_BUILD = "2026-09-18-v74-tight-overview";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -10478,15 +10478,21 @@
   });
   renderGeminiKeyState();
   fillSettingsForm();
-  document.getElementById("refreshBtn").addEventListener("click", refreshData);
-  document.getElementById("stickyRefreshBtn").addEventListener("click", refreshData);
-  document
-    .getElementById("openSheetBtn")
-    .addEventListener("click", () => {
-      const url = sheetUrl();
-      if (url) window.open(url, "_blank", "noopener");
-      else openSettingsDialog();
-    });
+  /* V74: thanh "Tổng quan · ngày · ↻ · Sheet ↗" đã gỡ khỏi trang chủ.
+     Nút cập nhật đã có sẵn trên header; nút mở Sheet chuyển vào bảng Cài đặt.
+     Vẫn gắn sự kiện có điều kiện phòng khi các nút này quay lại ở trang khác. */
+  document.getElementById("refreshBtn")?.addEventListener("click", refreshData);
+  document.getElementById("stickyRefreshBtn")?.addEventListener("click", refreshData);
+  document.getElementById("openSheetBtn")?.addEventListener("click", () => {
+    const url = sheetUrl();
+    if (url) window.open(url, "_blank", "noopener");
+    else openSettingsDialog();
+  });
+  document.getElementById("openSheetFromSettings")?.addEventListener("click", () => {
+    const url = sheetUrl();
+    if (url) window.open(url, "_blank", "noopener");
+    else renderSheetState("Chưa có link Sheet để mở. Dán link vào ô trên rồi bấm Lưu & tải.");
+  });
   window.addEventListener("resize", () => {
     fitHeroValues();
     if (currentPage === "charts")
