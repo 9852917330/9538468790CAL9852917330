@@ -1,0 +1,84 @@
+V73 — TỈ LỆ ĐẠM/CALO · CHỮ TO HƠN · LOGO MỚI
+18/09/2026 · build 2026-09-18-v73-brand-readability
+
+════════════════════════════════════════════════════════════════
+1. TỈ LỆ ĐẠM / CALO TRONG TỪNG MÓN (trang Lịch sử)
+════════════════════════════════════════════════════════════════
+Mỗi món giàu đạm nay có thêm ô "g đạm/100 kcal" ngay cạnh số calo — đúng chỉ số
+mà cột "Tỉ lệ" ở trang Thực phẩm đang dùng. Đây là con số quyết định khi cắt mỡ:
+ăn no đạm mà ít calo.
+
+  Ức gà 150 g      171 kcal · 35 g đạm  →  20,2
+  Cá nục 500 g     800 kcal · 110 g     →  13,8
+  Đậu phụ 400 g    304 kcal · 32 g      →  10,5
+  Sữa chua 1 hộp    62 kcal · 3,5 g     →   5,6
+  Phô mai (tự nhập) 48 kcal · 3,2 g     →   6,7
+
+Chỉ hiện ở nhóm Thịt · Cá · Trứng · Bơ sữa · Đậu, cộng các món người dùng tự ghi
+kèm số đạm trong Sheet. Hoa quả, rau, cơm không hiện — ở đó chỉ số này vô nghĩa
+và chỉ làm rối dòng.
+
+Cách làm: hồ sơ nhận diện nay mang theo nhóm phân loại của bảng Thực phẩm, nên hai
+trang dùng chung một định nghĩa. Hồ sơ cũ không có nhóm thì suy từ tên và mã món.
+
+Ghi chú kỹ thuật: các rule giao diện gom chung mọi thẻ <b>/<small> bằng
+:where(...)!important, và riêng trang Lịch sử còn có rule ép màu trắng kèm id.
+Ô tỉ lệ vì vậy phải khai báo màu ở mức đặc hiệu cao hơn, nếu không số sẽ trắng
+nhòe trên nền xanh nhạt ở giao diện tối.
+
+════════════════════════════════════════════════════════════════
+2. CHỮ TRANG TỔNG QUAN TO HƠN
+════════════════════════════════════════════════════════════════
+Nhiều nhãn đang ở 6,8–9,2 px — quá nhỏ. Đã tăng toàn bộ, không còn chữ nào dưới 9 px:
+
+  Nhãn thẻ chính         9,1 → 11,5    Chỉ số cơ thể (nhãn)   7,4 → 9,8
+  Dòng phụ dưới số lớn   9,7 → 11,8    Chỉ số cơ thể (số)    13,3 → 16,2
+  Chip mục tiêu/mỡ       7,4 → 9,6     Tiến độ (nhãn)         8,7 → 11
+  Chip (giá trị)         9,2 → 11,4    Tiến độ (%)           14,2 → 17
+  Tiêu đề dự báo          11 → 13,2    Thẻ mốc ngày (số)       13 → 15,6
+  Ghi chú dự báo         7,3 → 9,4     Ngày dự kiến           6,8 → 9
+  Tên trang / ngày      12,5 → 15      Nút Sheet              8,5 → 10,5
+
+Hai việc đi kèm, nếu không làm thì tăng chữ xong sẽ hỏng:
+
+  · Chữ to hơn làm các nhãn hẹp bị cắt cụt bằng "…": "Mục tiêu 57,…",
+    "Tốc độ đốt 8,56 kcal…", "TDEE 1.750 k…", "GIỜ ĐI BỘ DỐC 15 · 3,3…".
+    Nay cho xuống dòng thay vì cắt — đọc trọn vẹn vẫn hơn bóp chữ nhỏ lại.
+    Bỏ luôn chữ "mỡ" thừa ở giá trị "14,53 kg mỡ" vì nhãn đã ghi "Mỡ còn lại".
+  · Các hàng cố định của lưới phải cao thêm cho vừa chữ mới:
+    thanh tiêu đề 37 → 42 px, dải chỉ số 60 → 70 px, tiến độ 59 → 66 px.
+
+Đo lại: 412×915, 390×844, 360×800, 430×932 đều kín đúng một khung hình, không
+còn chữ nào bị cắt. Máy rất thấp (412×732) cuộn thêm 49 px — chấp nhận được,
+đổi lại chữ to dễ đọc.
+
+════════════════════════════════════════════════════════════════
+3. LOGO MỚI: IN AND OUT CALORIES
+════════════════════════════════════════════════════════════════
+Logo cũ là logo thương hiệu In-N-Out Burger thật — mũi tên vàng, chữ đỏ nghiêng,
+kèm chữ BURGER — dùng ở cả header lẫn icon PWA 192/512.
+
+Đã vẽ mới hoàn toàn bằng bộ màu của chính app, không còn liên quan gì tới
+thương hiệu đó:
+
+  Header   thẻ bo góc nền xanh đậm · "IN AND OUT" trắng đậm ·
+           "CALORIES" màu mint giãn chữ · gạch chân hai màu
+           (mint = calo vào, hổ phách = calo ra)
+  Icon PWA ký hiệu hai mũi tên ngược chiều trên nền xanh đậm.
+           Icon khai báo maskable nên Android cắt thành hình tròn — icon mới đặt
+           trọn trong vòng tròn an toàn, đã kiểm tra bằng cách cắt thử.
+           Không để chữ trong icon: ở cỡ 48dp không ai đọc nổi, mà tên app đã
+           hiện ngay dưới icon.
+
+  Cập nhật kèm: manifest (name "In and Out Calories", short_name "In & Out Cal",
+  màu nền/theme), <title>, application-name, apple-mobile-web-app-title,
+  dòng chữ cạnh logo.
+
+  Kiểm tra: không còn chuỗi "IN-N-OUT" hay "BURGER" nào trong toàn bộ mã nguồn.
+
+════════════════════════════════════════════════════════════════
+4. KIỂM TRA
+════════════════════════════════════════════════════════════════
+  node test-food.js → 103 đạt · 0 lỗi
+  Trình duyệt thật: 5 trang × 2 giao diện sáng/tối, 6 khổ máy — không lỗi,
+  không chữ nào bị cắt, Tổng quan vẫn kín khung hình.

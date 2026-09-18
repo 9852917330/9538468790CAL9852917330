@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-17-v72-full-frame";
+  const APP_BUILD = "2026-09-18-v73-brand-readability";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -6995,6 +6995,12 @@
     const n = Math.max(0, Number(value) || 0);
     return n >= 10 ? fmt(n) : fmt(n, 1);
   }
+  /* Ô tỉ lệ đạm/calo nằm ngay cạnh số calo của từng món. */
+  function proteinRatioHtml(item) {
+    const ratio = Number(item?.proteinRatio);
+    if (!item?.resolved || !Number.isFinite(ratio) || ratio <= 0) return "";
+    return `<span class="protein-ratio" title="Gram đạm trên mỗi 100 kcal — càng cao thì càng no đạm mà ít calo"><b>${fmt(ratio, 1)}</b><small>g đạm/100 kcal</small></span>`;
+  }
   function macroPillsHtml(item) {
     return macroEntries(item)
       .map(
@@ -7334,6 +7340,24 @@
     return null;
   }
 
+  /* =================== V73 · TỈ LỆ ĐẠM / CALO ===================
+     Cùng một chỉ số với cột "Tỉ lệ" ở trang Thực phẩm: bao nhiêu gram đạm trên mỗi
+     100 kcal. Đây là con số quyết định khi cắt mỡ — ăn no đạm mà ít calo.
+     Chỉ hiện với nhóm thực phẩm mà chỉ số này có ý nghĩa; hiện ở rau củ hay đồ ngọt
+     thì vừa vô nghĩa vừa làm rối dòng. */
+  const V73_PROTEIN_RATIO_GROUPS = new Set(["meat","fish","eggs","dairy","beans"]);
+  const V73_PROTEIN_TEXT = /(?:^|[\s_])(?:thit|ga|bo|heo|lon|vit|ngan|chim|ca|tom|cua|ghe|muc|so|ngao|hau|luon|ech|trung|sua|pho mai|phomai|whey|dam|dau phu|dau hu|dau nanh|meat|beef|pork|chicken|duck|fish|shrimp|crab|squid|clam|oyster|egg|milk|cheese|yogurt|yoghurt|whey|protein|tofu|soy)(?:$|[\s_])/;
+  function v73ProteinRatio({ food, protein, kcal, custom }) {
+    const p = Number(protein), k = Number(kcal);
+    if (!Number.isFinite(p) || !Number.isFinite(k) || p <= 0 || k <= 0) return null;
+    /* Món người dùng tự ghi kèm số đạm: họ đang theo dõi đạm nên luôn hiện. */
+    if (custom) return (p / k) * 100;
+    const group = String(food?.catalogGroup || "");
+    if (group) return V73_PROTEIN_RATIO_GROUPS.has(group) ? (p / k) * 100 : null;
+    /* Hồ sơ cũ không mang nhóm: suy từ tên và mã món. */
+    const text = ` ${String(food?.id || "").replace(/_/g, " ")} ${normalizePhrase(food?.name || "")} ${normalizePhrase(food?.en || "")} `;
+    return V73_PROTEIN_TEXT.test(text) ? (p / k) * 100 : null;
+  }
   function estimateFood(text) {
     const key=String(text??"");
     if(FOOD_ESTIMATE_MEMO.has(key))return FOOD_ESTIMATE_MEMO.get(key);
@@ -7386,7 +7410,8 @@
           source: "Dữ liệu tự nhập trong Excel",
           resolved: true,
           foodId: "custom_explicit_v55",
-          customNutrition: true
+          customNutrition: true,
+          proteinRatio: v73ProteinRatio({ protein: explicitCustom.protein, kcal: explicitCustom.kcal, custom: true })
         });
         continue;
       }
@@ -7577,6 +7602,7 @@
         source: food.source || "Ước lượng tự động",
         resolved: true,
         foodId: food.id || null,
+        proteinRatio: v73ProteinRatio({ food, protein, kcal }),
       });
     }
     /* V68: trước đây chỉ cần MỘT món lạ là total = null, cả ngày bị vứt khỏi
@@ -8213,7 +8239,8 @@
     const achieved = plan.kcalToBurn <= 1;
     setText("targetBurnKcal", achieved ? "0" : fmt(plan.kcalToBurn));
     setText("targetBurnWeight", `${fmt(plan.targetWeightNow, 1)} kg`);
-    setText("targetBurnFatKg", achieved ? "Đã đạt" : `${fmt(plan.fatKgToLose, 2)} kg mỡ`);
+    /* Nhãn đã ghi "Mỡ còn lại" nên không lặp lại chữ "mỡ" ở giá trị. */
+    setText("targetBurnFatKg", achieved ? "Đã đạt" : `${fmt(plan.fatKgToLose, 2)} kg`);
     setText(
       "targetBurnSub",
       achieved
@@ -8427,7 +8454,7 @@
           breakdown = d.foodEst.items
             .map(
               (i) =>
-                `<div class="breakdown-row ${i.resolved ? "" : "unresolved-row"}"><span><strong>${escapeHtml(i.label)}</strong><div class="macro-line">${i.resolved ? macroPillsHtml(i) : ""}</div><small>${escapeHtml(i.basis)}</small><br><em>${escapeHtml(i.confidenceText)} · ${escapeHtml(i.source)}</em></span><b>${i.resolved ? `${fmt(i.kcal)} kcal` : "Cần bổ sung"}</b></div>`,
+                `<div class="breakdown-row ${i.resolved ? "" : "unresolved-row"}"><span><strong>${escapeHtml(i.label)}</strong><div class="macro-line">${i.resolved ? macroPillsHtml(i) : ""}</div><small>${escapeHtml(i.basis)}</small><br><em>${escapeHtml(i.confidenceText)} · ${escapeHtml(i.source)}</em></span>${proteinRatioHtml(i)}<b>${i.resolved ? `${fmt(i.kcal)} kcal` : "Cần bổ sung"}</b></div>`,
             )
             .join(""),
           detailsOpen = historyDetailsState.has(dayKey)
@@ -9591,6 +9618,9 @@
       /* V51: giữ nguyên toàn bộ chuỗi tên/alias gốc của chính dòng đang hiển thị để nhận diện song ngữ Excel. */
       catalogAliasText:[name,item.name,item.originalName,...bilingualAliases,...bilingualAliasesV56,...bilingualAliasesV57,Array.isArray(item.aliases)?item.aliases.join(" "):item.aliases].filter(Boolean).join(" "),
       catalogCurated:!!(item.curatedV47||item.curatedV44),
+      /* V73: giữ lại nhóm phân loại để trang Lịch sử biết món nào đáng hiện
+         tỉ lệ đạm/calo — đúng bộ nhóm mà trang Thực phẩm đang dùng. */
+      catalogGroup:item._catalogClass?.group||"",
       catalogSourceScore:catalogItemScore(item),
       defaultKcal:kcal,defaultProtein:protein,defaultCarbs:carbs,defaultFat:fat
     };

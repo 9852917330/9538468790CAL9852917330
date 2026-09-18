@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "In and Out",
-  "short_name": "In and Out",
-  "description": "Theo dõi calories và macro với CSDL ưu tiên song ngữ, nhận diện cách chế biến và kiểm tra chéo năng lượng.",
+  "name": "In and Out Calories",
+  "short_name": "In & Out Cal",
+  "description": "Theo dõi calo vào/ra và macro từ Google Sheet của bạn, với kho thực phẩm Việt và quốc tế song ngữ.",
   "lang": "vi",
   "start_url": "./",
   "scope": "./",
@@ -12,8 +12,8 @@
     "minimal-ui"
   ],
   "orientation": "any",
-  "background_color": "#0b1f33",
-  "theme_color": "#0b1f33",
+  "background_color": "#061c18",
+  "theme_color": "#061c18",
   "icons": [
     {
       "src": "./icon-192.png",
