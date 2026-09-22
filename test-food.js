@@ -18,8 +18,10 @@ global.localStorage = window.localStorage; global.navigator = window.navigator; 
 window.requestAnimationFrame = () => {}; window.setInterval = () => 0; window.fetch = async () => { throw new Error("offline"); };
 global.requestAnimationFrame = window.requestAnimationFrame; global.setInterval = window.setInterval; global.fetch = window.fetch;
 
+/* Thông số cơ thể cố định cho nhóm test CƠ THỂ (không ảnh hưởng test món ăn). */
+window.localStorage.setItem("inAndOutSettingsV2", JSON.stringify({ sheetId: "x".repeat(30), sheetGid: "", sex: "male", age: 35, height: 160, defaultWeight: 70, startWaist: 92, startBodyFat: 30, targetBodyFat: 12, activityFactor: 1.2 }));
 let code = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
-code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood, parseCardioV75, cardioBurnV75, v75WalkPlan };\n})();\n");
+code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood, parseCardioV75, cardioBurnV75, v75WalkPlan, v76WalkPlan, compute, goalStateV76, rfmEstimate, writeSettings, PROFILE };\n})();\n");
 window.eval(code);
 const T = window.__T;
 
@@ -214,6 +216,74 @@ for (const input of ALL) {
   if (gap > 0.2) { console.log(`  ⚠️  ${input}: ${r.total} kcal nhưng macro quy ra ${Math.round(macroKcal)} kcal (lệch ${Math.round(gap * 100)}%)`); drift++; }
 }
 console.log(`  Số dòng lệch năng lượng > 20%: ${drift}`);
+
+/* ---------- V76 · MÓN HAY GHI ---------- */
+console.log("=== V76 · MÓN HAY GHI ===");
+{
+  const a = T.estimateFood("500g hoa quả và rau"), b = T.estimateFood("500g rau và hoa quả");
+  if (a.total !== b.total) bad(`"hoa quả và rau" ${a.total} ≠ "rau và hoa quả" ${b.total} — đảo thứ tự không được đổi số`); else good();
+  if (Math.abs(a.total - 220) > 5 || a.items.length !== 1) bad(`500g hoa quả và rau → ${a.total} kcal / ${a.items.length} món, mong đợi 1 món ≈220 kcal (500 g hỗn hợp)`); else good();
+  for (const [input, n] of [["cơm và rau", 2], ["2 trứng và bánh mì", 2], ["300g thịt bò và rau", 2], ["300g rau và 200g hoa quả", 2]]) {
+    const r = T.estimateFood(input);
+    if (r.items.length !== n) bad(`${input} → ${r.items.length} món, mong đợi ${n}`); else good();
+  }
+  const f = T.estimateFood("100g cá nục");
+  if (Math.abs(f.total - 111) > 2 || Math.abs(f.proteinTotal - 20.2) > 0.3) bad(`100g cá nục → ${f.total} kcal / ${f.proteinTotal} g đạm, Bảng TPTP VN: 111 kcal / 20,2 g`); else good();
+}
+
+/* ---------- V76 · CƠ THỂ & MỤC TIÊU ----------
+   Kỳ vọng tính ĐỘC LẬP từ nguyên lý, không lấy từ app. */
+console.log("=== V76 · CƠ THỂ & MỤC TIÊU ===");
+{
+  const near = (x, y, tol) => Math.abs(x - y) <= tol;
+  const W0 = 70, BF0 = 30, t = 0.12, lean0 = W0 * (1 - BF0 / 100), target0 = lean0 / (1 - t);
+  const day = (d, food, extra = {}) => ({ date: d, food, strength: "", cardio: "", weight: "", waist: "", ...extra });
+  const pad = (n) => String(n).padStart(2, "0");
+  const dateOf = (i) => { const x = new Date(2026, 8, 22 + i); return `${pad(x.getDate())}/${pad(x.getMonth() + 1)}/${x.getFullYear()}`; };
+
+  /* 1) Chưa có dòng nào: mục tiêu và mỡ còn lại lấy đúng từ Cài đặt. */
+  const g0 = T.goalStateV76(null);
+  if (!near(g0.targetWeight, target0, 1e-6) || !near(g0.fatToLoseKg, W0 - target0, 1e-6)) bad(`Mốc đầu: mục tiêu ${g0.targetWeight} / mỡ còn ${g0.fatToLoseKg}, mong đợi ${target0} / ${W0 - target0}`); else good();
+
+  /* 2) Một ngày KHÔNG đo: calo cần thâm hụt giảm ĐÚNG bằng thâm hụt của ngày. */
+  const d1 = T.compute([day(dateOf(0), "1000 kcal")]).at(-1);
+  const drop = (W0 - target0) * 7700 - d1.remainingKcal;
+  if (!near(drop, d1.deficit, 0.5)) bad(`Thâm hụt ngày ${d1.deficit} kcal nhưng calo còn lại chỉ giảm ${Math.round(drop)}`); else good();
+
+  /* 3) Mọi ô trên Tổng quan phải cùng một phép tính: mỡ còn lại = cân − mục tiêu; kcal = kg × 7.700. */
+  if (!near(d1.fatToLoseKg, d1.projectedWeight - d1.targetWeightNow, 1e-9) || !near(d1.remainingKcal, d1.fatToLoseKg * 7700, 1e-6)) bad("Mỡ còn lại ≠ cân hiện tại − cân mục tiêu"); else good();
+
+  /* 4) Neo theo cân: 60 ngày ghi ăn dư 500 kcal/ngày nhưng cân vẫn đứng 70 kg.
+        Sổ cái cũ sẽ trôi +30.000 kcal (≈3,9 kg mỡ ảo); bản mới phải bám cân. */
+  const tdee = Math.round((370 + 21.6 * lean0) * 1.2);
+  const rows60 = Array.from({ length: 60 }, (_, i) => day(dateOf(i), `${tdee + 500} kcal`, { weight: "70", waist: "92" }));
+  const last60 = T.compute(rows60).at(-1);
+  if (Math.abs(last60.projectedWeight - 70) > 0.3) bad(`Cân đứng 70 kg suốt 60 ngày mà mô hình ra ${last60.projectedWeight.toFixed(2)} kg`); else good();
+  if (Math.abs(last60.fatToLoseKg - (W0 - target0)) > 0.35) bad(`Mỡ còn lại trôi ${(last60.fatToLoseKg - (W0 - target0)).toFixed(2)} kg dù cân không đổi`); else good();
+
+  /* 5) Cân nhà nhảy +2 kg một hôm (nước): số liệu không được giật trọn 15.400 kcal. */
+  const spike = T.compute([day(dateOf(0), `${tdee} kcal`, { weight: "70" }), day(dateOf(1), `${tdee} kcal`, { weight: "72" })]);
+  const jump = spike[1].remainingKcal - spike[0].remainingKcal;
+  if (jump > 7700) bad(`Một lần cân +2 kg làm calo còn lại nhảy ${Math.round(jump)} kcal`); else good();
+
+  /* 6) Eo: cân giữ nguyên nhưng eo giảm 92 → 88 cm (tập tạ, mỡ giảm) → % mỡ phải giảm, mỡ còn lại giảm. */
+  const recomp = T.compute(Array.from({ length: 21 }, (_, i) => day(dateOf(i), `${tdee} kcal`, { weight: "70", waist: String(92 - Math.min(4, Math.floor(i / 5))) }))).at(-1);
+  if (!(recomp.bodyFat < 29.5) || !(recomp.fatToLoseKg < W0 - target0 - 0.3)) bad(`Eo giảm 4 cm mà % mỡ ${recomp.bodyFat.toFixed(2)} / mỡ còn ${recomp.fatToLoseKg.toFixed(2)} kg không giảm`); else good();
+
+  /* 7) Bỏ trống % mỡ: máy dùng RFM = 64 − 20 × cao/eo. */
+  T.writeSettings({ startBodyFat: null });
+  const rfmExpect = 64 - 20 * (160 / 92);
+  if (!near(T.PROFILE.startBodyFat, Math.round(rfmExpect * 10) / 10, 0.051) || T.PROFILE.bodyFatSource !== "waist") bad(`Ô % mỡ trống → ${T.PROFILE.startBodyFat}% (${T.PROFILE.bodyFatSource}), RFM ra ${rfmExpect.toFixed(2)}%`); else good();
+  T.writeSettings({ startBodyFat: 30 });
+  if (T.PROFILE.startBodyFat !== 30 || T.PROFILE.bodyFatSource !== "input") bad("Nhập lại 30% nhưng máy không dùng số đã nhập"); else good();
+
+  /* 8) Giờ đi bộ: cân giảm dần nên phải cộng dồn theo ln(W/T), không chia thẳng. */
+  const perKg = (0.1 * (4 * 1000 / 60)) * 5 / 1000, T0 = target0;
+  const plan = T.v76WalkPlan(W0, T0, (W0 - T0) * 7700, { speedKmh: 4, gradePct: 0 });
+  const expectMin = 7700 / perKg * Math.log(W0 / T0);
+  if (!near(plan.minutes, expectMin, 1)) bad(`Giờ đi bộ ${Math.round(plan.minutes)} phút, công thức ra ${Math.round(expectMin)}`); else good();
+  if (!(plan.minutes > (W0 - T0) * 7700 / (perKg * W0))) bad("Giờ đi bộ không được ít hơn cách chia thẳng ở cân hiện tại"); else good();
+}
 
 console.log(`\n===== KẾT QUẢ: ${pass} đạt · ${fail} lỗi · lệch năng lượng ${drift} =====\n`);
 process.exit(fail || drift ? 1 : 0);

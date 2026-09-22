@@ -1,0 +1,50 @@
+V76 · 2026-09-22 · "body-anchor" — Calo còn lại bám theo CƠ THỂ THẬT (cân + eo)
+==========================================================================
+
+1) LỖI GỐC (V54–V75): "CALO CẦN THÂM HỤT" TRÔI KHỎI CÂN THẬT
+   Công thức cũ: (mỡ cần giảm lúc bắt đầu) − (tổng thâm hụt ước tính cộng dồn).
+   Tổng đó ghép từ hai số ƯỚC TÍNH (TDEE theo công thức + calo đồ ăn). Lệch
+   200–300 kcal/ngày là bình thường, và sai số cứ thế cộng dồn, cân thật không
+   bao giờ sửa lại được. Sau 90 ngày dữ liệu cũ: sổ cái báo "mỡ còn lại 20,05 kg"
+   trong khi cân thật 70 kg chỉ cách mục tiêu 54,9 kg khoảng 15 kg — vô lý.
+   Thẻ "Giờ đi bộ" chỉ là số bên trái chia cho tốc độ đốt, nên sai theo.
+
+2) LÕI MỚI: THEO DÕI KHỐI MỠ + KHỐI NẠC
+   • Mốc đầu = Cài đặt: cân, vòng eo, % mỡ (tùy chọn) của ngày đầu tiên trong Sheet.
+   • Ăn/tập: thâm hụt X kcal = mất X/7.700 kg mỡ, nạc giữ nguyên
+     → "Calo cần thâm hụt" giảm ĐÚNG bằng số thâm hụt của ngày.
+   • Cân: mỗi lần cân kéo cân mô hình về số thật 25% (lâu không cân thì nhiều hơn:
+     1 − 0,75^số ngày). Lọc dao động nước ±1 kg; sai số TDEE không tích tụ được.
+   • Eo: % mỡ theo eo + cân (58% RFM hiệu chỉnh + 42% giữ nạc nền) kéo % mỡ mô hình
+     25%/lần — eo quyết định bao nhiêu phần cân giảm là mỡ, bao nhiêu là nạc/nước.
+   • Mục tiêu = khối nạc hiện tại ÷ (1 − % mỡ mục tiêu); Mỡ còn lại = cân − mục tiêu;
+     Calo cần thâm hụt = mỡ còn lại × 7.700. Mọi ô Tổng quan dùng chung một nguồn.
+   Kiểm chứng: chạy lại 90 ngày dữ liệu cũ → hệ số 1,2 hay 1,375 đều ra ~120.000 kcal
+   (bám cân), sổ cái cũ ra 145.000–154.000. Mô phỏng 90 ngày có "sự thật" biết trước:
+   mỡ còn lại lệch ≤ 0,3 kg kể cả khi hệ số vận động nhập sai; sổ cái cũ lệch 2–3 kg.
+
+3) GIỜ ĐI BỘ TÍNH THEO CÂN GIẢM DẦN
+   Đi bộ đốt calo tỉ lệ với cân nặng. Cân giảm thì mỗi phút đốt ít đi, nên
+   phút = 7.700 ÷ r × ln(cân hiện tại ÷ cân mục tiêu) (r = kcal/phút/kg, ACSM ròng).
+   Chia thẳng ở cân hiện tại hứa ít giờ hơn thực tế ~10–15%. Dòng cuối thẻ đổi
+   thành "Cân 69,9→55,7 kg" để thấy khoảng cân đang tính.
+
+4) CÀI ĐẶT
+   • Thêm ô "Vòng eo khởi điểm (cm)" — bắt buộc.
+   • "% mỡ khởi điểm" thành tùy chọn: để trống → máy dùng RFM = 64 − 20 × cao/eo
+     (nữ: 76 − …). Dòng gợi ý hiện ngay số RFM để đối chiếu; lệch ≥ 5 điểm thì cảnh báo.
+   • Nhãn TDEE hết ghi cứng "hệ số 1,20" — hiện đúng hệ số đang dùng.
+   • Hàng ô nhập căn thẳng đáy dù nhãn dài 1 hay 2 dòng.
+
+5) MÓN ĂN HAY GHI
+   • "500g hoa quả và rau" = 500 g HỖN HỢP (44 kcal/100 g) = 220 kcal. Bản cũ tách
+     thành 500 g hoa quả + 1 suất rau = 305 kcal; đảo thành "rau và hoa quả" lại ra 205.
+   • Cá nục: 111 kcal · 20,2 g đạm · 3,3 g béo /100 g (Bảng thành phần thực phẩm
+     Việt Nam, Viện Dinh dưỡng — đối chiếu qua 2 nguồn trích dẫn). Số cũ 160 kcal là
+     của cá thu Thái Bình Dương/jack mackerel (USDA), loài khác. 500 g: 800 → 555 kcal.
+
+6) KHÁC
+   • Ảnh chụp nhanh Tổng quan lên version 2: số của bản cũ không nháy lại khi mở app.
+   • APP_BUILD = sw.js BUILD = 2026-09-22-v76-body-anchor → service worker tự thay bản mới.
+   • test-food.js: 143 test (thêm 18 test V76: năng lượng khớp từng ngày, neo cân,
+     chống giật do cân nhảy, eo giảm → mỡ giảm, % mỡ trống → RFM, giờ đi bộ theo ln).

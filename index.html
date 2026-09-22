@@ -1217,7 +1217,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .settings-block h4{margin:0;font-size:.95rem;letter-spacing:-.2px}
   .settings-grid{display:grid;gap:9px}
   .settings-grid.two{grid-template-columns:1fr 1fr}
-  .settings-grid label{display:grid;gap:5px;min-width:0;color:var(--muted,#64748b);font-size:.76rem;font-weight:700}
+  .settings-grid label{display:grid;grid-template-rows:1fr auto;align-items:end;gap:5px;min-width:0;color:var(--muted,#64748b);font-size:.76rem;font-weight:700}
   .settings-grid label.wide{grid-column:1/-1}
   .settings-grid input,.settings-grid select{width:100%;min-width:0;min-height:44px;padding:10px 11px;border:1px solid var(--line,#dce5ec);border-radius:10px;background:var(--panel2,#fff);color:var(--text,#17372f);font-size:14px;font-weight:700}
   .settings-help{margin:0;padding:11px 12px;border:1px solid var(--line,#dce5ec);border-radius:12px;background:rgba(255,255,255,.03)}
@@ -1228,6 +1228,10 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   .settings-cols b{display:inline-block;min-width:15px;color:var(--mint,#0b9f75)}
   .forecast-empty{margin:0;padding:18px 14px;border:1px dashed var(--line,#dce5ec);border-radius:14px;color:var(--muted,#64748b);font-size:.82rem;line-height:1.5;text-align:center}
   .profile-state{font-weight:800}
+  .settings-grid label small{font-weight:700;opacity:.7;font-size:.86em}
+  .body-fat-hint{padding:9px 11px;border-radius:12px;background:rgba(15,159,117,.09);border:1px solid rgba(15,159,117,.22);line-height:1.45}
+  .body-fat-hint:empty{display:none}
+  .body-fat-hint.warn{background:rgba(243,169,60,.12);border-color:rgba(243,169,60,.35)}
   .profile-state.missing{color:#f3a93c}
   .profile-state.ready{color:#0f9f75}
   .settings-open-sheet{min-height:44px;padding:11px 12px;border:0;border-radius:10px;font-weight:800;font-size:.82rem;cursor:pointer}
@@ -2033,7 +2037,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
           </div>
         </div>
         <div class="overview-mini-line single">
-          <span>Ở cân nặng <b id="targetBurnRate">—</b></span>
+          <span>Cân <b id="targetBurnRate">—</b></span>
         </div>
       </article>
     </section>
@@ -2109,15 +2113,16 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
 
         <div class="settings-block">
           <h4>3 · Thông số cơ thể</h4>
-          <p class="ai-key-note">Dùng để tính TDEE, % mỡ và dự báo cân nặng. Phải điền đủ thì dashboard mới hiện số — điền xong là tính lại ngay.</p>
+          <p class="ai-key-note">Nhập số đo <b>của ngày đầu tiên trong Sheet</b>. Dùng để tính TDEE, % mỡ và mỡ còn lại — điền xong là tính lại ngay.</p>
           <p id="profileStateMsg" class="ai-key-note profile-state"></p>
           <div class="settings-grid two">
             <label for="setSex">Giới tính<select id="setSex"><option value="">— chọn —</option><option value="male">Nam</option><option value="female">Nữ</option></select></label>
             <label for="setAge">Tuổi<input id="setAge" type="number" inputmode="numeric" min="10" max="100" step="1" placeholder="vd. 34"></label>
             <label for="setHeight">Chiều cao (cm)<input id="setHeight" type="number" inputmode="decimal" min="120" max="220" step="1" placeholder="vd. 170"></label>
             <label for="setWeight">Cân nặng khởi điểm (kg)<input id="setWeight" type="number" inputmode="decimal" min="30" max="250" step="0.1" placeholder="vd. 72"></label>
-            <label for="setStartFat">% mỡ khởi điểm<input id="setStartFat" type="number" inputmode="decimal" min="3" max="60" step="0.5" placeholder="vd. 24"></label>
-            <label for="setTargetFat">% mỡ mục tiêu<input id="setTargetFat" type="number" inputmode="decimal" min="3" max="45" step="0.5" placeholder="vd. 14"></label>
+            <label for="setWaist">Vòng eo khởi điểm (cm)<input id="setWaist" type="number" inputmode="decimal" min="40" max="200" step="0.5" placeholder="vd. 88"></label>
+            <label for="setStartFat"><span>% mỡ khởi điểm <small>(tùy chọn)</small></span><input id="setStartFat" type="number" inputmode="decimal" min="3" max="60" step="0.1" placeholder="trống = tính theo eo"></label>
+            <label class="wide" for="setTargetFat">% mỡ mục tiêu<input id="setTargetFat" type="number" inputmode="decimal" min="3" max="45" step="0.5" placeholder="vd. 14"></label>
             <label class="wide" for="setActivity">Hệ số vận động ngoài tập luyện<select id="setActivity">
               <option value="">— chọn —</option>
               <option value="1.2">1,2 · ngồi nhiều, ít đi lại</option>
@@ -2126,6 +2131,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
               <option value="1.725">1,725 · lao động chân tay</option>
             </select></label>
           </div>
+          <p id="bodyFatHint" class="ai-key-note body-fat-hint"></p>
           <p class="ai-key-note">Calo tập tạ và cardio được cộng riêng theo số phút bạn ghi trong Sheet, nên hệ số này chỉ tính phần vận động ngoài buổi tập — chọn cao quá sẽ bị tính trùng.</p>
         </div>
       </section>

@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-22-v75-cardio-engine";
+  const APP_BUILD = "2026-09-22-v76-body-anchor";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -25,16 +25,21 @@
     age: null,
     height: null,
     defaultWeight: null,
+    startWaist: null,
     startBodyFat: null,
     targetBodyFat: null,
     activityFactor: null
   };
-  /* Các ô bắt buộc phải có thì mọi con số trên dashboard mới có nghĩa. */
-  const REQUIRED_PROFILE_FIELDS = ["sex","age","height","defaultWeight","startBodyFat","targetBodyFat","activityFactor"];
+  /* Các ô bắt buộc phải có thì mọi con số trên dashboard mới có nghĩa.
+     V76: thêm vòng eo khởi điểm — eo cùng chiều cao cho ra % mỡ (công thức RFM),
+     nên eo là thứ quyết định % mỡ thay đổi theo từng ngày. % mỡ khởi điểm thành
+     TÙY CHỌN: để trống thì máy tự ước tính từ eo + chiều cao. */
+  const REQUIRED_PROFILE_FIELDS = ["sex","age","height","defaultWeight","startWaist","targetBodyFat","activityFactor"];
   const SETTINGS_NUMBER_RANGE = {
     age: [10, 100],
     height: [120, 220],
     defaultWeight: [30, 250],
+    startWaist: [40, 200],
     startBodyFat: [3, 60],
     targetBodyFat: [3, 45],
     activityFactor: [1, 2.2]
@@ -115,8 +120,9 @@
   const cacheKey = () => `inAndOutSheetCacheV2::${sheetId() || "none"}`;
   const snapshotKey = () => `inAndOutOverviewSnapshotV1::${sheetId() || "none"}`;
   const PROFILE = {
-    sex: "male", age: 35, height: 165, defaultWeight: 70,
+    sex: "male", age: 35, height: 165, defaultWeight: 70, startWaist: 90,
     startBodyFat: 25, targetBodyFat: 15, activityFactor: 1.2,
+    startBodyFatInput: null, waistBodyFat: null, bodyFatSource: "input",
     strengthMet: 5,
     refreshSeconds: 60,
   };
@@ -128,6 +134,25 @@
       if (key === "sex") { if (value) PROFILE.sex = value; continue; }
       if (Number.isFinite(Number(value)) && Number(value) > 0) PROFILE[key] = Number(value);
     }
+    /* V76: % mỡ khởi điểm hiệu lực = số người dùng tự nhập; ô để trống thì dùng
+       số ước tính từ eo + chiều cao. Nhờ vậy ai không biết % mỡ vẫn dùng được. */
+    const typed = Number(SETTINGS.startBodyFat);
+    PROFILE.startBodyFatInput = SETTINGS.startBodyFat !== null && SETTINGS.startBodyFat !== "" && Number.isFinite(typed) && typed > 0 ? typed : null;
+    PROFILE.waistBodyFat = rfmEstimate(PROFILE.sex, PROFILE.height, PROFILE.startWaist);
+    if (PROFILE.startBodyFatInput !== null) {
+      PROFILE.startBodyFat = PROFILE.startBodyFatInput;
+      PROFILE.bodyFatSource = "input";
+    } else if (PROFILE.waistBodyFat !== null) {
+      PROFILE.startBodyFat = Math.round(PROFILE.waistBodyFat * 10) / 10;
+      PROFILE.bodyFatSource = "waist";
+    }
+  }
+  /* RFM (Relative Fat Mass, Woolcott & Bergman 2018): % mỡ ≈ 64 − 20 × cao/eo (nam),
+     76 − 20 × cao/eo (nữ). Chỉ cần thước dây, không cần máy đo. */
+  function rfmEstimate(sex, height, waist) {
+    const h = Number(height), w = Number(waist);
+    if (!(h > 0) || !(w > 0) || (sex !== "male" && sex !== "female")) return null;
+    return Math.max(3, Math.min(60, (sex === "female" ? 76 : 64) - 20 * (h / w)));
   }
   applySettingsToProfile();
   const VI_TIME_ZONE = "Asia/Ho_Chi_Minh";
@@ -4702,7 +4727,7 @@
     v6Food100g({"id":"u6_peking_duck","name":"Vịt quay Bắc Kinh","en":"Peking duck","aliases":["vịt quay bắc kinh","peking duck"],"protein":19,"carbs":3,"fat":28,"kcal":340,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.18,"defaultGrams":180,"allowCookingMethod":false}),
     v6Food100g({"id":"u6_salmon","name":"Cá hồi","en":"Salmon","aliases":["cá hồi","salmon"],"protein":22,"carbs":0,"fat":12,"kcal":196,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"fattyProtein","allowCookingMethod":true}),
     v6Food100g({"id":"u6_tuna","name":"Cá ngừ","en":"Tuna","aliases":["cá ngừ","tuna"],"protein":29,"carbs":0,"fat":1,"kcal":125,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"leanProtein","allowCookingMethod":true}),
-    v6Food100g({"id":"u6_scad","name":"Cá nục","en":"Scad fish","aliases":["cá nục","scad fish","mackerel scad"],"protein":22,"carbs":0,"fat":8,"kcal":160,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"fattyProtein","allowCookingMethod":true}),
+    v6Food100g({"id":"u6_scad","name":"Cá nục","en":"Scad fish","aliases":["cá nục","scad fish","mackerel scad","round scad"],"protein":20.2,"carbs":0,"fat":3.3,"kcal":111,"source":"Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · 100 g phần ăn được, cá tươi","rangePct":0.2,"defaultGrams":180,"methodClass":"leanProtein","allowCookingMethod":true}),
     v6Food100g({"id":"u6_mackerel","name":"Cá thu","en":"Mackerel","aliases":["cá thu","mackerel"],"protein":24,"carbs":0,"fat":14,"kcal":222,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"fattyProtein","allowCookingMethod":true}),
     v6Food100g({"id":"u6_basa","name":"Cá basa","en":"Basa fish","aliases":["cá basa","basa fish","pangasius"],"protein":18,"carbs":0,"fat":5,"kcal":117,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"seafood","allowCookingMethod":true}),
     v6Food100g({"id":"u6_snakehead","name":"Cá quả","en":"Snakehead fish","aliases":["cá quả","cá lóc","snakehead fish"],"protein":21,"carbs":0,"fat":4,"kcal":120,"source":"CSDL ưu tiên V6 · giá trị tham chiếu trung bình theo 100 g","rangePct":0.08,"defaultGrams":180,"methodClass":"seafood","allowCookingMethod":true}),
@@ -5112,7 +5137,7 @@
     },
     {
       id:"generic_produce_mix_v52", name:"Rau củ quả (ước tính chung)", en:"Generic fruit and vegetables",
-      aliases:["rau củ quả","rau cu qua","rau củ và hoa quả","rau cu va hoa qua","rau và hoa quả","rau va hoa qua","rau hoa quả","rau hoa qua","vegetables and fruit","vegetables and fruits","fruit and vegetables","fruits and vegetables","mixed fruit and vegetables","mixed fruits and vegetables"],
+      aliases:["rau củ quả","rau cu qua","rau củ và hoa quả","rau cu va hoa qua","rau và hoa quả","rau va hoa qua","rau hoa quả","rau hoa qua","hoa quả và rau","hoa qua va rau","hoa quả và rau củ","hoa qua va rau cu","trái cây và rau","trai cay va rau","rau và trái cây","rau va trai cay","rau quả","rau qua","vegetables and fruit","vegetables and fruits","fruit and vegetables","fruits and vegetables","mixed fruit and vegetables","mixed fruits and vegetables"],
       per100g:44, protein100g:1.2, carbs100g:9.1, fat100g:0.3,
       defaultKcal:44, defaultProtein:1.2, defaultCarbs:9.1, defaultFat:0.3, defaultGrams:100,
       priority:2100000, rangePct:0.35, rangeNote:"vì tỉ lệ rau/hoa quả và loại thực phẩm thực tế không được ghi rõ",
@@ -7173,6 +7198,17 @@
       /* Nếu có kcal tự nhập, giữ nguyên cả cụm để parser lấy các macro đi kèm. */
       if (parseExplicitCustomNutritionV51(part)) return [part];
       const viParts = part.split(/\s+và\s+/i).map((s)=>s.trim()).filter(Boolean);
+      /* V76: "500g hoa quả và rau" là 500 g HỖN HỢP rau + hoa quả. Bản cũ tách thành
+         500 g hoa quả + một suất rau mặc định, nên ghi "rau và hoa quả" hay
+         "hoa quả và rau" ra hai số khác nhau (205 vs 305 kcal). Chỉ gộp khi vế đầu có
+         khối lượng/thể tích, vế sau không có số, và cả hai đều là rau/hoa quả chung. */
+      if (viParts.length === 2) {
+        const qty = viParts[0].match(/^\s*(\d+(?:[.,]\d+)?)\s*(kg|g|gr|gram|grams|gam|lạng|lang)\b/i);
+        const a = findGenericProduceV53(viParts[0].replace(/^\s*\d+(?:[.,]\d+)?\s*[a-zạ]+\s*/i, "")),
+          b = findGenericProduceV53(viParts[1]);
+        if (qty && !/\d/.test(viParts[1]) && a && b && a.food.id !== b.food.id)
+          return [`${qty[1]} ${qty[2]} rau củ quả`];
+      }
       return viParts.flatMap((viPart)=>{
         if (!/\s+and\s+/i.test(viPart)) return [viPart];
         const whole = findFood(viPart);
@@ -8173,38 +8209,87 @@
       return d && dateKey(d) <= tomorrowKey;
     });
   }
+  /* =================== V76 · TRẠNG THÁI CƠ THỂ NEO THEO CÂN + EO ===================
+     Lỗi gốc của V54–V75: "Calo cần thâm hụt" = (mỡ cần giảm lúc bắt đầu) − (tổng
+     thâm hụt ước tính cộng dồn). Tổng đó ghép từ hai con số ƯỚC TÍNH (TDEE theo
+     công thức và calo đồ ăn) — lệch 200–300 kcal/ngày là chuyện thường, và sai số cứ
+     thế cộng dồn, không bao giờ được cân thật sửa lại. Sau 90 ngày, sổ cái nói mỡ
+     còn lại 20 kg trong khi cân thật chỉ cách mục tiêu 15 kg.
+
+     Nguyên lý mới — theo dõi thẳng KHỐI MỠ và KHỐI NẠC của cơ thể:
+       • Ăn/tập: thâm hụt X kcal = mất X/7.700 kg mỡ, khối nạc giữ nguyên.
+         → "Calo cần thâm hụt" giảm ĐÚNG bằng số thâm hụt trong ngày.
+       • Cân: kéo cân nặng mô hình về số cân thật 25%/lần. Phần chênh là sai số
+         của TDEE/calo ước tính, nên được tính vào mỡ. Sai số không thể tích tụ.
+       • Eo: % mỡ đo theo eo + cân (58% RFM hiệu chỉnh + 42% giữ khối nạc nền) kéo
+         % mỡ mô hình về phía nó 25%/lần — eo quyết định bao nhiêu phần cân giảm
+         là mỡ, bao nhiêu là nạc/nước.
+     25% thay vì 100% vì cân nhà dao động ±1 kg do nước, muối, đồ ăn trong ruột;
+     nhảy thẳng theo cân thì 1 kg nước = 7.700 kcal "mỡ" ảo. Thử trên 90 ngày dữ liệu
+     thật, 0,2–0,25 cho sai số nhỏ nhất so với xu hướng cân. Lâu không đo thì lần đo
+     sau đáng tin hơn: k = 1 − 0,75^số ngày kể từ lần đo trước. */
+  const V76_SCALE_GAIN = 0.25;
+  function v76DaysBetween(a, b) {
+    if (!(a instanceof Date) || !(b instanceof Date)) return 1;
+    const ua = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate()),
+      ub = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.round((ub - ua) / 86400000);
+  }
   function compute(rows) {
     const normalized = normalizeRows(rows),
-      firstWeight =
-        normalized.find((r) => r.weight !== null)?.weight ||
-        PROFILE.defaultWeight,
-      firstWaist = normalized.find((r) => r.waist !== null)?.waist || null,
+      /* Mốc khởi điểm = đúng số trong Cài đặt (cân, eo, % mỡ) ở ngày đầu tiên của Sheet. */
+      firstWeight = PROFILE.defaultWeight,
+      firstWaist = Number.isFinite(PROFILE.startWaist) && PROFILE.startWaist > 0
+        ? PROFILE.startWaist
+        : normalized.find((r) => r.waist !== null)?.waist || null,
       initialLean = firstWeight * (1 - PROFILE.startBodyFat / 100),
       rawInitialRfm = firstWaist ? rfm(firstWaist) : null,
-      rfmOffset =
-        rawInitialRfm === null ? 0 : PROFILE.startBodyFat - rawInitialRfm;
-    let projectedWeight = firstWeight,
-      currentBf = PROFILE.startBodyFat,
+      /* Hiệu chỉnh RFM theo % mỡ khởi điểm: công thức dùng để đo THAY ĐỔI theo eo,
+         còn mức tuyệt đối lấy theo số của người dùng (nếu có nhập). */
+      rfmOffset = rawInitialRfm === null ? 0 : PROFILE.startBodyFat - rawInitialRfm,
+      targetFraction = PROFILE.targetBodyFat / 100;
+    /* "Cảm biến" % mỡ từ số đo: 58% theo eo (RFM hiệu chỉnh) + 42% theo cân với khối nạc nền. */
+    const sensorBodyFat = (weight, waist) => {
+      const byWeight = clamp(100 * (1 - initialLean / weight), 3, 60),
+        byWaist = waist !== null ? clamp(rfm(waist) + rfmOffset, 3, 60) : null;
+      return clamp(byWaist === null ? byWeight : 0.58 * byWaist + 0.42 * byWeight, 3, 60);
+    };
+    const baselineDate = normalized.length ? addCalendarDays(normalized[0].date, -1) : null;
+    let weight = firstWeight,
+      fat = firstWeight * PROFILE.startBodyFat / 100,
       lastWaist = firstWaist,
+      lastWeighDate = baselineDate,
+      lastWaistDate = baselineDate,
       cumulative = 0,
-      lastMeasuredWeight = firstWeight;
+      lastMeasuredWeight = null;
+    const keepFatSane = () => { fat = clamp(fat, weight * 0.03, weight * 0.6); };
     return normalized.map((r) => {
+      let scaleGain = 0,
+        waistGain = 0;
       if (r.weight !== null) {
-        projectedWeight = r.weight;
+        const gap = Math.max(1, v76DaysBetween(lastWeighDate, r.date));
+        scaleGain = 1 - Math.pow(1 - V76_SCALE_GAIN, gap);
+        const shift = scaleGain * (r.weight - weight);
+        weight += shift;
+        fat += shift;
+        keepFatSane();
+        lastWeighDate = r.date;
         lastMeasuredWeight = r.weight;
       }
-      if (r.waist !== null) lastWaist = r.waist;
-      const weightStart = projectedWeight;
-      const bfByWeight = clamp(100 * (1 - initialLean / weightStart), 3, 60),
-        bfByWaist =
-          lastWaist !== null ? clamp(rfm(lastWaist) + rfmOffset, 3, 60) : null;
-      currentBf = clamp(
-        bfByWaist === null ? bfByWeight : 0.58 * bfByWaist + 0.42 * bfByWeight,
-        3,
-        60,
-      );
+      if (r.waist !== null) {
+        lastWaist = r.waist;
+        const gap = Math.max(1, v76DaysBetween(lastWaistDate, r.date));
+        waistGain = 1 - Math.pow(1 - V76_SCALE_GAIN, gap);
+        const bfModel = (100 * fat) / weight,
+          bfNew = bfModel + waistGain * (sensorBodyFat(weight, r.waist) - bfModel);
+        fat = (weight * bfNew) / 100;
+        keepFatSane();
+        lastWaistDate = r.date;
+      }
+      const weightStart = weight,
+        startBf = clamp((100 * fat) / weight, 3, 60);
       const baseTdee = Math.round(
-          katchBmr(weightStart, currentBf) * PROFILE.activityFactor,
+          katchBmr(weightStart, startBf) * PROFILE.activityFactor,
         ),
         foodEst = estimateFood(r.food),
         strengthMin = parseDurationMinutes(r.strength, "strength"),
@@ -8217,37 +8302,41 @@
         exerciseBurn = strengthBurn + cardioBurn,
         totalOut = baseTdee + exerciseBurn,
         /* Ngày để trống hoặc ghi "0" là CHƯA NHẬP, không phải ngày nhịn ăn 0 kcal.
-           Tính nó thành thâm hụt trọn một ngày TDEE sẽ thổi phồng lũy kế. */
+           Tính nó thành thâm hụt trọn một ngày TDEE sẽ thổi phồng số liệu. */
         complete = foodEst.total !== null && foodEst.resolvedCount > 0,
         partial = foodEst.unresolvedCount > 0,
         deficit = complete ? totalOut - foodEst.total : null;
-      if (complete) cumulative += deficit;
-      const endWeight = complete
-        ? Math.max(35, weightStart - deficit / 7700)
-        : weightStart;
-      const endBfWeight = clamp(100 * (1 - initialLean / endWeight), 3, 60),
-        endBfWaist =
-          lastWaist !== null ? clamp(rfm(lastWaist) + rfmOffset, 3, 60) : null,
-        endBodyFat = clamp(
-          endBfWaist === null
-            ? endBfWeight
-            : 0.58 * endBfWaist + 0.42 * endBfWeight,
-          3,
-          60,
-        );
-      currentBf = endBodyFat;
-      projectedWeight = endWeight;
+      if (complete) {
+        cumulative += deficit;
+        const kg = deficit / 7700;
+        weight = Math.max(35, weight - kg);
+        fat -= kg;
+        keepFatSane();
+      }
+      const endWeight = weight,
+        endBodyFat = clamp((100 * fat) / weight, 3, 60),
+        leanNow = weight - fat,
+        targetWeightNow = leanNow / (1 - targetFraction),
+        fatToLoseKg = Math.max(0, weight - targetWeightNow);
       return {
         ...r,
         startWeight: firstWeight,
         startWaist: firstWaist,
         leanMass: initialLean,
+        leanNow,
+        fatMass: fat,
         weightUsed: weightStart,
         measuredWeight: r.weight,
+        measuredWaist: r.waist,
+        scaleGain,
+        waistGain,
         projectedWeight: endWeight,
         lastMeasuredWeight,
         waistUsed: lastWaist,
-        bodyFat: currentBf,
+        bodyFat: endBodyFat,
+        targetWeightNow,
+        fatToLoseKg,
+        remainingKcal: fatToLoseKg * 7700,
         foodEst,
         strengthMin,
         cardioMin,
@@ -8266,6 +8355,27 @@
         achieved: complete && deficit > 0,
       };
     });
+  }
+  /* Trạng thái mục tiêu dùng chung cho MỌI ô trên Tổng quan — một nguồn duy nhất,
+     để "Mục tiêu", "Mỡ còn lại", "Calo cần thâm hụt" và "Giờ đi bộ" không bao giờ
+     lệch nhau như bản cũ. Chưa có dòng nào thì dùng đúng số trong Cài đặt. */
+  function goalStateV76(latest) {
+    const W0 = PROFILE.defaultWeight,
+      bf0 = PROFILE.startBodyFat,
+      t = PROFILE.targetBodyFat / 100,
+      lean0 = W0 * (1 - bf0 / 100),
+      target0 = lean0 / (1 - t),
+      fat0 = Math.max(0, W0 - target0);
+    const now = latest
+      ? { weight: latest.projectedWeight, bodyFat: latest.bodyFat, waist: latest.waistUsed,
+          targetWeight: latest.targetWeightNow, fatToLoseKg: latest.fatToLoseKg, remainingKcal: latest.remainingKcal }
+      : { weight: W0, bodyFat: bf0, waist: PROFILE.startWaist, targetWeight: target0, fatToLoseKg: fat0, remainingKcal: fat0 * 7700 };
+    return {
+      ...now,
+      fat0,
+      progress: fat0 > 0 ? clamp((fat0 - now.fatToLoseKg) / fat0, 0, 1) : 1,
+      gained: now.fatToLoseKg > fat0 + 0.05,
+    };
   }
   /* V69: mọi nhãn nhắc tới mốc % mỡ đều phải đi theo thông số người dùng nhập,
      nếu không người khác sẽ thấy "28% → 12%" của chủ cũ. */
@@ -8297,7 +8407,7 @@
       const el = document.getElementById(id);
       if (el) el.innerHTML = `<p class="forecast-empty">Điền thông số cơ thể trong Cài đặt để xem phần này.</p>`;
     });
-    showBanner("Chưa nhập thông số cơ thể. Bấm Cài đặt › mục 3 để điền giới tính, tuổi, chiều cao, cân nặng và % mỡ — TDEE và % mỡ không tính được nếu thiếu.");
+    showBanner("Chưa nhập thông số cơ thể. Bấm Cài đặt › mục 3 để điền giới tính, tuổi, chiều cao, cân nặng và vòng eo — TDEE và % mỡ không tính được nếu thiếu.");
     headerKeyBtn?.classList.add("needs-setup");
   }
   /* Hai con số lớn nhất Tổng quan có thể dài 6 chữ số ("109.142"). Cỡ chữ cố định
@@ -8324,19 +8434,15 @@
     const completeDays = computedDays.filter((d) => d.complete),
       latest = computedDays.at(-1) || null,
       latestComplete = completeDays.at(-1) || null,
-      startWeight = latest?.startWeight || PROFILE.defaultWeight,
-      leanMass = startWeight * (1 - PROFILE.startBodyFat / 100),
-      targetWeight = leanMass / (1 - PROFILE.targetBodyFat / 100),
-      totalGoal = Math.max(1, (startWeight - targetWeight) * 7700),
+      startWeight = PROFILE.defaultWeight,
+      goal = goalStateV76(latest),
+      targetWeight = goal.targetWeight,
       cumulative = latestComplete?.cumulative || 0,
-      currentWeight = latest?.projectedWeight || startWeight,
-      currentWaist = latest?.waistUsed ?? null,
-      currentBf = latest?.bodyFat ?? PROFILE.startBodyFat,
-      progress = cumulative / totalGoal,
-      initialMeasured =
-        computedDays.find((d) => d.measuredWeight !== null)?.measuredWeight ??
-        startWeight,
-      initialWaist = computedDays.find((d) => d.waist !== null)?.waist ?? null;
+      currentWeight = goal.weight,
+      currentWaist = goal.waist ?? null,
+      currentBf = goal.bodyFat,
+      initialMeasured = startWeight,
+      initialWaist = PROFILE.startWaist ?? null;
     renderProfileLabels(PROFILE.startBodyFat);
     requestAnimationFrame(fitHeroValues);
     setText(
@@ -8348,11 +8454,11 @@
     setText("kpiWeight", `${fmt(currentWeight, 1)} kg`);
     setText(
       "kpiWeightSub",
-      `${currentWeight <= initialMeasured ? "Giảm" : "Tăng"} ${fmt(Math.abs(currentWeight - initialMeasured), 2)} kg; cân thật gần nhất ${fmt(latest?.lastMeasuredWeight || startWeight, 1)} kg`,
+      `${currentWeight <= initialMeasured ? "Giảm" : "Tăng"} ${fmt(Math.abs(currentWeight - initialMeasured), 2)} kg; cân thật gần nhất ${fmt(latest?.lastMeasuredWeight ?? startWeight, 1)} kg`,
     );
     setText(
       "kpiWaist",
-      currentWaist !== null ? `${fmt(currentWaist, 1)} cm` : "—",
+      currentWaist !== null ? `${v75Fmt(currentWaist)} cm` : "—",
     );
     setText(
       "kpiWaistSub",
@@ -8366,13 +8472,13 @@
     setText(
       "kpiTdeeSub",
       latest
-        ? `TDEE nền hệ số 1,20; calo tập gần nhất ${fmt(latest.exerciseBurn)} kcal`
+        ? `TDEE nền hệ số ${String(PROFILE.activityFactor).replace(".", ",")}; calo tập gần nhất ${fmt(latest.exerciseBurn)} kcal`
         : "—",
     );
     setText("kpiTargetWeight", `${fmt(targetWeight, 1)} kg`);
     setText(
       "kpiTargetSub",
-      `Còn khoảng ${fmt(Math.max(0, currentWeight - targetWeight), 1)} kg nếu giữ khối nạc`,
+      `Còn khoảng ${fmt(goal.fatToLoseKg, 1)} kg nếu giữ khối nạc`,
     );
     setText(
       "latestStatus",
@@ -8384,8 +8490,8 @@
             : "Chưa tạo thâm hụt"
         : "Chưa đủ dữ liệu",
     );
-    updateTargetBurnHighlight(currentWeight, currentBf, cumulative, totalGoal, targetWeight);
-    updateSlope(progress, cumulative, totalGoal, targetWeight);
+    updateTargetBurnHighlight(goal);
+    updateSlope(goal, cumulative);
     const todayData =
       computedDays.find((d) => dateKey(d.date) === dateKey(today)) || null;
     const recent = completeDays.slice(-7),
@@ -8415,13 +8521,7 @@
         ? `${fmt(todayData.foodEst.total - todayData.exerciseBurn)} kcal`
         : "—",
     );
-    renderTargetDates(
-      cumulative,
-      totalGoal,
-      todayData,
-      currentWeight,
-      currentBf,
-    );
+    renderTargetDates(goal.remainingKcal, todayData, currentWeight, currentBf);
     writeOverviewSnapshot();
     /* V61: overview paints first. Calendar/history/charts are rendered only when opened. */
     if (currentPage !== "overview" && currentPage !== "lookup") {
@@ -8451,9 +8551,8 @@
     }
   }
 
-  function updateSlope(progressRaw, cumulative, totalGoal, targetWeight) {
-    const p = clamp(progressRaw, 0, 1),
-      percent = p * 100,
+  function updateSlope(goal, cumulative) {
+    const percent = goal.progress * 100,
       fill = document.getElementById("fatProgressFill"),
       marker = document.getElementById("fatProgressMarker"),
       track = document.getElementById("fatProgressTrack");
@@ -8461,22 +8560,21 @@
     if (marker) marker.style.left = `${percent}%`;
     if (track) {
       track.setAttribute("aria-valuenow", String(Number(percent.toFixed(1))));
-      track.classList.toggle("surplus", cumulative < 0);
+      track.classList.toggle("surplus", goal.gained);
     }
     setText("progressPercent", `${fmt(percent, 1)}%`);
     setText(
       "fatProgressStartLabel",
-      `${fmt(PROFILE.startBodyFat, 0)}% mỡ ban đầu`,
+      `${fmt(PROFILE.startBodyFat, 1)}% mỡ ban đầu`,
     );
-    const remain = Math.max(0, totalGoal - cumulative),
-      fatChange = Math.abs(cumulative) / 7700;
+    const lostKg = goal.fat0 - goal.fatToLoseKg;
     setText(
       "slopeDescription",
-      cumulative > 0
-        ? `Đã thâm hụt tổng cộng ${fmt(cumulative)} kcal; cần thâm hụt thêm ${fmt(remain)} kcal để tiến tới khoảng ${fmt(targetWeight, 1)} kg.`
-        : cumulative < 0
-          ? `Đang dư thừa lũy kế ${fmt(Math.abs(cumulative))} kcal; thanh tiến độ đang ở 0% cho tới khi bù hết lượng dư thừa.`
-          : `Hiện đang cân bằng năng lượng; cần tạo thâm hụt ${fmt(remain)} kcal để tiến tới khoảng ${fmt(targetWeight, 1)} kg.`,
+      lostKg > 0.005
+        ? `Đã giảm khoảng ${fmt(lostKg, 2)} kg mỡ so với mốc đầu; còn ${fmt(goal.fatToLoseKg, 2)} kg (${fmt(goal.remainingKcal)} kcal) để tới khoảng ${fmt(goal.targetWeight, 1)} kg.`
+        : lostKg < -0.005
+          ? `Mỡ đang cao hơn mốc đầu khoảng ${fmt(Math.abs(lostKg), 2)} kg; còn ${fmt(goal.fatToLoseKg, 2)} kg để tới khoảng ${fmt(goal.targetWeight, 1)} kg.`
+          : `Đang ở mốc đầu; cần giảm ${fmt(goal.fatToLoseKg, 2)} kg mỡ (${fmt(goal.remainingKcal)} kcal) để tới khoảng ${fmt(goal.targetWeight, 1)} kg.`,
     );
     setText(
       "slopeDone",
@@ -8486,13 +8584,13 @@
           ? `Dư thừa ${fmt(Math.abs(cumulative))} kcal`
           : "Cân bằng 0 kcal",
     );
-    setText("slopeRemaining", `Cần thâm hụt thêm ${fmt(remain)} kcal`);
+    setText("slopeRemaining", `Cần thâm hụt thêm ${fmt(goal.remainingKcal)} kcal`);
     setText(
       "slopeFatEquivalent",
-      cumulative > 0
-        ? `Giảm ${fmt(fatChange, 2)} kg mỡ`
-        : cumulative < 0
-          ? `Tăng ${fmt(fatChange, 2)} kg mỡ`
+      lostKg > 0.005
+        ? `Giảm ${fmt(lostKg, 2)} kg mỡ`
+        : lostKg < -0.005
+          ? `Tăng ${fmt(Math.abs(lostKg), 2)} kg mỡ`
           : "Không thay đổi: 0,00 kg",
     );
   }
@@ -8510,61 +8608,64 @@
     if (hours > 0) return `${fmt(hours)} giờ ${mins ? `${mins} phút` : ""}`.trim();
     return `${fmt(mins)} phút`;
   }
-  /* V54 · The target-burn hero and the progress panel MUST use one identical goal ledger.
-     Baseline target = start weight + PROFILE.startBodyFat, then only cumulative energy balance
-     advances/regresses progress. Current scale/BF readings remain informational and are NOT
-     allowed to silently reset the calorie goal. */
-  function calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight) {
-    const remainingKcal = Math.max(0, totalGoal - cumulative);
-    const fatKgToLose = remainingKcal / 7700;
-    /* V75: hai cách "trả nợ" calo còn lại bằng đi bộ.
-       Bản cũ tính bằng oxy GỘP (có cả 3,5 ml/kg/phút của cơ thể lúc nghỉ) trong khi
-       lịch sử lại cộng calo tập bằng oxy RÒNG — cùng một buổi đi bộ mà tổng quan
-       hứa đốt nhiều hơn ~17% so với số lịch sử thực sự ghi nhận. Nay cả hai đều
-       dùng oxy ròng, vì phần lúc nghỉ đã nằm trong TDEE nền. */
-    const flat = v75WalkPlan(remainingKcal, currentWeight, V75_DEFAULT_WALK);
-    const incline = v75WalkPlan(remainingKcal, currentWeight, V75_REFERENCE_INCLINE);
+  /* V76 · Giờ đi bộ để đốt hết số mỡ còn lại.
+     Đi bộ tốn calo TỈ LỆ với cân nặng (ACSM: oxy ròng ml/kg/phút × kg). Mỗi kg mỡ
+     mất đi thì mỗi phút đi bộ đốt ít đi một chút, nên KHÔNG được chia thẳng tổng calo
+     cho tốc độ đốt ở cân hiện tại — làm thế hứa hẹn ít giờ hơn thực tế ~10–15%.
+     Cộng dồn từng phút khi cân giảm dần từ W về cân mục tiêu T:
+        phút = 7.700 ÷ r × ln(W ÷ T)      (r = kcal/phút cho mỗi kg thể trọng) */
+  function v76WalkPlan(fromKg, toKg, remainingKcal, profile) {
+    const perKgMinute = v75KcalPerMinFromNetVo2(v75WalkNetVo2(profile.speedKmh, profile.gradePct), 1),
+      kcalPerMinute = perKgMinute * fromKg;
+    let minutes = 0;
+    if (remainingKcal > 0 && perKgMinute > 0) {
+      minutes = toKg > 0 && fromKg > toKg
+        ? (7700 / perKgMinute) * Math.log(fromKg / toKg)
+        : remainingKcal / kcalPerMinute;
+    }
+    return { kcalPerMinute, kcalPerMinuteAtTarget: perKgMinute * Math.max(0, toKg), minutes };
+  }
+  function calculateTargetBurnPlan(goal) {
+    const flat = v76WalkPlan(goal.weight, goal.targetWeight, goal.remainingKcal, V75_DEFAULT_WALK);
+    const incline = v76WalkPlan(goal.weight, goal.targetWeight, goal.remainingKcal, V75_REFERENCE_INCLINE);
     return {
-      targetWeightNow: targetWeight,
-      fatKgToLose,
-      kcalToBurn: remainingKcal,
+      targetWeightNow: goal.targetWeight,
+      fatKgToLose: goal.fatToLoseKg,
+      kcalToBurn: goal.remainingKcal,
       kcalPerMinute: flat.kcalPerMinute,
       walkMinutes: flat.minutes,
       inclineKcalPerMinute: incline.kcalPerMinute,
       inclineMinutes: incline.minutes,
     };
   }
-  function updateTargetBurnHighlight(currentWeight, currentBodyFat, cumulative, totalGoal, targetWeight) {
-    const plan = calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight);
+  function updateTargetBurnHighlight(goal) {
+    const plan = calculateTargetBurnPlan(goal);
     const achieved = plan.kcalToBurn <= 1;
     setText("targetBurnKcal", achieved ? "0" : fmt(plan.kcalToBurn));
     setText("targetBurnWeight", `${fmt(plan.targetWeightNow, 1)} kg`);
     /* Nhãn đã ghi "Mỡ còn lại" nên không lặp lại chữ "mỡ" ở giá trị. */
     setText("targetBurnFatKg", achieved ? "Đã đạt" : `${fmt(plan.fatKgToLose, 2)} kg`);
+    const waistText = Number.isFinite(goal.waist) ? ` + eo ${v75Fmt(goal.waist)} cm` : "";
     setText(
       "targetBurnSub",
       achieved
-        ? `Đã đạt mục tiêu năng lượng tích lũy.`
-        : `Mỡ hiện tại ${fmt(currentBodyFat, 1)}% · đã tính toàn bộ lịch sử ăn và tập.`,
+        ? `Đã chạm ${fmt(PROFILE.targetBodyFat, 0)}% mỡ mục tiêu.`
+        : `Mỡ hiện tại ${fmt(goal.bodyFat, 1)}% · từ cân ${fmt(goal.weight, 1)} kg${waistText}`,
     );
     setText("targetBurnWalkTime", achieved ? "0" : fmt(Math.ceil(plan.walkMinutes / 60)));
     setText("targetBurnWalkSub", achieved ? "Đã đạt mục tiêu." : `Đi bộ thường · 4 km/h · ${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
     setText("targetBurnInclineTime", achieved ? "0" : fmt(Math.ceil(plan.inclineMinutes / 60)));
     setText("targetBurnInclineSub", `Dốc 12% · 3,3 km/h · ${fmt(plan.inclineKcalPerMinute, 2)} kcal/phút`);
-    setText("targetBurnRate", `${fmt(currentWeight, 1)} kg`);
+    setText("targetBurnRate", achieved
+      ? `${fmt(goal.weight, 1)} kg`
+      : `${fmt(goal.weight, 1)}→${fmt(plan.targetWeightNow, 1)} kg`);
     setText("targetBurnSessions60", `${fmt(Math.ceil(plan.walkMinutes / 60))} buổi`);
     setText("targetBurnSessions90", `${fmt(Math.ceil(plan.walkMinutes / 90))} buổi`);
   }
 
 
-  function renderTargetDates(
-    cumulative,
-    totalGoal,
-    todayData,
-    currentWeight,
-    currentBodyFat,
-  ) {
-    const remaining = Math.max(0, totalGoal - cumulative),
+  function renderTargetDates(remainingKcal, todayData, currentWeight, currentBodyFat) {
+    const remaining = Math.max(0, remainingKcal),
       rates = [300, 500, 800, 1000],
       now = getVietnamToday(),
       projection = simulateTodayPattern(
@@ -8754,7 +8855,7 @@
           detailsOpen = historyDetailsState.has(dayKey)
             ? historyDetailsState.get(dayKey)
             : d.foodEst.unresolvedCount > 0;
-        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}${d.partial ? " partial" : ""}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric" title="${escapeHtml((d.cardioItems || []).map((it) => `${it.label}: ${fmt(Math.round(it.minutes))} phút × ${fmt(it.kcalPerMinute, 2)} kcal/phút · ${it.method}`).join(" | "))}"><span>Cardio · ${escapeHtml(d.cardioLabel || "Không tập cardio")}</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${fmt(d.waistUsed, 1)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
+        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}${d.partial ? " partial" : ""}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric" title="${escapeHtml((d.cardioItems || []).map((it) => `${it.label}: ${fmt(Math.round(it.minutes))} phút × ${fmt(it.kcalPerMinute, 2)} kcal/phút · ${it.method}`).join(" | "))}"><span>Cardio · ${escapeHtml(d.cardioLabel || "Không tập cardio")}</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${v75Fmt(d.waistUsed)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
       })
       .join("");
     list.querySelectorAll("details[data-day-key]").forEach((details) => {
@@ -9111,7 +9212,7 @@
       localStorage.setItem(
         snapshotKey(),
         JSON.stringify({
-          version: 1,
+          version: 2,
           savedAt: new Date().toISOString(),
           text,
           targetDatesHtml: targetDates?.innerHTML || "",
@@ -9127,7 +9228,7 @@
     if (!profileReady()) return false;
     try {
       const snap = JSON.parse(localStorage.getItem(snapshotKey()) || "null");
-      if (!snap || snap.version !== 1 || !snap.text) return false;
+      if (!snap || snap.version !== 2 || !snap.text) return false;
       Object.entries(snap.text).forEach(([id, value]) => setText(id, value));
       const targetDates = document.getElementById("targetDates");
       if (targetDates && snap.targetDatesHtml) targetDates.innerHTML = snap.targetDatesHtml;
@@ -10651,7 +10752,7 @@
   const sheetMessage=document.getElementById("sheetMessage"),settingsSheetState=document.getElementById("settingsSheetState");
   const PROFILE_FIELDS=[
     ["setSex","sex","text"],["setAge","age","number"],["setHeight","height","number"],
-    ["setWeight","defaultWeight","number"],["setStartFat","startBodyFat","number"],
+    ["setWeight","defaultWeight","number"],["setWaist","startWaist","number"],["setStartFat","startBodyFat","number"],
     ["setTargetFat","targetBodyFat","number"],["setActivity","activityFactor","number"]
   ];
   function fillSettingsForm(){
@@ -10672,7 +10773,7 @@
     headerKeyBtn?.classList.toggle("needs-setup",!hasSheet()||!profileReady());
     if(message&&sheetMessage) sheetMessage.textContent=message;
   }
-  const VI_PROFILE_LABEL={sex:"giới tính",age:"tuổi",height:"chiều cao",defaultWeight:"cân nặng khởi điểm",startBodyFat:"% mỡ khởi điểm",targetBodyFat:"% mỡ mục tiêu",activityFactor:"hệ số vận động"};
+  const VI_PROFILE_LABEL={sex:"giới tính",age:"tuổi",height:"chiều cao",defaultWeight:"cân nặng khởi điểm",startWaist:"vòng eo khởi điểm",startBodyFat:"% mỡ khởi điểm",targetBodyFat:"% mỡ mục tiêu",activityFactor:"hệ số vận động"};
   function renderProfileState(){
     const box=document.getElementById("profileStateMsg");
     if(!box) return;
@@ -10686,6 +10787,32 @@
     box.textContent=missing.length
       ? `Còn thiếu: ${missing.map((key)=>VI_PROFILE_LABEL[key]).join(", ")}.`
       : "Đã đủ thông số — dashboard đang tính theo số của bạn.";
+    renderBodyFatHint();
+  }
+  /* V76: cho người dùng thấy ngay eo + chiều cao nói gì về % mỡ, để tự đối chiếu
+     với số đang nhập (máy đo mỡ gia đình có thể lệch 5–8 điểm). */
+  function renderBodyFatHint(){
+    const box=document.getElementById("bodyFatHint");
+    if(!box) return;
+    const sex=SETTINGS.sex, height=Number(SETTINGS.height), waist=Number(SETTINGS.startWaist);
+    const est=rfmEstimate(sex,height,waist);
+    box.classList.remove("warn");
+    if(est===null){
+      box.textContent="Nhập giới tính, chiều cao và vòng eo — không biết % mỡ thì để trống, máy tự ước tính từ eo.";
+      return;
+    }
+    const typed=Number(SETTINGS.startBodyFat);
+    const hasTyped=SETTINGS.startBodyFat!==null&&SETTINGS.startBodyFat!==""&&Number.isFinite(typed)&&typed>0;
+    const base=`Theo eo ${v75Fmt(waist)} cm + cao ${v75Fmt(height)} cm (công thức RFM): ≈ ${fmt(est,1)}% mỡ.`;
+    if(!hasTyped){
+      box.textContent=`${base} Ô % mỡ đang trống nên máy dùng số này. Từ đó, eo trong Sheet giảm là % mỡ giảm theo.`;
+      return;
+    }
+    const gap=Math.abs(typed-est);
+    box.textContent=gap>=5
+      ? `${base} Bạn nhập ${fmt(typed,1)}% — lệch ${fmt(gap,1)} điểm. Nếu số đó chỉ là đoán, xóa ô % mỡ để máy dùng số theo eo.`
+      : `${base} Bạn nhập ${fmt(typed,1)}% — khớp. Máy lấy số bạn nhập làm mốc, eo dùng để theo dõi mỡ tăng/giảm.`;
+    box.classList.toggle("warn",gap>=5);
   }
   function openSettingsDialog(){
     fillSettingsForm();
@@ -10755,7 +10882,8 @@
       const el=document.getElementById(id);
       if(!el) continue;
       const raw=String(el.value||"").trim();
-      if(!raw) continue;
+      /* % mỡ là ô tùy chọn: xóa trống nghĩa là "tính theo eo", phải lưu được. */
+      if(!raw){ if(key==="startBodyFat") next[key]=null; continue; }
       next[key]=kind==="number"?Number(raw.replace(",",".")):raw;
     }
     writeSettings(next);
