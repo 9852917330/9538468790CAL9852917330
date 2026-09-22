@@ -1,0 +1,104 @@
+V75 — BỘ ĐỌC CARDIO MỚI · MẶC ĐỊNH ĐI BỘ THƯỜNG 4 KM/H
+22/09/2026 · build 2026-09-22-v75-cardio-engine
+
+════════════════════════════════════════════════════════════════
+1. VẤN ĐỀ CỦA BẢN CŨ
+════════════════════════════════════════════════════════════════
+  a) Mọi dòng cardio đều bị coi là "đi bộ dốc 15%, 3,3 km/h". Ghi "30 phút đạp xe"
+     hay "30 phút yoga" cũng tính y như leo dốc — 7,1 kcal/phút với người 70 kg.
+  b) Chỉ đọc được số phút. Tốc độ, độ dốc, level, loại bài đều bị bỏ qua.
+  c) Một ngày có hai dòng cardio thì app nối thành "30 + 45" nhưng chỉ lấy số đầu
+     tiên → mất trắng bài thứ hai.
+  d) Tổng quan và Lịch sử dùng HAI công thức khác nhau cho cùng một buổi đi bộ:
+     Lịch sử tính oxy RÒNG (đã trừ phần cơ thể đốt lúc nghỉ), Tổng quan tính oxy
+     GỘP (chưa trừ). Tổng quan vì thế hứa đốt nhiều hơn ~17% so với số Lịch sử thực
+     sự cộng vào — số giờ đi bộ còn lại bị báo THIẾU.
+
+════════════════════════════════════════════════════════════════
+2. MẶC ĐỊNH MỚI
+════════════════════════════════════════════════════════════════
+  Chỉ ghi thời gian ("30mins", "30 phút", "1:30", "45p", "90")
+      → 30 phút đi bộ thường, mặt phẳng, 4 km/h.
+  Ghi thêm thông tin gì thì máy dùng thông tin đó.
+
+════════════════════════════════════════════════════════════════
+3. MÁY ĐỌC ĐƯỢC NHỮNG GÌ
+════════════════════════════════════════════════════════════════
+  Thời lượng   30mins · 30 phút · 45p · 30' · 1h · 1 tiếng · 1h30 · 1:30 · 0:45:00
+  Tốc độ       3.3km/h · 3,3 km/h · 4 kmh · 6 mph
+  Độ dốc       dốc 12 · dốc 12 độ · incline 12 · 12%
+               ("độ" hiểu là con số trên màn hình máy chạy bộ, vốn tính theo %)
+  Level        level 5 · lv 5 · mức 5 · cấp 5
+  Công suất    120W · 160 watt
+  Quãng đường  5km · 500m — có quãng đường + thời gian thì tự suy ra tốc độ;
+               chỉ có quãng đường thì suy ra thời gian từ tốc độ
+  Cường độ     nhẹ / chậm / light   ·   mạnh / nặng / nhanh / vigorous
+  Calo tự ghi  300 kcal — luôn thắng mọi ước tính
+  Nhiều bài    nối bằng "+", xuống dòng, "và", "rồi", hoặc dấu phẩy.
+               Dấu phẩy nằm giữa một bài ("dốc 12, 3.3km/h") được ghép lại đúng.
+
+  Bài tập nhận diện (tiếng Việt và tiếng Anh):
+    Đi bộ · chạy bộ · máy chạy bộ (tự chọn đi hay chạy theo tốc độ, từ 7 km/h là chạy)
+    Đạp xe ngoài trời (theo tốc độ) · xe đạp tập (theo W hoặc level) · spin
+    Elliptical (theo level) · máy chèo thuyền (theo W) · máy leo cầu thang · leo thang
+    Bơi (sải · ếch · ngửa · bướm · aerobic dưới nước) · nhảy dây · HIIT · circuit
+    Aerobic · Zumba · nhảy/khiêu vũ · yoga · pilates · giãn cơ · leo núi · leo tường
+    Cầu lông · pickleball · tennis · bóng bàn · đá bóng · bóng rổ · bóng chuyền
+    Boxing · võ thuật
+  Gõ tên bài lạ thì vẫn tính (tạm như đi bộ 4 km/h) nhưng nhãn ghi rõ
+  "chưa rõ ..." để biết mà sửa.
+
+════════════════════════════════════════════════════════════════
+4. CÔNG THỨC — CHỈ TÍNH CALO RÒNG
+════════════════════════════════════════════════════════════════
+  kcal/phút = oxy ròng (ml/kg/phút) × cân nặng × 5 kcal mỗi lít oxy ÷ 1000
+  "Ròng" = trừ đi 1 MET (3,5 ml/kg/phút) — phần cơ thể đốt khi ngồi yên, đã có
+  trong TDEE nền. Không trừ là cộng trùng.
+
+  Đi bộ, chạy: phương trình chuyển hóa ACSM, nhận thẳng tốc độ và độ dốc
+    đi bộ  0,1·S + 1,8·S·G        chạy  0,2·S + 0,9·S·G     (S: m/phút, G: độ dốc)
+  Bài khác: MET của 2024 Adult Compendium of Physical Activities, mã hoạt động
+  ghi kèm trong phần giải thích (chạm giữ vào ô Cardio ở Lịch sử để xem).
+
+  Ví dụ với người 70 kg:
+    30mins                       đi bộ 4 km/h         2,33 kcal/phút →  70 kcal
+    1h đi bộ dốc 12 3.3km/h      ACSM                 6,08 kcal/phút → 365 kcal
+    30mins elliptical level 5    ≈5,05 MET            4,96 kcal/phút → 149 kcal
+    45 phút đạp xe 10km/h        4,0 MET (#01010)     3,68 kcal/phút → 165 kcal
+
+  Giới hạn cần biết:
+    · Level elliptical/xe đạp tập mỗi hãng mỗi khác. Compendium chỉ có mức "vừa"
+      (5,0) và "mạnh" (9,0) nên level được quy đổi tuyến tính trên thang 1–20.
+      Máy có hiện watt thì ghi watt sẽ chính xác hơn level.
+    · Pickleball chưa có trong Compendium 2024 — tạm dùng mức cầu lông giao hữu
+      (5,5 MET), nhãn ghi "ước lượng gần đúng".
+    · Mọi con số là ước tính trung bình dân số; đồng hồ đo nhịp tim sẽ sát người
+      hơn. Có số kcal từ đồng hồ thì ghi thẳng "300 kcal".
+
+════════════════════════════════════════════════════════════════
+5. TỔNG QUAN — HAI ƯỚC TÍNH GIỜ ĐI BỘ
+════════════════════════════════════════════════════════════════
+  Thẻ bên phải nay hiện cả hai, cùng dùng tốc độ đốt RÒNG như Lịch sử:
+    Số lớn (mint)   Đi bộ thường · 4 km/h       ~2,3 kcal/phút
+    Số phụ (vàng)   Dốc 12% · 3,3 km/h          ~6,1 kcal/phút
+    Chip dưới       cân nặng đang dùng để tính
+
+  Vì đổi sang tốc độ đốt ròng, số giờ dốc sẽ CAO HƠN số cũ khoảng 17% dù cùng
+  một lượng calo — đó là số đúng, số cũ báo thiếu.
+
+6. LỊCH SỬ
+  Ô Cardio ghi đúng bài đã tập: "Cardio · Đi bộ dốc 12% · 3,3 km/h",
+  "Cardio · Elliptical level 5", "Cardio · Đạp xe 10 km/h + Đi bộ 4 km/h".
+  Dự báo "Hôm nay" dùng đúng bài tập của hôm nay, tính lại theo cân nặng.
+
+7. KIỂM TRA
+  node test-food.js → 125 đạt · 0 lỗi
+    (103 phép cũ + 21 phép cardio + 1 phép đối chiếu Tổng quan ↔ Lịch sử)
+  Số kỳ vọng của phép cardio được tính độc lập ngay trong file test từ công
+  thức gốc, nên test bắt được cả lỗi công thức chứ không chỉ lỗi đọc chữ.
+  Trình duyệt thật: 412/390/360/430 px, sáng + tối — thẻ đi bộ không tràn,
+  Tổng quan vẫn kín một khung hình, không lỗi.
+
+  Nguồn MET: pacompendium.com — 2024 Adult Compendium of Physical Activities
+  (bicycling, conditioning exercise, running, walking, water activities,
+  sports, dancing).

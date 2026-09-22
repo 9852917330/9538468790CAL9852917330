@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-18-v74-tight-overview";
+  const APP_BUILD = "2026-09-22-v75-cardio-engine";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -7702,9 +7702,8 @@
           weight,
           todayData.strength,
         ),
-        rawCardioBurn = cardioCalories(todayData.cardioMin, weight),
         strengthBurn = exerciseCaloriesFromInput(todayData.strength, rawStrengthBurn),
-        cardioBurn = exerciseCaloriesFromInput(todayData.cardio, rawCardioBurn),
+        cardioBurn = cardioBurnV75(todayData.cardioParsed || parseCardioV75(todayData.cardio), weight).kcal,
         totalOut = baseTdee + strengthBurn + cardioBurn;
       return {
         bodyFat,
@@ -7817,13 +7816,312 @@
       ((Math.max(0, met - 1.2) * 3.5 * weight) / 200) * minutes,
     );
   }
-  function cardioCalories(minutes, weight) {
-    if (!minutes) return 0;
-    const speed = (3.3 * 1000) / 60,
-      grade = 0.15,
-      grossVo2 = 0.1 * speed + 1.8 * speed * grade + 3.5,
-      netVo2 = Math.max(0, grossVo2 - 3.5);
-    return Math.round(((netVo2 * weight) / 1000) * 5 * minutes);
+  /* =================== V75 · BỘ ĐỌC VÀ TÍNH CALO CARDIO ===================
+     Trước V75: mọi dòng cardio đều bị coi là "đi bộ dốc 15%, 3,3 km/h", chỉ đọc
+     được số phút, và nếu một ngày có hai dòng ("30 + 45") thì chỉ lấy số đầu.
+
+     Nguyên lý tính (giống hệt cách ACSM và Compendium định nghĩa):
+       năng lượng/phút = oxy tiêu thụ × cân nặng × 5 kcal mỗi lít oxy
+     Chỉ tính phần RÒNG — trừ đi 1 MET (3,5 ml O₂/kg/phút) là phần cơ thể đốt
+     khi ngồi yên, vì phần đó TDEE nền đã tính rồi. Không trừ thì calo tập bị
+     cộng trùng với calo nghỉ.
+
+     Đi bộ và chạy dùng phương trình chuyển hóa ACSM vì nó nhận trực tiếp tốc độ
+     và độ dốc — chính xác hơn tra bảng MET theo khoảng tốc độ:
+       đi bộ  VO₂ = 0,1·S + 1,8·S·G + 3,5
+       chạy   VO₂ = 0,2·S + 0,9·S·G + 3,5      (S: m/phút, G: độ dốc dạng thập phân)
+     Các bài còn lại dùng MET của 2024 Adult Compendium of Physical Activities.
+     Mã hoạt động ghi kèm để tra lại được. */
+
+  /* Nhãn gọn: "4 km/h", "3,3 km/h", "12%" — không kèm ",0" thừa. */
+  function v75Fmt(n) {
+    return Number.isFinite(n) ? n.toLocaleString("vi-VN", { maximumFractionDigits: 1, minimumFractionDigits: 0 }) : "—";
+  }
+  const V75_DEFAULT_WALK = { speedKmh: 4, gradePct: 0 };
+  const V75_REFERENCE_INCLINE = { speedKmh: 3.3, gradePct: 12 };
+
+  /* Bảng tra MET (Compendium 2024). Thứ tự quan trọng: cụm cụ thể đứng trước cụm
+     chung — "nhảy dây" phải khớp trước "nhảy", "đạp xe tại chỗ" trước "đạp xe". */
+  const V75_ACTIVITIES = [
+    { key: "stair_machine", label: "Máy leo cầu thang", re: /\b(?:stair ?master|stair ?climber|stepmill|step mill|may leo (?:cau )?thang|leo thang may)\b/, met: 9.3, code: "02065" },
+    { key: "stairs", label: "Leo cầu thang", re: /\b(?:leo cau thang|leo thang|stairs?|stair climbing)\b/, met: 6.8, light: 4.5, vigorous: 9.3, code: "17131" },
+    { key: "spin", label: "Đạp xe spin", re: /\b(?:spin(?:ning)?|rpm class|dap xe spin)\b/, met: 9.0, code: "01270" },
+    { key: "cycle_stationary", label: "Xe đạp tập", re: /\b(?:xe dap tap|dap xe tai cho|xe dap tai cho|dap xe trong nha|stationary (?:bike|cycling)|exercise bike|indoor (?:bike|cycling)|may dap xe|bike tai cho)\b/, kind: "cycle_stationary" },
+    { key: "cycle", label: "Đạp xe", re: /\b(?:dap xe|xe dap|cycling|bicycling|bicycle|biking|bike|dap)\b/, kind: "cycle" },
+    { key: "elliptical", label: "Elliptical", re: /\b(?:elliptical|elip(?:tical)?|may elip|cross ?trainer|may di bo tren khong)\b/, kind: "elliptical" },
+    { key: "rowing", label: "Chèo thuyền (máy)", re: /\b(?:rowing|rower|row machine|may cheo(?: thuyen)?|cheo thuyen|cheo)\b/, kind: "rowing" },
+    { key: "jump_rope", label: "Nhảy dây", re: /\b(?:nhay day|jump ?rope|rope skipping|skipping)\b/, met: 11.0, code: "02068" },
+    { key: "hiit", label: "HIIT", re: /\b(?:hiit|interval|tabata|burpee)\b/, met: 7.0, vigorous: 11.0, code: "02210" },
+    { key: "circuit", label: "Circuit", re: /\b(?:circuit)\b/, met: 5.0, light: 3.5, vigorous: 7.5, code: "02035" },
+    { key: "zumba", label: "Zumba", re: /\b(?:zumba)\b/, met: 6.5, code: "02310" },
+    { key: "aerobic", label: "Aerobic", re: /\b(?:aerobic|aerobics|the duc nhip dieu|nhip dieu)\b/, met: 7.3, vigorous: 8.0, code: "02000" },
+    { key: "yoga", label: "Yoga", re: /\b(?:yoga)\b/, met: 2.5, vigorous: 4.0, code: "02150" },
+    { key: "pilates", label: "Pilates", re: /\b(?:pilates)\b/, met: 3.0, code: "02105" },
+    { key: "stretch", label: "Giãn cơ", re: /\b(?:gian co|stretch(?:ing)?)\b/, met: 2.5, code: "02101" },
+    { key: "swim", label: "Bơi", re: /\b(?:boi|swim(?:ming)?)\b/, kind: "swim" },
+    { key: "hike", label: "Leo núi", re: /\b(?:leo nui|hiking|hike|trekking|trek)\b/, met: 6.0, code: "17080" },
+    { key: "badminton", label: "Cầu lông", re: /\b(?:cau long|badminton)\b/, met: 5.5, code: "15030" },
+    /* Pickleball chưa có trong Compendium 2024: tạm dùng mức cầu lông giao hữu. */
+    { key: "pickleball", label: "Pickleball", re: /\b(?:pickle ?ball)\b/, met: 5.5, code: "≈15030", approx: true },
+    { key: "tennis", label: "Tennis", re: /\b(?:tennis|quan vot)\b/, met: 6.8, code: "15675" },
+    { key: "table_tennis", label: "Bóng bàn", re: /\b(?:bong ban|table tennis|ping ?pong)\b/, met: 4.0, code: "15660" },
+    { key: "soccer", label: "Đá bóng", re: /\b(?:da bong|bong da|da banh|football|soccer|futsal)\b/, met: 7.0, vigorous: 9.5, code: "15610" },
+    { key: "basketball", label: "Bóng rổ", re: /\b(?:bong ro|basketball)\b/, met: 7.5, code: "15055" },
+    { key: "volleyball", label: "Bóng chuyền", re: /\b(?:bong chuyen|volleyball)\b/, met: 4.0, code: "15710" },
+    { key: "boxing", label: "Boxing", re: /\b(?:boxing|kick ?boxing|dam boc|quyen anh|dam bao cat)\b/, met: 5.8, vigorous: 7.8, code: "15110" },
+    { key: "martial", label: "Võ thuật", re: /\b(?:vo thuat|karate|taekwondo|muay(?: thai)?|judo|vovinam|jiu ?jitsu|martial arts?)\b/, met: 10.3, code: "15430" },
+    { key: "climb", label: "Leo tường", re: /\b(?:leo tuong|bouldering|rock climbing|climbing)\b/, met: 5.8, code: "15537" },
+    { key: "dance", label: "Nhảy / khiêu vũ", re: /\b(?:nhay|khieu vu|dance|dancing)\b/, met: 6.0, vigorous: 9.8, code: "03042" },
+    /* "Máy chạy bộ" là dụng cụ, không phải bài: nhiều người đi bộ trên đó.
+       Đứng trước "chạy" để không bị hiểu nhầm thành chạy 8 km/h. */
+    { key: "treadmill", label: "Máy chạy bộ", re: /\b(?:may chay bo|may chay|treadmill)\b/, kind: "treadmill" },
+    { key: "run", label: "Chạy bộ", re: /\b(?:chay bo|chay|run|running|jog|jogging)\b/, kind: "run" },
+    { key: "walk", label: "Đi bộ", re: /\b(?:di bo|walk|walking|di dao)\b/, kind: "walk" }
+  ];
+
+  const V75_VIGOROUS = /\b(?:manh|nang|vigorous|hard|intense|cuong do cao|het suc|max)\b/;
+  const V75_LIGHT = /\b(?:nhe|light|easy|cham|slow|thu gian|thong tha)\b/;
+  const V75_FAST = /\b(?:nhanh|fast|brisk)\b/;
+
+  /* Đạp xe ngoài trời theo tốc độ (Compendium 2024, 01010–01060). */
+  function v75CycleMet(speedKmh) {
+    const mph = speedKmh / 1.609;
+    if (mph < 10) return { met: 4.0, code: "01010" };
+    if (mph < 12) return { met: 6.8, code: "01020" };
+    if (mph < 14) return { met: 8.0, code: "01030" };
+    if (mph < 16) return { met: 10.0, code: "01040" };
+    if (mph < 20) return { met: 12.0, code: "01050" };
+    return { met: 16.8, code: "01060" };
+  }
+  /* Xe đạp tập theo công suất (Compendium 2024, 01210–01248). */
+  function v75StationaryMet(watts) {
+    const table = [[30, 3.5, "01210"], [50, 4.0, "01214"], [60, 5.0, "01216"], [80, 5.8, "01218"],
+      [100, 6.0, "01220"], [125, 6.8, "01224"], [150, 8.0, "01228"], [199, 10.3, "01232"],
+      [229, 10.8, "01236"], [250, 12.5, "01240"], [305, 13.8, "01244"]];
+    for (const [max, met, code] of table) if (watts <= max) return { met, code };
+    return { met: 16.3, code: "01248" };
+  }
+  /* Máy chèo theo công suất (Compendium 2024, 02071–02074). */
+  function v75RowingMet(watts) {
+    if (watts < 100) return { met: 5.0, code: "02071" };
+    if (watts < 150) return { met: 7.5, code: "02072" };
+    if (watts < 200) return { met: 11.0, code: "02073" };
+    return { met: 14.0, code: "02074" };
+  }
+
+  /* Oxy RÒNG (ml/kg/phút, đã trừ 1 MET nghỉ) cho đi bộ và chạy theo ACSM. */
+  function v75WalkNetVo2(speedKmh, gradePct) {
+    const s = (speedKmh * 1000) / 60, g = Math.max(0, gradePct) / 100;
+    return 0.1 * s + 1.8 * s * g;
+  }
+  function v75RunNetVo2(speedKmh, gradePct) {
+    const s = (speedKmh * 1000) / 60, g = Math.max(0, gradePct) / 100;
+    return 0.2 * s + 0.9 * s * g;
+  }
+  /* kcal ròng mỗi phút từ oxy ròng: ml/kg/phút × kg × 5 kcal/lít ÷ 1000. */
+  function v75KcalPerMinFromNetVo2(netVo2, weightKg) {
+    return (Math.max(0, netVo2) * weightKg * 5) / 1000;
+  }
+  function v75KcalPerMinFromMet(met, weightKg) {
+    return v75KcalPerMinFromNetVo2((Math.max(1, met) - 1) * 3.5, weightKg);
+  }
+  /* Giờ đi bộ cần để đốt một lượng calo, dùng chung cho thẻ Tổng quan. */
+  function v75WalkPlan(kcal, weightKg, { speedKmh, gradePct }) {
+    const perMin = v75KcalPerMinFromNetVo2(v75WalkNetVo2(speedKmh, gradePct), weightKg);
+    return { kcalPerMinute: perMin, minutes: perMin > 0 ? kcal / perMin : 0 };
+  }
+
+  function v75Num(raw) { return Number(String(raw).replace(",", ".")); }
+
+  /* Đọc MỘT bài tập. Trả về mô tả đầy đủ để vừa tính được, vừa giải thích được. */
+  function v75ParseSegment(raw) {
+    const original = String(raw || "").trim();
+    let text = strip(original).replace(/\s+/g, " ").trim();
+    if (!text || /^(?:0+(?:[.,]0+)?|khong|none|no|nghi|-)$/.test(text)) return null;
+
+    const seg = { original, activity: null, minutes: 0, speedKmh: null, gradePct: null, level: null,
+      watts: null, distanceKm: null, explicitKcal: null, intensity: "moderate", unknownWords: "" };
+
+    const take = (re, fn) => { const m = text.match(re); if (m) { fn(m); text = text.replace(m[0], " "); } return m; };
+
+    /* Calo ghi thẳng luôn thắng mọi ước tính. */
+    take(/(\d+(?:[.,]\d+)?)\s*(?:kcal|calo|calories|calorie|cal)\b/, (m) => { seg.explicitKcal = v75Num(m[1]); });
+    /* Tốc độ trước quãng đường, để "km/h" không bị đọc thành "km". */
+    take(/(\d+(?:[.,]\d+)?)\s*(?:km\s*\/\s*h|km\s*\/\s*gio|kmh|kph|km per hour)\b/, (m) => { seg.speedKmh = v75Num(m[1]); });
+    take(/(\d+(?:[.,]\d+)?)\s*mph\b/, (m) => { seg.speedKmh = v75Num(m[1]) * 1.609; });
+    /* "dốc 12 độ": bảng điều khiển máy chạy bộ ghi độ dốc theo %, nên "độ" ở đây
+       là cách nói quen miệng của con số trên máy, không phải độ góc. */
+    take(/(?:do doc|doc|incline|grade|nghieng)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:%|do\b)?/, (m) => { seg.gradePct = v75Num(m[1]); });
+    take(/(\d+(?:[.,]\d+)?)\s*%\s*(?:doc|incline|grade)?/, (m) => { if (seg.gradePct === null) seg.gradePct = v75Num(m[1]); });
+    take(/(?:level|lvl|lv|muc|cap|do kho|resistance|khang luc)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/, (m) => { seg.level = v75Num(m[1]); });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:w|watt|watts)\b/, (m) => { seg.watts = v75Num(m[1]); });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:km|kilomet|kilometer|kilometre)\b/, (m) => { seg.distanceKm = v75Num(m[1]); });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:met|meter|metre)\b/, (m) => { seg.distanceKm = v75Num(m[1]) / 1000; });
+
+    /* Thời lượng: 1h30 · 1 giờ 30 phút · 1:30 · 45p · 30mins · 30' · 1.5h */
+    let minutes = 0;
+    take(/(\d{1,2})\s*:\s*(\d{1,2})(?:\s*:\s*(\d{1,2}))?/, (m) => { minutes += +m[1] * 60 + +m[2] + (+m[3] || 0) / 60; });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours|gio|tieng)\s*(\d{1,2})\s*(?:p|m|ph|phut|min|mins|minutes?)?\b/, (m) => { minutes += v75Num(m[1]) * 60 + +m[2]; });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours|gio|tieng)\b/, (m) => { minutes += v75Num(m[1]) * 60; });
+    take(/(\d+(?:[.,]\d+)?)\s*(?:phut|ph|p|min|mins|minute|minutes|')(?=\s|$|[^a-z])/, (m) => { minutes += v75Num(m[1]); });
+    /* "500m bơi" là quãng đường, "30m" là 30 phút: số lớn đi với "m" thì coi là mét. */
+    take(/(\d+(?:[.,]\d+)?)\s*m\b/, (m) => { const n = v75Num(m[1]); if (n > 240) seg.distanceKm = n / 1000; else minutes += n; });
+    if (!minutes) {
+      /* Số trơn: ô thời gian của Google Sheets trả về phân số của ngày (0,5 = 12 giờ). */
+      const bare = text.match(/(?:^|\s)(\d+(?:[.,]\d+)?)(?=\s|$)/);
+      if (bare) {
+        const n = v75Num(bare[1]);
+        minutes = n > 0 && n < 1 ? n * 1440 : n;
+        text = text.replace(bare[0], " ");
+      }
+    }
+    seg.minutes = Math.max(0, minutes);
+
+    if (V75_VIGOROUS.test(text)) seg.intensity = "vigorous";
+    else if (V75_LIGHT.test(text)) seg.intensity = "light";
+    seg.fast = V75_FAST.test(text);
+
+    for (const a of V75_ACTIVITIES) if (a.re.test(text)) { seg.activity = a; break; }
+
+    /* Có quãng đường và thời gian thì suy ra tốc độ; chỉ có quãng đường thì suy ra
+       thời gian từ tốc độ đã ghi (hoặc tốc độ mặc định của bài đó). */
+    if (seg.speedKmh === null && seg.distanceKm && seg.minutes > 0) seg.speedKmh = seg.distanceKm / (seg.minutes / 60);
+    if (!seg.minutes && seg.distanceKm && seg.explicitKcal === null) {
+      const k = seg.activity?.kind;
+      const assumed = seg.speedKmh ?? (k === "run" ? 8 : k === "cycle" ? 15 : k === "swim" ? 2 : V75_DEFAULT_WALK.speedKmh);
+      seg.minutes = (seg.distanceKm / assumed) * 60;
+      seg.minutesFromDistance = true;
+    }
+
+    /* Còn chữ gì chưa hiểu thì giữ lại để báo cho người dùng. */
+    const leftover = text.replace(/\b(?:va|and|voi|with|tren|on|may|luc|trong|khoang|tam|chung|buoi|sang|chieu|toi|toc do|speed|pace|nhanh|cham|nhe|manh|nang|vua|moderate|light|easy|hard|fast|slow|brisk|vigorous|intense|cuong do|cao|thap|thuong|binh thuong|normal|flat|bang|phang)\b/g, " ")
+      .replace(/[^a-z]+/g, " ").trim();
+    if (!seg.activity && leftover) seg.unknownWords = leftover;
+    return seg;
+  }
+
+  /* Gán công thức và tính kcal cho một bài đã đọc. */
+  function v75EvaluateSegment(inputSeg, weightKg) {
+    let seg = inputSeg;
+    const a = seg.activity;
+    let kind = a?.kind || (a ? "met" : "walk");
+    /* Chỉ có tốc độ/độ dốc mà không nói bài gì, hoặc chỉ nói "máy chạy bộ":
+       từ 7 km/h trở lên là chạy, dưới đó là đi. */
+    if (kind === "treadmill") kind = seg.speedKmh !== null && seg.speedKmh >= 7 ? "run" : "walk";
+    else if (!a && seg.speedKmh !== null && seg.speedKmh >= 7) kind = "run";
+    const out = { ...seg, kind, method: "", code: "", kcalPerMinute: 0, kcal: 0, label: "" };
+
+    if (seg.explicitKcal !== null) {
+      out.kcal = seg.explicitKcal;
+      out.kcalPerMinute = seg.minutes > 0 ? seg.explicitKcal / seg.minutes : 0;
+      out.method = "Calo nhập trực tiếp";
+      out.label = a ? a.label : "Cardio";
+      return out;
+    }
+
+    if (kind === "walk") {
+      const speed = seg.speedKmh ?? (seg.fast ? 5.5 : seg.intensity === "light" ? 3.2 : V75_DEFAULT_WALK.speedKmh);
+      const grade = seg.gradePct ?? V75_DEFAULT_WALK.gradePct;
+      out.speedKmh = speed; out.gradePct = grade;
+      out.kcalPerMinute = v75KcalPerMinFromNetVo2(v75WalkNetVo2(speed, grade), weightKg);
+      out.method = "Phương trình đi bộ ACSM";
+      out.label = grade > 0 ? `Đi bộ dốc ${v75Fmt(grade)}% · ${v75Fmt(speed)} km/h` : `Đi bộ ${v75Fmt(speed)} km/h`;
+    } else if (kind === "run") {
+      const speed = seg.speedKmh ?? (seg.fast ? 10 : seg.intensity === "light" ? 7 : 8);
+      const grade = seg.gradePct ?? 0;
+      out.speedKmh = speed; out.gradePct = grade;
+      out.kcalPerMinute = v75KcalPerMinFromNetVo2(v75RunNetVo2(speed, grade), weightKg);
+      out.method = "Phương trình chạy ACSM";
+      out.label = grade > 0 ? `Chạy dốc ${v75Fmt(grade)}% · ${v75Fmt(speed)} km/h` : `Chạy ${v75Fmt(speed)} km/h`;
+    } else {
+      /* Với đi bộ/chạy, "nhanh" là tốc độ; với các bài khác thì "nhanh" là cường độ. */
+      if (seg.fast && seg.intensity === "moderate") seg = { ...seg, intensity: "vigorous" };
+      let met = a.met, code = a.code || "", detail = "";
+      if (kind === "cycle") {
+        if (seg.speedKmh !== null) { ({ met, code } = v75CycleMet(seg.speedKmh)); detail = `${v75Fmt(seg.speedKmh)} km/h`; }
+        else if (seg.watts !== null) { ({ met, code } = v75StationaryMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
+        else if (seg.intensity === "vigorous") { met = 9.0; code = "01017"; detail = "mạnh"; }
+        else if (seg.intensity === "light") { met = 4.3; code = "01015"; detail = "nhẹ"; }
+        else { met = 6.8; code = "01011"; }
+      } else if (kind === "cycle_stationary") {
+        if (seg.watts !== null) { ({ met, code } = v75StationaryMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
+        else if (seg.level !== null) { met = clamp(3.5 + seg.level * 0.45, 3.5, 12.5); code = "≈01210–01240"; detail = `level ${v75Fmt(seg.level)}`; }
+        else { met = 6.8; code = "01200"; }
+      } else if (kind === "elliptical") {
+        /* Compendium chỉ có 2 mức: vừa 5,0 và mạnh 9,0. Level mỗi máy mỗi khác nên
+           quy đổi tuyến tính trên thang 1–20: level 1 ≈ 4 MET, level 20 = 9 MET. */
+        if (seg.level !== null) { met = clamp(4 + (seg.level - 1) * (5 / 19), 4, 9); code = "≈02048–02049"; detail = `level ${v75Fmt(seg.level)}`; }
+        else if (seg.intensity === "vigorous") { met = 9.0; code = "02049"; detail = "mạnh"; }
+        else { met = 5.0; code = "02048"; }
+      } else if (kind === "rowing") {
+        if (seg.watts !== null) { ({ met, code } = v75RowingMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
+        else if (seg.intensity === "vigorous") { met = 7.3; code = "02070"; detail = "mạnh"; }
+        else { met = 5.0; code = "02071"; }
+      } else if (kind === "swim") {
+        const t = strip(seg.original);
+        if (/\b(?:buom|butterfly)\b/.test(t)) { met = 13.8; code = "18270"; detail = "bướm"; }
+        else if (/\b(?:ech|breaststroke)\b/.test(t)) { met = seg.intensity === "vigorous" ? 10.3 : 5.3; code = seg.intensity === "vigorous" ? "18260" : "18265"; detail = "ếch"; }
+        else if (/\b(?:ngua|backstroke)\b/.test(t)) { met = seg.intensity === "vigorous" ? 9.5 : 4.8; code = seg.intensity === "vigorous" ? "18250" : "18255"; detail = "ngửa"; }
+        else if (/\b(?:sai|tu do|freestyle|crawl)\b/.test(t)) { met = seg.intensity === "vigorous" ? 9.8 : 5.8; code = seg.intensity === "vigorous" ? "18230" : "18240"; detail = "sải"; }
+        else if (/\b(?:aerobic|the duc duoi nuoc)\b/.test(t)) { met = 5.5; code = "18355"; detail = "aerobic dưới nước"; }
+        else { met = 6.0; code = "18310"; }
+      } else {
+        if (seg.intensity === "vigorous" && a.vigorous) met = a.vigorous;
+        else if (seg.intensity === "light" && a.light) met = a.light;
+        if (seg.intensity !== "moderate" && (a.vigorous || a.light)) detail = seg.intensity === "vigorous" ? "mạnh" : "nhẹ";
+      }
+      out.met = met; out.code = code;
+      out.kcalPerMinute = v75KcalPerMinFromMet(met, weightKg);
+      out.method = `MET ${v75Fmt(met)} · Compendium 2024${code ? ` #${code}` : ""}${a.approx ? " (ước lượng gần đúng)" : ""}`;
+      out.label = detail ? `${a.label} ${detail}` : a.label;
+    }
+    out.kcal = out.kcalPerMinute * seg.minutes;
+    if (!a && seg.unknownWords) {
+      out.label = `${out.label} (chưa rõ "${seg.unknownWords.slice(0, 18)}")`;
+      out.method += " · tạm tính như đi bộ vì chưa nhận ra bài tập";
+    }
+    return out;
+  }
+
+  /* Tách ô Cardio thành từng bài. Một ngày có nhiều dòng thì normalizeRows nối
+     bằng " + " — trước đây chỉ bài đầu tiên được tính. */
+  const V75_HAS_DURATION = /(?:\d+(?:[.,]\d+)?\s*(?:h|hr|hrs|hour|hours|gio|tieng|phut|ph|p|min|mins|minute|minutes|m|')(?![a-z])|\d{1,2}\s*:\s*\d{1,2}|^\s*\d+(?:[.,]\d+)?\s*$|\d\s*(?:kcal|calo|cal)\b|\d\s*(?:km|met|meter)\b(?!\s*\/))/;
+  function v75SplitCardio(text) {
+    const pieces = String(text ?? "")
+      .replace(/(\d)\s*,\s*(\d)/g, "$1<V75DEC>$2")
+      .split(/\s*(?:\+|;|\n|,|\s+va\s+|\s+và\s+|\s+and\s+|\s+then\s+|\s+roi\s+|\s+rồi\s+)\s*/i)
+      .map((s) => s.replace(/<V75DEC>/g, ",").trim())
+      .filter(Boolean);
+    /* Mảnh không có thời lượng, calo hay quãng đường ("3.3km/h", "level 5") là phần
+       mô tả của bài ngay trước nó, không phải một bài riêng → ghép lại. */
+    const merged = [];
+    for (const piece of pieces) {
+      if (merged.length && !V75_HAS_DURATION.test(strip(piece))) merged[merged.length - 1] += ` ${piece}`;
+      else merged.push(piece);
+    }
+    return merged;
+  }
+  function parseCardioV75(text) {
+    if (typeof text === "number" && Number.isFinite(text)) {
+      if (text === 0) return { segments: [], minutes: 0 };
+      text = String(text);
+    }
+    const segments = v75SplitCardio(text).map(v75ParseSegment).filter(Boolean)
+      .filter((seg) => seg.minutes > 0 || seg.explicitKcal !== null);
+    return { segments, minutes: Math.round(segments.reduce((sum, seg) => sum + seg.minutes, 0)) };
+  }
+  /* Tính lại theo cân nặng: cùng một bài, người nặng hơn đốt nhiều hơn.
+     Riêng calo nhập tay thì giữ nguyên, không nhân theo cân. */
+  function cardioBurnV75(parsed, weightKg) {
+    const items = (parsed?.segments || []).map((seg) => v75EvaluateSegment(seg, weightKg));
+    return {
+      items,
+      kcal: Math.round(items.reduce((sum, it) => sum + it.kcal, 0)),
+      minutes: parsed?.minutes || 0,
+      label: items.length === 0 ? "Không tập cardio"
+        : items.length === 1 ? items[0].label
+        : items.map((it) => it.label).join(" + ")
+    };
   }
   function normalizeRows(rows) {
     const grouped = new Map();
@@ -7910,11 +8208,12 @@
         ),
         foodEst = estimateFood(r.food),
         strengthMin = parseDurationMinutes(r.strength, "strength"),
-        cardioMin = parseDurationMinutes(r.cardio, "cardio"),
+        cardioParsed = parseCardioV75(r.cardio),
+        cardioResult = cardioBurnV75(cardioParsed, weightStart),
+        cardioMin = cardioParsed.minutes,
         rawStrengthBurn = strengthCalories(strengthMin, weightStart, r.strength),
-        rawCardioBurn = cardioCalories(cardioMin, weightStart),
         strengthBurn = exerciseCaloriesFromInput(r.strength, rawStrengthBurn),
-        cardioBurn = exerciseCaloriesFromInput(r.cardio, rawCardioBurn),
+        cardioBurn = cardioResult.kcal,
         exerciseBurn = strengthBurn + cardioBurn,
         totalOut = baseTdee + exerciseBurn,
         /* Ngày để trống hoặc ghi "0" là CHƯA NHẬP, không phải ngày nhịn ăn 0 kcal.
@@ -7952,6 +8251,9 @@
         foodEst,
         strengthMin,
         cardioMin,
+        cardioParsed,
+        cardioLabel: cardioResult.label,
+        cardioItems: cardioResult.items,
         strengthBurn,
         cardioBurn,
         exerciseBurn,
@@ -7977,7 +8279,7 @@
      Vẽ bằng số mặc định còn tệ hơn để trống: người dùng tưởng đó là số của mình. */
   const PROFILE_GATED_IDS = [
     "latestStatus","targetBurnKcal","targetBurnSub","targetBurnWeight","targetBurnFatKg",
-    "targetBurnWalkTime","targetBurnWalkSub","targetBurnRate",
+    "targetBurnWalkTime","targetBurnWalkSub","targetBurnRate","targetBurnInclineTime","targetBurnInclineSub",
     "kpiWeight","kpiBodyFat","kpiWaist","kpiTdee","progressPercent",
     "progressRangeLabel","forecastTargetLabel"
   ];
@@ -8002,7 +8304,7 @@
      trong CSS thì tới lúc đó bị tràn ra ngoài thẻ và mất luôn chữ "kcal". Đo thật
      rồi thu cỡ chữ cho vừa là cách duy nhất đúng với mọi độ dài số và mọi màn hình. */
   function fitHeroValues() {
-    document.querySelectorAll(".overview-primary-value").forEach((el) => {
+    document.querySelectorAll(".overview-primary-value, .overview-alt-value").forEach((el) => {
       const box = el.parentElement || el;
       el.style.fontSize = "";
       let size = parseFloat(getComputedStyle(el).fontSize);
@@ -8215,23 +8517,21 @@
   function calculateTargetBurnPlan(currentWeight, cumulative, totalGoal, targetWeight) {
     const remainingKcal = Math.max(0, totalGoal - cumulative);
     const fatKgToLose = remainingKcal / 7700;
-
-    const treadmillSpeedKmh = 3.3;
-    const treadmillGrade = 0.15;
-    const speedMetersPerMinute = treadmillSpeedKmh * 1000 / 60;
-    const vo2 = 0.1 * speedMetersPerMinute + 1.8 * speedMetersPerMinute * treadmillGrade + 3.5;
-    const kcalPerMinute = vo2 * currentWeight * 5 / 1000;
-    const walkMinutes = kcalPerMinute > 0 ? remainingKcal / kcalPerMinute : 0;
-
+    /* V75: hai cách "trả nợ" calo còn lại bằng đi bộ.
+       Bản cũ tính bằng oxy GỘP (có cả 3,5 ml/kg/phút của cơ thể lúc nghỉ) trong khi
+       lịch sử lại cộng calo tập bằng oxy RÒNG — cùng một buổi đi bộ mà tổng quan
+       hứa đốt nhiều hơn ~17% so với số lịch sử thực sự ghi nhận. Nay cả hai đều
+       dùng oxy ròng, vì phần lúc nghỉ đã nằm trong TDEE nền. */
+    const flat = v75WalkPlan(remainingKcal, currentWeight, V75_DEFAULT_WALK);
+    const incline = v75WalkPlan(remainingKcal, currentWeight, V75_REFERENCE_INCLINE);
     return {
       targetWeightNow: targetWeight,
       fatKgToLose,
       kcalToBurn: remainingKcal,
-      treadmillSpeedKmh,
-      treadmillGrade,
-      vo2,
-      kcalPerMinute,
-      walkMinutes,
+      kcalPerMinute: flat.kcalPerMinute,
+      walkMinutes: flat.minutes,
+      inclineKcalPerMinute: incline.kcalPerMinute,
+      inclineMinutes: incline.minutes,
     };
   }
   function updateTargetBurnHighlight(currentWeight, currentBodyFat, cumulative, totalGoal, targetWeight) {
@@ -8247,17 +8547,11 @@
         ? `Đã đạt mục tiêu năng lượng tích lũy.`
         : `Mỡ hiện tại ${fmt(currentBodyFat, 1)}% · đã tính toàn bộ lịch sử ăn và tập.`,
     );
-    setText(
-      "targetBurnWalkTime",
-      achieved ? "0" : fmt(Math.ceil(plan.walkMinutes / 60)),
-    );
-    setText(
-      "targetBurnWalkSub",
-      achieved
-        ? "Đã đạt mục tiêu."
-        : `Quy đổi toàn bộ calo còn lại ở cân nặng ${fmt(currentWeight, 1)} kg.`,
-    );
-    setText("targetBurnRate", `${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
+    setText("targetBurnWalkTime", achieved ? "0" : fmt(Math.ceil(plan.walkMinutes / 60)));
+    setText("targetBurnWalkSub", achieved ? "Đã đạt mục tiêu." : `Đi bộ thường · 4 km/h · ${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
+    setText("targetBurnInclineTime", achieved ? "0" : fmt(Math.ceil(plan.inclineMinutes / 60)));
+    setText("targetBurnInclineSub", `Dốc 12% · 3,3 km/h · ${fmt(plan.inclineKcalPerMinute, 2)} kcal/phút`);
+    setText("targetBurnRate", `${fmt(currentWeight, 1)} kg`);
     setText("targetBurnSessions60", `${fmt(Math.ceil(plan.walkMinutes / 60))} buổi`);
     setText("targetBurnSessions90", `${fmt(Math.ceil(plan.walkMinutes / 90))} buổi`);
   }
@@ -8460,7 +8754,7 @@
           detailsOpen = historyDetailsState.has(dayKey)
             ? historyDetailsState.get(dayKey)
             : d.foodEst.unresolvedCount > 0;
-        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}${d.partial ? " partial" : ""}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric"><span>Cardio 15% · 3,3 km/h</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${fmt(d.waistUsed, 1)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
+        return `<article id="day-${dayKey}" class="day-card ${state} ${daySpecialClass}"><div class="day-head"><div class="day-date"><strong>${formatDateVi(d.date)}</strong><span>${d.foodEst.items.length} nhóm thực phẩm${d.foodEst.unresolvedCount ? ` · ${d.foodEst.unresolvedCount} chưa nhận diện` : ""}</span></div><div class="flow"><div class="flow-box"><span>Calo vào</span><b class="orange">${intake}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Tổng calo ra</span><b class="blue">${fmt(d.totalOut)}</b></div><span class="flow-arrow">→</span><div class="flow-box"><span>Kết quả năng lượng</span><b class="${d.complete ? (d.deficit > 0 ? "green" : d.deficit < 0 ? "red" : "blue") : "orange"}">${balance}</b></div></div><div class="day-summary-row"><span class="status-badge ${state}${d.partial ? " partial" : ""}">${status}</span><span class="daily-macro-wrap" title="Tổng Protein, Carb và Fat ước tính trong ngày">${macroPillsHtml({ protein: d.foodEst.proteinTotal, carbs: d.foodEst.carbsTotal, fat: d.foodEst.fatTotal })}</span></div></div><div class="day-body"><div class="food-box"><p>${escapeHtml(formatFoodText(d.food || "Chưa nhập đồ ăn"))}</p><details data-day-key="${dayKey}"${detailsOpen ? " open" : ""}><summary>Xem từng món và cách tính</summary><div class="breakdown">${breakdown || '<div style="color:var(--muted);font-size:10px">Chưa có dữ liệu món ăn.</div>'}</div></details></div><div class="metric-box"><div class="metric-grid"><div class="mini-metric key-metric base-tdee"><span>TDEE nền</span><b>${fmt(d.baseTdee)} kcal</b></div><div class="mini-metric total-out key-metric"><span>Tổng calo ra</span><b>${fmt(d.totalOut)} kcal</b><em>TDEE nền ${fmt(d.baseTdee)} + calo tập ${fmt(d.exerciseBurn)}</em></div><div class="mini-metric workout-metric strength-metric"><span>Tập tạ</span><b>${fmt(d.strengthMin)} phút · tiêu hao ${fmt(d.strengthBurn)} kcal</b></div><div class="mini-metric workout-metric cardio-metric" title="${escapeHtml((d.cardioItems || []).map((it) => `${it.label}: ${fmt(Math.round(it.minutes))} phút × ${fmt(it.kcalPerMinute, 2)} kcal/phút · ${it.method}`).join(" | "))}"><span>Cardio · ${escapeHtml(d.cardioLabel || "Không tập cardio")}</span><b>${fmt(d.cardioMin)} phút · tiêu hao ${fmt(d.cardioBurn)} kcal</b></div><div class="mini-metric body-metric weight-metric"><span>Cân hiện tại</span><b>${fmt(d.projectedWeight, 2)} kg</b></div><div class="mini-metric body-metric bodyfat-metric"><span>Vòng eo · Mỡ</span><b>${d.waistUsed !== null ? `${fmt(d.waistUsed, 1)} cm · ` : ""}${fmt(d.bodyFat, 1)}%</b></div></div></div></div></article>`;
       })
       .join("");
     list.querySelectorAll("details[data-day-key]").forEach((details) => {
@@ -8802,7 +9096,7 @@
       const ids = [
         "latestDate", "latestStatus",
         "targetBurnKcal", "targetBurnSub", "targetBurnWeight", "targetBurnFatKg",
-        "targetBurnWalkTime", "targetBurnWalkSub", "targetBurnRate",
+        "targetBurnWalkTime", "targetBurnWalkSub", "targetBurnRate", "targetBurnInclineTime", "targetBurnInclineSub",
         "kpiWeight", "kpiBodyFat", "kpiWaist", "kpiTdee", "progressPercent",
       ];
       const text = {};

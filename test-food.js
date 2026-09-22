@@ -19,7 +19,7 @@ window.requestAnimationFrame = () => {}; window.setInterval = () => 0; window.fe
 global.requestAnimationFrame = window.requestAnimationFrame; global.setInterval = window.setInterval; global.fetch = window.fetch;
 
 let code = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
-code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood };\n})();\n");
+code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood, parseCardioV75, cardioBurnV75, v75WalkPlan };\n})();\n");
 window.eval(code);
 const T = window.__T;
 
@@ -98,6 +98,40 @@ const MULTI = [
   ["1,5 kg thịt bò", 1, 0],
 ];
 
+/* ---------- CARDIO ----------
+   Số kỳ vọng được tính ĐỘC LẬP ngay trong file test từ công thức gốc, không lấy
+   từ app — để test bắt được cả lỗi công thức chứ không chỉ lỗi đọc chữ.
+   ACSM đi bộ: VO₂ ròng = 0,1·S + 1,8·S·G ; chạy: 0,2·S + 0,9·S·G  (S m/phút)
+   MET: VO₂ ròng = (MET − 1) × 3,5 ; kcal/phút = VO₂ròng × kg × 5 / 1000 */
+const KG = 70;
+const walkK = (kmh, g) => { const S = kmh * 1000 / 60; return (0.1 * S + 1.8 * S * g / 100) * KG * 5 / 1000; };
+const runK = (kmh, g) => { const S = kmh * 1000 / 60; return (0.2 * S + 0.9 * S * g / 100) * KG * 5 / 1000; };
+const metK = (met) => (met - 1) * 3.5 * KG * 5 / 1000;
+/* [câu nhập, số phút mong đợi, kcal mong đợi, chữ phải có trong nhãn] */
+const CARDIO = [
+  ["30mins", 30, 30 * walkK(4, 0), "Đi bộ 4 km/h"],
+  ["30 phút", 30, 30 * walkK(4, 0), "Đi bộ 4 km/h"],
+  ["1h đi bộ dốc 12 3.3km/h", 60, 60 * walkK(3.3, 12), "dốc 12%"],
+  ["30mins elliptical level 5", 30, 30 * metK(4 + 4 * 5 / 19), "Elliptical level 5"],
+  ["45 phút đạp xe 10km/h", 45, 45 * metK(4.0), "Đạp xe 10 km/h"],
+  ["1h đi bộ dốc 12, 3.3km/h", 60, 60 * walkK(3.3, 12), "dốc 12%"],
+  ["30 min incline 12% 3.3 km/h", 30, 30 * walkK(3.3, 12), "dốc 12%"],
+  ["dốc 12 độ 3.3km/h 60 phút", 60, 60 * walkK(3.3, 12), "dốc 12%"],
+  ["30 + 45", 75, 75 * walkK(4, 0), "Đi bộ"],
+  ["30 phút đi bộ + 20 phút chạy bộ 9km/h", 50, 30 * walkK(4, 0) + 20 * runK(9, 0), "Chạy 9 km/h"],
+  ["chạy 5km trong 30 phút", 30, 30 * runK(10, 0), "Chạy 10 km/h"],
+  ["45p máy chạy bộ", 45, 45 * walkK(4, 0), "Đi bộ"],
+  ["30 phút máy chạy bộ 8km/h", 30, 30 * runK(8, 0), "Chạy 8 km/h"],
+  ["20 phút nhảy dây", 20, 20 * metK(11.0), "Nhảy dây"],
+  ["1 tiếng cầu lông", 60, 60 * metK(5.5), "Cầu lông"],
+  ["40 phút xe đạp tập 120W", 40, 40 * metK(6.8), "Xe đạp tập"],
+  ["30p rowing 160w", 30, 30 * metK(11.0), "Chèo"],
+  ["30 phút bơi sải nhanh", 30, 30 * metK(9.8), "Bơi"],
+  ["1:30", 90, 90 * walkK(4, 0), "Đi bộ"],
+  ["300 kcal", 0, 300, ""],
+  ["45 phút elliptical 350 kcal", 45, 350, "Elliptical"],
+];
+
 let pass = 0, fail = 0;
 const bad = (msg) => { console.log("  ❌ " + msg); fail++; };
 const good = () => pass++;
@@ -129,6 +163,21 @@ for (const [input, expect, ref, tol] of CUISINE) {
   const lo = ref * (1 - tol), hi = ref * (1 + tol) + 1;
   if (r.total < lo || r.total > hi) { bad(`${input} → ${r.total} kcal, ngoài khoảng ${Math.round(lo)}–${Math.round(hi)}`); continue; }
   good();
+}
+
+console.log("=== CARDIO ===");
+for (const [input, minutes, kcal, label] of CARDIO) {
+  const parsed = T.parseCardioV75(input), burn = T.cardioBurnV75(parsed, KG);
+  if (parsed.minutes !== Math.round(minutes)) { bad(`${input} → ${parsed.minutes} phút, mong đợi ${Math.round(minutes)}`); continue; }
+  if (Math.abs(burn.kcal - Math.round(kcal)) > 1) { bad(`${input} → ${burn.kcal} kcal, công thức ra ${Math.round(kcal)}`); continue; }
+  if (label && !burn.label.includes(label)) { bad(`${input} → nhãn "${burn.label}", mong đợi chứa "${label}"`); continue; }
+  good();
+}
+/* Thẻ Tổng quan phải dùng ĐÚNG tốc độ đốt ròng mà lịch sử dùng. */
+{
+  const plan = T.v75WalkPlan(10000, KG, { speedKmh: 4, gradePct: 0 });
+  const day = T.cardioBurnV75(T.parseCardioV75("60 phút"), KG);
+  if (Math.abs(plan.kcalPerMinute * 60 - day.kcal) > 1) bad(`Tổng quan đốt ${Math.round(plan.kcalPerMinute * 60)} kcal/giờ nhưng lịch sử ghi ${day.kcal}`); else good();
 }
 
 console.log("=== TRAP ===");

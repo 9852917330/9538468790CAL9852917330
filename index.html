@@ -1956,6 +1956,24 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     #page-overview .overview-metrics b{white-space:normal;line-height:1.15;text-overflow:clip;overflow:visible}
   }
 </style>
+
+<style id="walk-card-v75">
+  /* V75 · Thẻ giờ đi bộ hiện HAI ước tính: đi bộ thường 4 km/h (mặc định, số lớn)
+     và đi bộ dốc 12% · 3,3 km/h (số phụ). Hai số xếp dọc, cách nhau một vạch mảnh. */
+  #page-overview .walk-card .overview-primary-main{justify-content:center;gap:0}
+  #page-overview .overview-walk-alt{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.14)}
+  #page-overview .overview-alt-value{display:flex;align-items:flex-end;gap:4px;font-family:"Arial Black","Segoe UI Black",Inter,ui-sans-serif,system-ui,sans-serif;font-size:clamp(34px,4vw,52px);line-height:.86;font-weight:1000;letter-spacing:-1.8px;color:#ffd37c;white-space:nowrap}
+  #page-overview .overview-alt-value small{font-family:Inter,ui-sans-serif,system-ui,sans-serif;font-size:.36em;font-weight:950;letter-spacing:0;opacity:.9;transform:translateY(-3px)}
+  #page-overview .overview-alt-sub{margin-top:6px;color:#e6f6f1;font-size:11px;line-height:1.35;font-weight:800}
+  #page-overview .walk-card .overview-primary-sub{margin-top:8px;font-size:11px;line-height:1.35}
+  @media(max-width:620px){
+    #page-overview .walk-card .overview-primary-value{font-size:clamp(42px,12vw,58px);letter-spacing:-2.6px}
+    #page-overview .overview-alt-value{font-size:clamp(28px,8vw,38px);letter-spacing:-1.4px}
+    #page-overview .walk-card .overview-primary-sub,#page-overview .overview-alt-sub{font-size:10.4px;margin-top:5px}
+    #page-overview .overview-walk-alt{margin-top:8px;padding-top:7px}
+  }
+  html[data-theme="light"] #page-overview .overview-walk-alt{border-top-color:rgba(255,255,255,.22)}
+</style>
 </head>
 
 <body>
@@ -2005,13 +2023,17 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
       </article>
 
       <article class="overview-primary-card walk-card">
-        <div class="overview-primary-label">🚶 ĐI BỘ DỐC 15 · 3,3 KM/H</div>
+        <div class="overview-primary-label">🚶 GIỜ ĐI BỘ CẦN THIẾT</div>
         <div class="overview-primary-main">
           <div class="overview-primary-value"><span id="targetBurnWalkTime">—</span><small>giờ</small></div>
           <div id="targetBurnWalkSub" class="overview-primary-sub">—</div>
+          <div class="overview-walk-alt">
+            <div class="overview-alt-value"><span id="targetBurnInclineTime">—</span><small>giờ</small></div>
+            <div id="targetBurnInclineSub" class="overview-alt-sub">—</div>
+          </div>
         </div>
         <div class="overview-mini-line single">
-          <span>Tốc độ đốt <b id="targetBurnRate">—</b></span>
+          <span>Ở cân nặng <b id="targetBurnRate">—</b></span>
         </div>
       </article>
     </section>
