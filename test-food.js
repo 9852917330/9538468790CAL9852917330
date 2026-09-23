@@ -21,7 +21,7 @@ global.requestAnimationFrame = window.requestAnimationFrame; global.setInterval 
 /* Thông số cơ thể cố định cho nhóm test CƠ THỂ (không ảnh hưởng test món ăn). */
 window.localStorage.setItem("inAndOutSettingsV2", JSON.stringify({ sheetId: "x".repeat(30), sheetGid: "", sex: "male", age: 35, height: 160, defaultWeight: 70, startWaist: 92, startBodyFat: 30, targetBodyFat: 12, activityFactor: 1.2 }));
 let code = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
-code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood, parseCardioV75, cardioBurnV75, v75WalkPlan, v76WalkPlan, compute, goalStateV76, rfmEstimate, writeSettings, PROFILE };\n})();\n");
+code = code.replace(/\n\}\)\(\);\s*$/, "\n  window.__T = { estimateFood, findFood, parseCardioV75, cardioBurnV75, v75WalkPlan, v76WalkPlan, compute, goalStateV76, rfmEstimate, writeSettings, PROFILE, authorityDb: getAuthoritativeFoodDbV50 };\n})();\n");
 window.eval(code);
 const T = window.__T;
 
@@ -283,6 +283,72 @@ console.log("=== V76 · CƠ THỂ & MỤC TIÊU ===");
   const expectMin = 7700 / perKg * Math.log(W0 / T0);
   if (!near(plan.minutes, expectMin, 1)) bad(`Giờ đi bộ ${Math.round(plan.minutes)} phút, công thức ra ${Math.round(expectMin)}`); else good();
   if (!(plan.minutes > (W0 - T0) * 7700 / (perKg * W0))) bad("Giờ đi bộ không được ít hơn cách chia thẳng ở cân hiện tại"); else good();
+}
+
+/* ---------- V77 · MÓN MỚI + MÓN TỪNG BỊ NHẬN NHẦM ----------
+   [câu nhập, tên phải chứa, kcal kỳ vọng, sai số tuyệt đối]; kcal kỳ vọng lấy thẳng
+   từ bảng nguồn (USDA / Bảng TPTP VN / MEXT) nhân khối lượng. */
+console.log("=== V77 · NHẬN DIỆN MÓN MỚI ===");
+const V77_CASES = [
+  ["100g váng đậu tươi", "Váng đậu tươi", 218, 2], ["100g váng đậu", "Váng đậu tươi", 218, 2],
+  ["100g váng đậu khô", "Váng đậu khô", 485, 3], ["50g tàu hũ ky", "Váng đậu khô", 243, 3],
+  ["100g phù trúc", "Váng đậu khô", 485, 3], ["100g đậu hũ ky", "Váng đậu khô", 485, 3],
+  ["100g tỏi", "Tỏi", 149, 2], ["100g gừng", "Gừng", 80, 2], ["100g hành tây", "Hành tây", 40, 1],
+  ["100g măng", "Măng tươi", 27, 1], ["100g chanh", "Chanh", 30, 1], ["100g mướp", "Mướp", 20, 1],
+  ["100g rau đay", "Rau đay", 34, 1], ["100g xà lách", "Xà lách", 15, 1], ["100g dâu tây", "Dâu", 32, 2],
+  ["100g gạo", "Gạo trắng", 365, 3], ["100g gạo lứt", "Gạo lứt", 367, 3], ["100g gạo nếp", "Gạo nếp", 370, 3],
+  ["100g đỗ đen", "Đậu đen", 341, 3], ["100g đậu đen luộc", "Đậu đen luộc", 132, 2], ["100g black beans", "Đậu đen", 341, 3],
+  ["100g đỗ xanh", "Đậu xanh", 347, 3], ["100g đậu nành luộc", "Đậu nành luộc", 172, 2], ["100g soy beans", "Đậu nành", 446, 5],
+  ["100g lạc luộc", "Lạc luộc", 318, 3], ["100g nước cốt dừa", "Nước cốt dừa", 197, 2],
+  ["100g thịt băm", "Thịt heo xay", 263, 3], ["100g chân giò", "Chân giò", 212, 2], ["100g sách bò", "Sách bò", 57, 1],
+  ["100g gân bò", "Gân bò", 157, 2], ["100g thịt dê", "Thịt dê", 109, 2], ["100g lươn", "Lươn", 89, 2],
+  ["100g cá mòi", "Cá mòi", 124, 2], ["100g cá trôi", "Cá trôi", 127, 2], ["100g hến", "Hến", 45, 1],
+  ["100g trứng vịt", "Trứng vịt", 185, 2], ["2 quả trứng vịt", "Trứng vịt", 259, 3], ["10 quả trứng cút", "Trứng cút", 142, 3],
+  ["100g ba rọi", "ba chỉ", 518, 5], ["200g thịt ba chỉ xông khói", "bacon sống", 786, 5],
+  ["360ml oatmeal milk", "Sữa yến mạch", 180, 3], ["500ml apple juice", "Nước ép táo", 230, 3],
+  ["1 lon 7up", "7Up", 135, 3], ["300g Vietnamese salad", "Nộm / gỏi", 346, 5], ["1 bát chè", "Chè (ước tính", 350, 3],
+  ["100g pate gan", "Pa tê", 320, 3], ["100g sữa đặc có đường", "Sữa đặc", 321, 3], ["200g korean tteokbokki", "Tteokbokki", 344, 4],
+  ["250g thanh long đỏ", "Thanh long", 143, 3], ["100g cá diêu hồng", "Cá điêu hồng", 96, 2], ["1 cái bánh lọc", "Bánh bột lọc", 50, 3],
+];
+for (const [input, expect, kcal, tol] of V77_CASES) {
+  const r = T.estimateFood(input), it = r.items[0] || {};
+  if (r.items.length !== 1 || !it.resolved) { bad(`${input} → ${r.items.length} món / ${it.resolved ? "đã" : "chưa"} nhận diện`); continue; }
+  if (!String(it.label).toLowerCase().includes(expect.toLowerCase())) { bad(`${input} → "${it.label}", mong đợi "${expect}"`); continue; }
+  if (Math.abs(r.total - kcal) > tol) { bad(`${input} → ${r.total} kcal, bảng nguồn ra ${kcal}`); continue; }
+  good();
+}
+console.log("=== V77 · KHÔNG ĐƯỢC CƯỚP MÓN CŨ ===");
+for (const [input, expect] of [["100g mướp đắng", "Mướp đắng"], ["1 bát bún măng vịt", "Bún măng vịt"], ["100g gà kho gừng", "Gà kho gừng"],
+  ["100g ngan cháy tỏi", "Ngan cháy tỏi"], ["100g onion rings", "Onion rings"], ["100g cơm gạo lứt", "Cơm gạo lứt"], ["1 cốc trà chanh", "Trà chanh"],
+  ["2 quả trứng gà", "Trứng gà"], ["2 qua trung ga", "Trứng gà"], ["100g cánh gà chiên", "Cánh gà chiên"], ["100g đậu phụ", "Đậu phụ"],
+  ["1 bát chè đỗ đen", "Chè đỗ đen"], ["100g xôi đỗ xanh", "Xôi đỗ xanh"], ["1 cốc cà phê sữa", "Cà phê sữa"], ["100g Thịt ngan/vịt chín cả da", "Thịt ngan/vịt"],
+  ["100g sữa đậu nành", "Sữa đậu nành"], ["100g vịt quay", "Vịt quay"], ["100g mè", "vừng"]]) {
+  const r = T.estimateFood(input), it = r.items[0] || {};
+  if (!it.resolved || !String(it.label).toLowerCase().includes(expect.toLowerCase())) bad(`${input} → "${it.label}", mong đợi "${expect}"`); else good();
+}
+console.log("=== V77 · ĐƠN VỊ ĐONG & TÁCH MÓN ===");
+{
+  const near = (a, b, t) => Math.abs(a - b) <= t;
+  const u = (input, kcal, tol, items = 1) => { const r = T.estimateFood(input); if (r.unresolvedCount || r.items.length !== items || !near(r.total, kcal, tol)) bad(`${input} → ${r.total} kcal / ${r.items.length} món (chưa nhận ${r.unresolvedCount}), mong đợi ≈${kcal} / ${items} món`); else good(); };
+  u("2 table spoons of sugar", 100, 2);        /* 2 × 12,5 g × 4 kcal */
+  u("1 thìa canh đường", 50, 2);
+  u("1 muỗng cà phê đường", 17, 1);
+  u("2 muỗng canh dầu ăn", 245, 6);            /* 2 × 13,6 g × 9 */
+  u("1 tea spoon of honey", 21, 3);
+  u("1 bát cháo", 90, 2);                      /* 1 bát ≈ 300 g, không phải 100 g */
+  u("200g khoai tây với sốt gravy", 210, 12, 2);
+  u("cơm với trứng", 399, 5, 2);
+  u("fried chicken with skin", 320, 5, 1);
+  u("1 cốc cà phê sữa", 180, 5, 1);            /* không bị tách vì có chữ "sữa" */
+  u("1 thanh socola", 235, 3);                 /* 1 thanh ≈ 44 g (USDA) */
+}
+console.log("=== V77 · TRANG THỰC PHẨM ===");
+{
+  const db = T.authorityDb();
+  const g = (name) => (db.find((f) => f.name === name) || {}).catalogGroup;
+  for (const [name, group] of [["Váng đậu tươi", "beans"], ["Váng đậu khô (tàu hũ ky)", "beans"], ["Đậu đen luộc (chín)", "beans"], ["Tỏi", "vegetables"], ["Trứng vịt", "eggs"], ["Lươn", "fish"]]) {
+    if (g(name) !== group) bad(`"${name}" nằm ở nhóm "${g(name)}", mong đợi "${group}"`); else good();
+  }
 }
 
 console.log(`\n===== KẾT QUẢ: ${pass} đạt · ${fail} lỗi · lệch năng lượng ${drift} =====\n`);

@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-22-v76-body-anchor";
+  const APP_BUILD = "2026-09-22-v77-food-coverage";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -5798,7 +5798,11 @@
     "bát","bat","chén","chen","tô","đĩa","dia","plate","plates",
     "hộp","hop","box","boxes","gói","goi","pack","packs","packet","packets",
     "bịch","bich","bag","bags","lon","cans","can","chai","bottle","bottles",
-    "que","xiên","xien","skewer","skewers","thìa","thia","muỗng","muong",
+    "que","xiên","xien","skewer","skewers",
+    "thìa canh","thia canh","muỗng canh","muong canh","thìa súp","thia sup","muỗng súp","muong sup",
+    "thìa cà phê","thia ca phe","muỗng cà phê","muong ca phe","thìa cafe","thia cafe","muỗng cafe","muong cafe",
+    "table spoons","table spoon","tea spoons","tea spoon","tbs","tbl",
+    "thìa","thia","muỗng","muong",
     "tbsp","tablespoons","tablespoon","tsp","teaspoons","teaspoon",
     "lát","lat","slices","slice","suất","suat","phần","phan",
     "servings","serving","portions","portion","pieces","piece","pcs","pc","units","unit",
@@ -5861,6 +5865,7 @@
   /* Bỏ số lượng + đơn vị, giữ nguyên dấu của phần tên món. */
   function v68FoodName(text=""){
     return String(text).toLowerCase().normalize("NFC")
+      .replace(/(^|[^\p{L}\d])7\s*-?\s*up\b/gu,"$1seven up")
       .replace(/[()[\]{}"“”'’]/g," ")
       .replace(V68_AMOUNT_RE," ")
       .replace(/\s+/g," ").trim()
@@ -6020,8 +6025,8 @@
     slice: ["lat", "slice", "slices"],
     bowl: ["bat", "chen", "to", "bowl", "bowls"],
     cup: ["coc", "ly", "cup", "cups", "glass", "glasses"],
-    tbsp: ["thia", "muong", "tbsp", "tablespoon", "tablespoons"],
-    tsp: ["thia ca phe", "tsp", "teaspoon", "teaspoons"],
+    tbsp: ["thia", "muong", "tbsp", "tablespoon", "tablespoons", "thia canh", "muong canh", "thia sup", "muong sup", "table spoon", "table spoons", "tbs", "tbl"],
+    tsp: ["thia ca phe", "muong ca phe", "thia cafe", "muong cafe", "tsp", "teaspoon", "teaspoons", "tea spoon", "tea spoons"],
     pack: ["goi", "pack", "packet", "packets"],
     can: ["lon", "can", "cans"],
     piece: ["mieng", "piece", "pieces"],
@@ -7210,6 +7215,13 @@
           return [`${qty[1]} ${qty[2]} rau củ quả`];
       }
       return viParts.flatMap((viPart)=>{
+        /* V77: "200g khoai tây với sốt gravy" là HAI món. Chỉ tách "với/with" khi cả
+           cụm không phải tên một món (cơm với trứng → 2 món; "fried chicken with skin" vẫn là 1 món),
+           và CẢ HAI vế đều nhận diện được — tránh cắt vụn tên món lạ. */
+        if (/\s+(?:với|with)\s+/i.test(viPart) && !findGenericProduceV53(viPart) && !findFood(viPart)) {
+          const sides = viPart.split(/\s+(?:với|with)\s+/i).map((x)=>x.trim()).filter(Boolean);
+          if (sides.length === 2 && sides.every((x)=>findGenericProduceV53(x) || findFood(x))) return sides;
+        }
         if (!/\s+and\s+/i.test(viPart)) return [viPart];
         const whole = findFood(viPart);
         const alias = normalizePhrase(whole?.matchedAlias || "");
@@ -7319,6 +7331,7 @@
     bat:"bát",chen:"chén",to:"tô",dia:"đĩa",coc:"cốc",ly:"ly",lon:"lon",chai:"chai",
     hop:"hộp",goi:"gói",bich:"bịch",lat:"lát",que:"que",xien:"xiên",thia:"thìa",muong:"muỗng",
     suat:"suất",phan:"phần",con:"con",khay:"khay",
+    "thia canh":"thìa canh","muong canh":"muỗng canh","thia sup":"thìa canh","muong sup":"muỗng canh","thia ca phe":"thìa cà phê","muong ca phe":"muỗng cà phê","thia cafe":"thìa cà phê","muong cafe":"muỗng cà phê","table spoon":"thìa canh","table spoons":"thìa canh","tea spoon":"thìa cà phê","tea spoons":"thìa cà phê",tbs:"thìa canh",tbl:"thìa canh",
     cup:"cốc",cups:"cốc",bowl:"bát",bowls:"bát",glass:"ly",glasses:"ly",can:"lon",cans:"lon",
     slice:"lát",slices:"lát",piece:"miếng",pieces:"miếng",pack:"gói",packs:"gói",
     serving:"suất",servings:"suất",plate:"đĩa",plates:"đĩa",box:"hộp",boxes:"hộp",whole:"con"
@@ -7366,7 +7379,7 @@
   function v68MethodClass(food){
     if(food?.methodClass) return food.methodClass;
     const text=`${String(food?.id||"")} ${normalizePhrase(food?.name||"")} ${normalizePhrase(food?.en||"")}`;
-    if(/(?:dau phu|tofu|dau hu)/.test(text)) return "tofu";
+    if(/(?:dau phu|tofu|dau hu|vang dau|tau hu ky|phu truc|yuba)/.test(text)) return "tofu";
     if(/(?:tom|ca |ca$|muc|so |ngao|hen|cua|ghe|shrimp|fish|squid|salmon|tuna|crab|clam|oyster)/.test(text)) return "seafood";
     if(/(?:ba chi|thit mo|pork belly|duck|vit|ngan|bacon|xuc xich|lap xuong|salami)/.test(text)) return "fattyProtein";
     if(/(?:ga|bo|heo|lon|thit|trung|chicken|beef|pork|egg|meat|steak)/.test(text)) return "leanProtein";
@@ -7485,7 +7498,7 @@
         count =
           biteCount ||
           norm.match(
-            /(\d+(?:[.,]\d+)?)\s*(cai|chiec|qua|trai|mieng|vien|cuon|o|coc|ly|bat|chen|to|dia|plate|plates|hop|box|boxes|bich|bag|bags|goi|lon|que|xien|skewer|skewers|thia|muong|lat|slice|slices|serving|servings|phan|suat|piece|pieces|pc|pcs|unit|units|cup|cups|bowl|bowls|glass|glasses|pack|packet|packets|can|cans|con|whole|bird)\b/,
+            /(\d+(?:[.,]\d+)?)\s*(thia canh|muong canh|thia sup|muong sup|thia ca phe|muong ca phe|thia cafe|muong cafe|table spoons|table spoon|tea spoons|tea spoon|tbs|tbl|cai|chiec|qua|trai|mieng|vien|cuon|o|coc|ly|bat|chen|to|dia|plate|plates|hop|box|boxes|bich|bag|bags|goi|lon|que|xien|skewer|skewers|thia|muong|lat|slice|slices|serving|servings|phan|suat|piece|pieces|pc|pcs|unit|units|cup|cups|bowl|bowls|glass|glasses|pack|packet|packets|can|cans|con|whole|bird)\b/,
           );
       const fraction = norm.match(/^\s*(\d+)\s*\/\s*(\d+)\b/),
         fractionWhole = !!(fraction && /\b(?:con|whole|bird)\b/.test(norm)),
@@ -9906,6 +9919,42 @@
   /* V68: bí danh một chữ và tên gọi đời thường. Phải là alias "hạng nhất" (có dấu)
      thì luật dấu mới bảo vệ được: "bò" khớp Thịt bò, còn "bơ" thì không. */
   const V68_EXTRA_ALIASES = new Map(Object.entries({
+    /* V77 */
+    "dâu":["dâu tây","quả dâu tây","strawberries"],
+    "đậu đen":["đỗ đen","đỗ đen khô","đậu đen khô","black beans","black bean","dry black beans"],
+    "đậu xanh":["đỗ xanh","đỗ xanh khô","đậu xanh khô","mung beans","mung bean"],
+    "đậu đỏ":["đỗ đỏ","đỗ đỏ khô","đậu đỏ khô","adzuki beans","adzuki"],
+    /* Tên đậu KHÔNG kèm "luộc/chín/cooked" = hạt khô, đúng quy ước nhóm Đậu. */
+    "đậu nành":["soy beans","soybeans","soybean","soy bean","đậu nành khô","đỗ tương","đậu tương"],
+    "đậu gà":["chickpeas","chickpea","garbanzo beans","đậu gà khô"],
+    "đậu lăng":["lentils","lentil","đậu lăng khô"],
+    "đậu phụ rán":["đậu phụ chiên","đậu rán","đậu chiên","tàu hũ chiên","đậu phụ rán giòn"],
+    "thịt ba chỉ heo":["ba rọi","thịt ba rọi","ba rọi heo"],
+    "ngan luộc":["ngan","thịt ngan","vịt xiêm"],
+    "cá điêu hồng":["cá diêu hồng"],
+    "cá basa":["cá tra","cá tra phi lê"],
+    "thịt ốc bươu":["ốc","thịt ốc"],
+    "khoai môn":["khoai sọ","khoai sọ luộc"],
+    "bánh tráng":["bánh đa nem","bánh tráng cuốn"],
+    "bánh bột lọc":["bánh lọc","bánh lọc huế"],
+    "thanh long":["thanh long đỏ","thanh long ruột đỏ","thanh long trắng","thanh long ruột trắng","red dragon fruit","pitaya","pitahaya"],
+    "tteokbokki":["korean tteokbokki","tokbokki","topokki","bánh gạo cay","bánh gạo hàn quốc","bánh gạo cay hàn quốc"],
+    "vịt quay":["peking duck with skin"],
+    "pa tê":["pate gan","pa tê gan","patê gan","liver pate","liver pâté"],
+    "bánh mì lát":["white bread","bánh mì trắng","bánh mì gối","sliced bread","sandwich bread"],
+    "sữa đặc":["sữa đặc có đường","sweetened condensed milk"],
+    "mì xào":["mì xào bò","mỳ xào bò","mì xào thịt bò","mì xào thập cẩm"],
+    "gà rán":["fried chicken with skin","gà rán có da","gà chiên có da"],
+    "sữa tươi":["sữa tươi không đường","sữa không đường","sữa tươi nguyên kem"],
+    "sữa đậu nành":["sữa đậu nành không đường","unsweetened soy milk"],
+    "hạt mắc ca":["hạt macca","macca","mắc-ca"],
+    "hạt vừng":["mè","hạt mè","mè đen","vừng đen","mè trắng","vừng trắng","sesame","sesame seeds"],
+    "yến mạch":["yến mạch cán dẹt","bột yến mạch","yến mạch cán vỡ","rolled oats","oat flakes"],
+    "bánh quy bơ":["bánh cookies","cookies","bánh cookie"],
+    "lòng heo":["lòng non","lòng non heo","ruột non heo"],
+    "bún":["rice noodles","rice noodle","cooked rice noodles"],
+    "bò sốt vang":["thịt bò sốt vang","bò nấu vang","beef bourguignon"],
+    "khoai tây chiên":["khoai tây chiên kfc","kfc fries","khoai tây chiên mcdonald"],
     "thịt bò":["bò","beef"],
     "thịt lợn":["lợn","heo"],
     "thịt gà":["gà"],
@@ -9974,6 +10023,13 @@
     const aAccent=aa!==an, bAccent=bb!==bn;
     return !aAccent&&!bAccent&&an===bn;
   }
+  /* V77 · khối lượng đơn vị cho món đã có sẵn:
+     "1 bát cháo" trước đây = 100 g (30 kcal) vì bảng ghi theo 100 g; một bát thật ≈ 300 g.
+     "1 gói xôi" trước đây = 40 g (cỡ gói bim bim); một gói xôi bán sẵn ≈ 200 g. */
+  const V77_SERVING_OVERRIDES = new Map([
+    ["chao",{gramsPerBowl:300}],
+    ["xoi trang",{gramsPerPack:200}]
+  ]);
   function catalogItemToParserV50(item) {
     const name=canonicalCatalogName(item), info=basisAmountV50(item.subtitle||""), kcal=Number(item.kcal), protein=Number(item.protein), carbs=Number(item.carb), fat=Number(item.fat);
     const bilingualAliases=V51_BILINGUAL_EN_ALIASES.get(normalizePhrase(name))||[];
@@ -9985,7 +10041,9 @@
        Điều này tránh việc bản tiếng Việt thắng khi de-duplicate làm mất tên English của cùng món. */
     const itemIdentity=catalogIdentity(item);
     prepareCatalogIndexesV66();
-    for(const peer of catalogPeersV66.get(itemIdentity)||[]){
+    /* V77: món mới chỉ mang đúng bí danh đã kiểm chứng. Kế thừa bí danh của món cũ trùng
+       tên từng làm "Trứng vịt" hút luôn chữ "trứng gà" của một hồ sơ trứng chung. */
+    for(const peer of item.v77?[]:(catalogPeersV66.get(itemIdentity)||[])){
       if(peer===item)continue;
       [peer.originalName,peer.name].filter(Boolean).forEach((x)=>{
         const normalized=normalizePhrase(x);
@@ -9995,18 +10053,20 @@
     const canonical=normalizePhrase(name);
     let matchingLegacyFood=null;
     const matchingEntries=new Set();
-    for(const alias of aliasVariantsV50(name)){
+    for(const alias of item.v77?[]:aliasVariantsV50(name)){
       for(const entry of legacyAliasesV66.get(normalizePhraseAccentV51(alias))||[])matchingEntries.add(entry);
     }
     for(const entry of [...matchingEntries].sort((a,b)=>a.order-b.order)){
       if(!matchingLegacyFood)matchingLegacyFood=entry.food;
       entry.roots.forEach(x=>aliases.add(x));
     }
+    /* V77: tên gọi thông dụng của món mới là bí danh CHÍNH XÁC, không chỉ nằm trong chuỗi mô tả. */
+    if(Array.isArray(item.exactAliasesV77)) item.exactAliasesV77.forEach((a)=>aliases.add(a));
     const blockedAliases=new Set((V51_BLOCKED_ALIASES.get(canonical)||[]).map(normalizePhrase));
     if(blockedAliases.size) for(const alias of [...aliases]) if(blockedAliases.has(normalizePhrase(alias))) aliases.delete(alias);
     const food={
       id:`authority_v50_${String(item.id||canonical).replace(/[^a-z0-9_]+/gi,"_")}`,
-      name,en:item.originalName||bilingualAliases[0]||bilingualAliasesV56[0]||bilingualAliasesV57[0]||"",aliases:[...aliases],priority:1000000,
+      name,en:item.originalName||bilingualAliases[0]||bilingualAliasesV56[0]||bilingualAliasesV57[0]||"",aliases:[...aliases],priority:1000000+(item.v77?200000:0),
       source:`Nguồn chuẩn V50 · đồng bộ trực tiếp với bảng Thực phẩm · ${item.source||"dữ liệu nội bộ"}`,
       rangePct:/restaurant|snacks|fastfood|sweet-cakes|dessert/.test(item._catalogClass?.group||"")?0.18:0.08,
       authoritativeV50:true,
@@ -10062,6 +10122,9 @@
       food.perUnit=kcal/food.piecesPerServing;
       food.perPiece=food.perUnit;
     } else if(!Number.isFinite(food.perUnit)&&!Number.isFinite(food.perPortion)&&!Number.isFinite(food.perBowl)&&!Number.isFinite(food.perCup)&&!is100g&&!is100ml) food.perUnit=kcal;
+    /* V77: khối lượng thật của từng đơn vị (1 quả trứng vịt 70 g, 1 bát cháo 300 g…).
+       Không có dòng này thì món ghi theo 100 g bị tính "1 quả = 100 g". */
+    Object.assign(food, item.servingOverridesV77||{}, V77_SERVING_OVERRIDES.get(normalizePhrase(name))||{});
     return food;
   }
   function getAuthoritativeFoodDbV50(){
@@ -10266,6 +10329,139 @@
     curatedCatalogFood("choc_chip_cookie","Bánh quy sô cô la","sweet-cakes",145,1.7,19,7,"1 cái · 30 g","🍪","chocolate chip cookie bánh quy sô cô la cookie choco chip","cookie")
   ];
 
+  /* =================== V77 · BỔ SUNG MÓN CHƯA NHẬN DIỆN / NHẬN SAI ===================
+     Quét toàn bộ món trong Sheet cũ + ~540 món phổ biến: 155 món không nhận diện được và
+     hàng chục món bị khớp NHẦM sang món khác ("tỏi" → ngan cháy tỏi, "hành tây" → onion
+     rings, "gừng" → gà kho gừng, "gạo lứt" → cơm gạo lứt, "trứng vịt" → trứng gà…).
+     Mỗi dòng dưới đây có số liệu tra từ bảng thành phần chuẩn (USDA SR Legacy, Bảng thành
+     phần thực phẩm Việt Nam, Nhật Bản MEXT 2020, Trung Quốc, Ấn Độ IFCT) — ghi ở trường
+     source để trang Lịch sử hiện đúng nguồn. Tên gọi thông dụng được đăng ký thành bí danh
+     CHÍNH XÁC (exactAliasesV77) và được ưu tiên hơn bí danh mô tả của món khác. */
+  function v77Food(id,name,group,subgroup,kcal,protein,carb,fat,basis,icon,exactAliases,aliasText,source,servingOverrides){
+    return Object.assign(curatedCatalogFood(`v77_${id}`,name,group,kcal,protein,carb,fat,basis,icon,aliasText,subgroup),{
+      source,v77:true,exactAliasesV77:exactAliases,servingOverridesV77:servingOverrides||{}
+    });
+  }
+  const CURATED_CATALOG_V77 = [
+    v77Food("vang_dau_tuoi","Váng đậu tươi","beans","beans",218,21.8,4.1,13.7,"100 g · tươi, chưa rán","🫘",["váng đậu", "váng đậu tươi", "vang dau", "vang dau tuoi", "yuba tươi", "fresh yuba", "fresh tofu skin", "tofu skin", "bean curd skin", "beancurd skin", "yuba"],"váng đậu váng đậu tươi vang dau vang dau tuoi yuba tươi fresh yuba fresh tofu skin tofu skin bean curd skin beancurd skin yuba","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · 湯葉 生 (váng đậu tươi)",{}),
+    v77Food("vang_dau_kho","Váng đậu khô (tàu hũ ky)","beans","beans",485,50.4,7.2,32.1,"100 g · khô, chưa ngâm","🫘",["váng đậu khô", "vang dau kho", "tàu hũ ky", "tàu hủ ky", "tàu hũ ki", "tàu hủ ki", "tau hu ky", "tau hu ki", "đậu hũ ky", "đậu hủ ky", "dau hu ky", "phù trúc", "phu truc", "dried tofu skin", "dried bean curd skin", "dried beancurd sheet", "dried yuba", "bean curd stick", "fuzhu"],"váng đậu khô vang dau kho tàu hũ ky tàu hủ ky tàu hũ ki tàu hủ ki tau hu ky tau hu ki đậu hũ ky đậu hủ ky dau hu ky phù trúc phu truc dried tofu skin dried bean curd skin dried beancurd sheet dried yuba bean curd stick fuzhu","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · 湯葉 干し 乾 (váng đậu khô)",{}),
+    v77Food("dau_den_luoc","Đậu đen luộc (chín)","beans","beans",132,8.86,23.71,0.54,"100 g · đã luộc chín","🫘",["đậu đen luộc", "đỗ đen luộc", "đậu đen nấu chín", "đỗ đen nấu chín", "đậu đen chín", "đỗ đen chín", "black beans cooked", "cooked black beans", "boiled black beans"],"đậu đen luộc đỗ đen luộc đậu đen nấu chín đỗ đen nấu chín đậu đen chín đỗ đen chín black beans cooked cooked black beans boiled black beans","USDA FoodData Central (SR Legacy) · Beans, black, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("dau_xanh_luoc","Đậu xanh luộc (chín)","beans","beans",105,7.02,19.15,0.38,"100 g · đã luộc chín","🫘",["đậu xanh luộc", "đỗ xanh luộc", "đậu xanh nấu chín", "đỗ xanh nấu chín", "đậu xanh chín", "đỗ xanh chín", "mung beans cooked", "cooked mung beans"],"đậu xanh luộc đỗ xanh luộc đậu xanh nấu chín đỗ xanh nấu chín đậu xanh chín đỗ xanh chín mung beans cooked cooked mung beans","USDA FoodData Central (SR Legacy) · Mung beans, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("dau_do_luoc","Đậu đỏ luộc (chín)","beans","beans",128,7.52,24.77,0.1,"100 g · đã luộc chín","🫘",["đậu đỏ luộc", "đỗ đỏ luộc", "đậu đỏ nấu chín", "đỗ đỏ nấu chín", "đậu đỏ chín", "đỗ đỏ chín", "adzuki beans cooked", "cooked adzuki beans"],"đậu đỏ luộc đỗ đỏ luộc đậu đỏ nấu chín đỗ đỏ nấu chín đậu đỏ chín đỗ đỏ chín adzuki beans cooked cooked adzuki beans","USDA FoodData Central (SR Legacy) · Beans, adzuki, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("dau_nanh_luoc","Đậu nành luộc (chín)","beans","beans",172,18.21,8.36,8.97,"100 g · đã luộc chín","🫘",["đậu nành luộc", "đỗ tương luộc", "đậu tương luộc", "đậu nành nấu chín", "đậu nành chín", "soybeans cooked", "cooked soybeans", "boiled soybeans", "soy beans cooked"],"đậu nành luộc đỗ tương luộc đậu tương luộc đậu nành nấu chín đậu nành chín soybeans cooked cooked soybeans boiled soybeans soy beans cooked","USDA FoodData Central (SR Legacy) · Soybeans, mature cooked, boiled, without salt",{}),
+    v77Food("dau_lang_luoc","Đậu lăng luộc (chín)","beans","beans",116,9.02,20.13,0.38,"100 g · đã luộc chín","🫘",["đậu lăng luộc", "đậu lăng nấu chín", "đậu lăng chín", "lentils cooked", "cooked lentils", "boiled lentils"],"đậu lăng luộc đậu lăng nấu chín đậu lăng chín lentils cooked cooked lentils boiled lentils","USDA FoodData Central (SR Legacy) · Lentils, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("dau_ga_luoc","Đậu gà luộc (chín)","beans","beans",164,8.86,27.42,2.59,"100 g · đã luộc chín","🫘",["đậu gà luộc", "đậu gà nấu chín", "đậu gà chín", "chickpeas cooked", "cooked chickpeas", "garbanzo beans cooked"],"đậu gà luộc đậu gà nấu chín đậu gà chín chickpeas cooked cooked chickpeas garbanzo beans cooked","USDA FoodData Central (SR Legacy) · Chickpeas, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("dau_than_do","Đậu thận đỏ (hạt khô)","beans","beans",337,22.53,61.29,1.06,"100 g · hạt khô chưa nấu","🫘",["đậu thận đỏ", "đậu thận", "đậu tây đỏ", "kidney beans", "red kidney beans", "kidney bean", "dry kidney beans"],"đậu thận đỏ đậu thận đậu tây đỏ kidney beans red kidney beans kidney bean dry kidney beans","USDA FoodData Central (SR Legacy) · Beans, kidney, red, mature seeds, raw",{}),
+    v77Food("dau_than_do_luoc","Đậu thận đỏ luộc (chín)","beans","beans",127,8.67,22.8,0.5,"100 g · đã luộc chín","🫘",["đậu thận luộc", "đậu thận đỏ luộc", "đậu tây đỏ luộc", "kidney beans cooked", "cooked kidney beans"],"đậu thận luộc đậu thận đỏ luộc đậu tây đỏ luộc kidney beans cooked cooked kidney beans","USDA FoodData Central (SR Legacy) · Beans, kidney, red, mature seeds, cooked, boiled, without salt",{}),
+    v77Food("tempeh","Tempeh (đậu nành lên men)","beans","beans",192,20.29,7.64,10.8,"100 g","🫘",["tempeh", "tempe"],"tempeh tempe","USDA FoodData Central (SR Legacy) · Tempeh",{}),
+    v77Food("natto","Natto (đậu nành lên men Nhật)","beans","beans",211,19.4,12.68,11.0,"100 g","🫘",["natto", "nattō"],"natto nattō","USDA FoodData Central (SR Legacy) · Natto",{}),
+    v77Food("toi","Tỏi","vegetables","vegetables",149,6.36,33.06,0.5,"100 g · sống","🧄",["tỏi", "tỏi ta", "tỏi tươi", "củ tỏi", "tép tỏi", "garlic", "raw garlic"],"tỏi tỏi ta tỏi tươi củ tỏi tép tỏi garlic raw garlic","USDA FoodData Central (SR Legacy) · Garlic, raw",{}),
+    v77Food("gung","Gừng","vegetables","vegetables",80,1.82,17.77,0.75,"100 g · củ tươi","🫚",["gừng", "gừng tươi", "củ gừng", "ginger", "ginger root"],"gừng gừng tươi củ gừng ginger ginger root","USDA FoodData Central (SR Legacy) · Ginger root, raw",{}),
+    v77Food("hanh_tay","Hành tây","vegetables","vegetables",40,1.1,9.34,0.1,"100 g · sống","🧅",["hành tây", "hành tây trắng", "hành tây tím", "củ hành tây", "onion", "onions", "red onion", "yellow onion"],"hành tây hành tây trắng hành tây tím củ hành tây onion onions red onion yellow onion","USDA FoodData Central (SR Legacy) · Onions, raw",{"gramsPerUnit": 110}),
+    v77Food("ot_chuong_do","Ớt chuông đỏ","vegetables","vegetables",26,0.99,6.03,0.3,"100 g · sống","🫑",["ớt chuông", "ớt chuông đỏ", "ớt chuông vàng", "ớt ngọt", "bell pepper", "red bell pepper", "sweet pepper", "capsicum"],"ớt chuông ớt chuông đỏ ớt chuông vàng ớt ngọt bell pepper red bell pepper sweet pepper capsicum","USDA FoodData Central (SR Legacy) · Peppers, sweet, red, raw",{}),
+    v77Food("ot_chuong_xanh","Ớt chuông xanh","vegetables","vegetables",20,0.86,4.64,0.17,"100 g · sống","🫑",["ớt chuông xanh", "green bell pepper", "green pepper"],"ớt chuông xanh green bell pepper green pepper","USDA FoodData Central (SR Legacy) · Peppers, sweet, green, raw",{}),
+    v77Food("sup_lo_trang","Súp lơ trắng","vegetables","vegetables",25,1.92,4.97,0.28,"100 g · sống","🥦",["súp lơ", "súp lơ trắng", "bông cải trắng", "hoa lơ", "cauliflower"],"súp lơ súp lơ trắng bông cải trắng hoa lơ cauliflower","USDA FoodData Central (SR Legacy) · Cauliflower, raw",{}),
+    v77Food("cai_thao","Cải thảo","vegetables","vegetables",16,1.2,3.23,0.2,"100 g · sống","🥬",["cải thảo", "bắp cải thảo", "napa cabbage", "chinese cabbage"],"cải thảo bắp cải thảo napa cabbage chinese cabbage","USDA FoodData Central (SR Legacy) · Cabbage, chinese (pe-tsai), raw",{}),
+    v77Food("cai_xoong","Cải xoong","vegetables","vegetables",11,2.3,1.29,0.1,"100 g · sống","🥬",["cải xoong", "cải soong", "watercress"],"cải xoong cải soong watercress","USDA FoodData Central (SR Legacy) · Watercress, raw",{}),
+    v77Food("cai_bo_xoi","Cải bó xôi (rau bina)","vegetables","vegetables",23,2.86,3.63,0.39,"100 g · sống","🥬",["cải bó xôi", "rau bina", "rau chân vịt", "bó xôi", "spinach", "baby spinach"],"cải bó xôi rau bina rau chân vịt bó xôi spinach baby spinach","USDA FoodData Central (SR Legacy) · Spinach, raw",{}),
+    v77Food("rau_lang","Rau lang","vegetables","vegetables",42,2.49,8.82,0.51,"100 g · sống","🥬",["rau lang", "ngọn khoai lang", "lá khoai lang", "sweet potato leaves"],"rau lang ngọn khoai lang lá khoai lang sweet potato leaves","USDA FoodData Central (SR Legacy) · Sweet potato leaves, raw",{}),
+    v77Food("xa_lach","Xà lách","vegetables","vegetables",15,1.36,2.87,0.15,"100 g · sống","🥬",["xà lách", "rau xà lách", "xà lách lô lô", "xà lách mỡ", "rau diếp", "diếp", "lettuce", "green leaf lettuce", "leaf lettuce"],"xà lách rau xà lách xà lách lô lô xà lách mỡ rau diếp diếp lettuce green leaf lettuce leaf lettuce","USDA FoodData Central (SR Legacy) · Lettuce, green leaf, raw",{}),
+    v77Food("mang_tuoi","Măng tươi","vegetables","vegetables",27,2.6,5.2,0.3,"100 g · sống","🎋",["măng", "măng tươi", "măng tre", "măng luộc", "bamboo shoots", "bamboo shoot"],"măng măng tươi măng tre măng luộc bamboo shoots bamboo shoot","USDA FoodData Central (SR Legacy) · Bamboo shoots, raw",{}),
+    v77Food("mang_tay","Măng tây","vegetables","vegetables",20,2.2,3.88,0.12,"100 g · sống","🥬",["măng tây", "asparagus"],"măng tây asparagus","USDA FoodData Central (SR Legacy) · Asparagus, raw",{}),
+    v77Food("rau_day","Rau đay","vegetables","vegetables",34,4.65,5.8,0.25,"100 g · sống","🥬",["rau đay", "jute leaves", "jute mallow"],"rau đay jute leaves jute mallow","USDA FoodData Central (SR Legacy) · Jute, potherb, raw",{}),
+    v77Food("muop","Mướp","vegetables","vegetables",20,1.2,4.35,0.2,"100 g · sống","🥒",["mướp", "mướp hương", "mướp ta", "mướp khía", "luffa", "sponge gourd", "towel gourd"],"mướp mướp hương mướp ta mướp khía luffa sponge gourd towel gourd","USDA FoodData Central (SR Legacy) · Gourd, dishcloth (towelgourd), raw",{}),
+    v77Food("bau","Bầu","vegetables","vegetables",14,0.62,3.39,0.02,"100 g · sống","🥒",["bầu", "quả bầu", "bầu sao", "bottle gourd", "calabash"],"bầu quả bầu bầu sao bottle gourd calabash","USDA FoodData Central (SR Legacy) · Gourd, white-flowered (calabash), raw",{}),
+    v77Food("cu_cai_trang","Củ cải trắng","vegetables","vegetables",18,0.6,4.1,0.1,"100 g · sống","🥕",["củ cải", "củ cải trắng", "daikon", "white radish", "radish"],"củ cải củ cải trắng daikon white radish radish","USDA FoodData Central (SR Legacy) · Radishes, oriental, raw",{}),
+    v77Food("cu_den","Củ dền","vegetables","vegetables",43,1.61,9.56,0.17,"100 g · sống","🥕",["củ dền", "củ cải đường", "beetroot", "beet", "beets"],"củ dền củ cải đường beetroot beet beets","USDA FoodData Central (SR Legacy) · Beets, raw",{}),
+    v77Food("su_hao","Su hào","vegetables","vegetables",27,1.7,6.2,0.1,"100 g · sống","🥬",["su hào", "kohlrabi"],"su hào kohlrabi","USDA FoodData Central (SR Legacy) · Kohlrabi, raw",{}),
+    v77Food("dau_que","Đậu que (đậu cô ve)","vegetables","vegetables",31,1.83,6.97,0.22,"100 g · sống","🫛",["đậu que", "đậu cô ve", "đỗ cô ve", "đậu ve", "green beans", "string beans", "snap beans", "french beans"],"đậu que đậu cô ve đỗ cô ve đậu ve green beans string beans snap beans french beans","USDA FoodData Central (SR Legacy) · Beans, snap, green, raw",{}),
+    v77Food("dau_van","Đậu ván","vegetables","vegetables",46,2.1,9.19,0.2,"100 g · quả non, sống","🫛",["đậu ván", "đỗ ván", "hyacinth beans", "lablab"],"đậu ván đỗ ván hyacinth beans lablab","USDA FoodData Central (SR Legacy) · Hyacinth-beans, immature seeds, raw",{}),
+    v77Food("cai_ngot","Cải ngọt","vegetables","vegetables",13,1.5,2.18,0.2,"100 g · sống","🥬",["cải ngọt", "rau cải ngọt", "choy sum"],"cải ngọt rau cải ngọt choy sum","USDA FoodData Central (SR Legacy) · Cabbage, chinese (pak-choi), raw — cùng họ cải, dùng làm số tham chiếu cho cải ngọt",{}),
+    v77Food("rong_bien_tuoi","Rong biển tươi (wakame)","vegetables","vegetables",45,3.03,9.14,0.64,"100 g · tươi/đã ngâm nở","🌿",["rong biển", "rong biển tươi", "rong biển nấu canh", "wakame", "seaweed"],"rong biển rong biển tươi rong biển nấu canh wakame seaweed","USDA FoodData Central (SR Legacy) · Seaweed, wakame, raw",{}),
+    v77Food("rong_bien_kho","Rong biển khô (lá kim, nori)","vegetables","vegetables",276,39.4,38.7,3.7,"100 g · lá khô","🌿",["rong biển khô", "lá kim", "rong biển lá kim", "nori", "dried seaweed", "laver"],"rong biển khô lá kim rong biển lá kim nori dried seaweed laver","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · あまのり ほしのり",{}),
+    v77Food("dua_cai_muoi","Dưa cải muối","vegetables","vegetables",25,1.8,4.5,0,"100 g","🥬",["dưa cải", "dưa cải muối", "dưa muối", "dưa cải chua", "dưa cải bẹ", "pickled mustard greens"],"dưa cải dưa cải muối dưa muối dưa cải chua dưa cải bẹ pickled mustard greens","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Dưa cải bẹ (mã 4116)",{}),
+    v77Food("ca_phao","Cà pháo","vegetables","vegetables",27,1.5,5.2,0,"100 g · tươi","🍆",["cà pháo", "cà pháo tươi", "thai eggplant"],"cà pháo cà pháo tươi thai eggplant","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Quả cà pháo, tươi (mã 4006)",{}),
+    v77Food("ca_phao_muoi","Cà pháo muối","vegetables","vegetables",20,1.3,3.7,0,"100 g","🍆",["cà pháo muối", "cà muối", "cà muối nén", "pickled eggplant"],"cà pháo muối cà muối cà muối nén pickled eggplant","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Cà pháo, muối nén (mã 4113)",{}),
+    v77Food("cu_tu","Củ từ / củ mỡ","starch","roots",118,1.53,27.88,0.17,"100 g · sống","🍠",["củ từ", "củ mỡ", "khoai từ", "khoai mỡ", "yam"],"củ từ củ mỡ khoai từ khoai mỡ yam","USDA FoodData Central (SR Legacy) · Yam, raw",{}),
+    v77Food("san","Sắn (khoai mì)","starch","roots",160,1.36,38.06,0.28,"100 g · sống","🍠",["sắn", "khoai mì", "củ sắn", "củ mì", "cassava"],"sắn khoai mì củ sắn củ mì cassava","USDA FoodData Central (SR Legacy) · Cassava, raw",{}),
+    v77Food("gao_trang","Gạo trắng (sống)","starch","rice",365,7.13,79.95,0.66,"100 g · hạt gạo chưa nấu","🍚",["gạo", "gạo trắng", "gạo tẻ", "gạo sống", "gạo tám", "white rice raw", "uncooked rice", "raw rice"],"gạo gạo trắng gạo tẻ gạo sống gạo tám white rice raw uncooked rice raw rice","USDA FoodData Central (SR Legacy) · Rice, white, long-grain, regular, raw, enriched",{}),
+    v77Food("gao_lut","Gạo lứt (sống)","starch","rice",367,7.54,76.25,3.2,"100 g · hạt gạo chưa nấu","🍚",["gạo lứt", "gạo lứt sống", "gạo lức", "brown rice raw", "uncooked brown rice"],"gạo lứt gạo lứt sống gạo lức brown rice raw uncooked brown rice","USDA FoodData Central (SR Legacy) · Rice, brown, long-grain, raw",{}),
+    v77Food("gao_nep","Gạo nếp","starch","rice",370,6.81,81.68,0.55,"100 g · hạt gạo chưa nấu","🍚",["gạo nếp", "gạo nếp sống", "nếp sống", "glutinous rice raw", "sticky rice raw", "uncooked sticky rice"],"gạo nếp gạo nếp sống nếp sống glutinous rice raw sticky rice raw uncooked sticky rice","USDA FoodData Central (SR Legacy) · Rice, white, glutinous, unenriched, uncooked",{}),
+    v77Food("bun_kho","Bún khô / phở khô","starch","noodles",364,5.95,80.18,0.56,"100 g · sợi khô chưa nấu","🍜",["bún khô", "phở khô", "bánh phở khô", "bún gạo khô", "rice noodles dry", "dried rice noodles", "dry rice vermicelli"],"bún khô phở khô bánh phở khô bún gạo khô rice noodles dry dried rice noodles dry rice vermicelli","USDA FoodData Central (SR Legacy) · Rice noodles, dry",{}),
+    v77Food("mi_y_kho","Mì Ý khô / nui (chưa nấu)","starch","noodles",371,13.04,74.67,1.51,"100 g · khô chưa nấu","🍝",["mì ý khô", "nui", "nui khô", "mì ống", "pasta khô", "dry pasta", "macaroni", "dry spaghetti"],"mì ý khô nui nui khô mì ống pasta khô dry pasta macaroni dry spaghetti","USDA FoodData Central (SR Legacy) · Pasta, dry, enriched",{}),
+    v77Food("mi_y_luoc","Mì Ý luộc (chín, không sốt)","starch","noodles",158,5.8,30.86,0.93,"100 g · đã luộc","🍝",["mì ý luộc", "nui luộc", "pasta luộc", "cooked pasta", "boiled pasta", "cooked spaghetti", "plain pasta"],"mì ý luộc nui luộc pasta luộc cooked pasta boiled pasta cooked spaghetti plain pasta","USDA FoodData Central (SR Legacy) · Pasta, cooked, enriched, without added salt",{}),
+    v77Food("bot_mi","Bột mì","starch","grains",364,10.33,76.31,0.98,"100 g","🌾",["bột mì", "bột mì đa dụng", "bột làm bánh", "wheat flour", "all purpose flour", "flour"],"bột mì bột mì đa dụng bột làm bánh wheat flour all purpose flour flour","USDA FoodData Central (SR Legacy) · Wheat flour, white, all-purpose, enriched, bleached",{}),
+    v77Food("bot_nang","Bột năng","starch","grains",358,0.19,88.69,0.02,"100 g","🌾",["bột năng", "bột sắn", "tapioca starch", "tapioca flour"],"bột năng bột sắn tapioca starch tapioca flour","USDA FoodData Central (SR Legacy) · Tapioca, pearl, dry",{}),
+    v77Food("bot_gao","Bột gạo","starch","grains",366,5.95,80.13,1.42,"100 g","🌾",["bột gạo", "bột gạo tẻ", "rice flour"],"bột gạo bột gạo tẻ rice flour","USDA FoodData Central (SR Legacy) · Rice flour, white, unenriched",{}),
+    v77Food("bot_ngo","Bột ngô (bột bắp)","starch","grains",381,0.26,91.27,0.05,"100 g","🌽",["bột ngô", "bột bắp", "cornstarch", "corn starch"],"bột ngô bột bắp cornstarch corn starch","USDA FoodData Central (SR Legacy) · Cornstarch",{}),
+    v77Food("chao_yen_mach","Cháo yến mạch (nấu với nước)","starch","grains",71,2.54,12.0,1.52,"100 g · đã nấu với nước","🥣",["cháo yến mạch", "yến mạch nấu", "oatmeal porridge", "cooked oatmeal", "oats cooked", "porridge oats"],"cháo yến mạch yến mạch nấu oatmeal porridge cooked oatmeal oats cooked porridge oats","USDA FoodData Central (SR Legacy) · Cereals, oats, regular and quick, unenriched, cooked with water, without salt",{"gramsPerBowl": 234}),
+    v77Food("cornflakes","Ngũ cốc cornflakes","starch","grains",357,7.5,84.1,0.4,"100 g","🥣",["cornflakes", "corn flakes", "ngũ cốc cornflakes", "kellogg corn flakes"],"cornflakes corn flakes ngũ cốc cornflakes kellogg corn flakes","USDA FoodData Central (SR Legacy) (bản trước 2018) · Kellogg's Corn Flakes",{}),
+    v77Food("chanh","Chanh (quả)","fruit","fruit",30,0.7,10.54,0.2,"100 g · phần ăn được","🍋",["chanh", "quả chanh", "trái chanh", "chanh ta", "chanh xanh", "chanh không hạt", "lime", "limes"],"chanh quả chanh trái chanh chanh ta chanh xanh chanh không hạt lime limes","USDA FoodData Central (SR Legacy) · Limes, raw",{"gramsPerUnit": 67}),
+    v77Food("chanh_leo","Chanh leo","fruit","fruit",97,2.2,23.38,0.7,"100 g · ruột ăn được","🥭",["chanh leo", "chanh dây", "lạc tiên", "passion fruit", "passionfruit"],"chanh leo chanh dây lạc tiên passion fruit passionfruit","USDA FoodData Central (SR Legacy) · Passion-fruit, (granadilla), purple, raw",{"gramsPerUnit": 18}),
+    v77Food("nho_kho","Nho khô","fruit","fruit",299,3.3,79.32,0.25,"100 g","🍇",["nho khô", "raisins", "raisin"],"nho khô raisins raisin","USDA FoodData Central (SR Legacy) · Raisins, dark, seedless",{}),
+    v77Food("luu","Lựu","fruit","fruit",83,1.67,18.7,1.17,"100 g · hạt ăn được","🍎",["lựu", "quả lựu", "hạt lựu", "pomegranate"],"lựu quả lựu hạt lựu pomegranate","USDA FoodData Central (SR Legacy) · Pomegranates, raw",{"gramsPerUnit": 282}),
+    v77Food("me","Me (quả me chua)","fruit","fruit",239,2.8,62.5,0.6,"100 g · cùi ăn được","🫘",["me", "me chua", "quả me", "trái me", "me chín", "tamarind"],"me me chua quả me trái me me chín tamarind","USDA FoodData Central (SR Legacy) · Tamarinds, raw",{}),
+    v77Food("khe","Khế","fruit","fruit",31,1.04,6.73,0.33,"100 g","⭐",["khế", "quả khế", "khế chua", "khế ngọt", "starfruit", "star fruit", "carambola"],"khế quả khế khế chua khế ngọt starfruit star fruit carambola","USDA FoodData Central (SR Legacy) · Carambola, (starfruit), raw",{"gramsPerUnit": 91}),
+    v77Food("tao_tau_kho","Táo tàu khô (táo đỏ)","fruit","fruit",281,4.72,72.52,0.5,"100 g · quả sấy khô","🍒",["táo tàu", "táo tàu khô", "táo đỏ", "táo đỏ khô", "hồng táo", "dried jujube", "red dates"],"táo tàu táo tàu khô táo đỏ táo đỏ khô hồng táo dried jujube red dates","USDA FoodData Central (SR Legacy) · Jujube, Chinese, fresh, dried",{}),
+    v77Food("tao_tau_tuoi","Táo tàu tươi","fruit","fruit",79,1.2,20.23,0.2,"100 g","🍏",["táo tàu tươi", "táo ta", "jujube", "fresh jujube"],"táo tàu tươi táo ta jujube fresh jujube","USDA FoodData Central (SR Legacy) · Jujube, raw",{}),
+    v77Food("roi","Roi (mận Nam Bộ)","fruit","fruit",25,0.6,5.7,0.3,"100 g","🍐",["roi", "quả roi", "trái roi", "mận an phước", "mận roi", "wax apple", "rose apple"],"roi quả roi trái roi mận an phước mận roi wax apple rose apple","USDA FoodData Central (SR Legacy) · Rose-apples, raw",{}),
+    v77Food("mang_cut","Măng cụt","fruit","fruit",71,0.6,17.5,0.2,"100 g · múi ăn được","🟣",["măng cụt", "mangosteen"],"măng cụt mangosteen","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · マンゴスチン 生",{}),
+    v77Food("xoai_xanh","Xoài xanh","fruit","fruit",49,0.69,10.59,0.08,"100 g · quả xanh, sống","🥭",["xoài xanh", "xoài non", "xoài sống", "green mango", "unripe mango", "raw mango"],"xoài xanh xoài non xoài sống green mango unripe mango raw mango","Bảng thành phần thực phẩm Ấn Độ IFCT 2017 · Mango, green, raw",{}),
+    v77Food("sau","Sấu xanh","fruit","fruit",19,1.8,3.0,0,"100 g","🟢",["sấu", "quả sấu", "sấu xanh", "sấu tươi", "dracontomelon"],"sấu quả sấu sấu xanh sấu tươi dracontomelon","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Quả sấu xanh, tươi (mã 4095)",{}),
+    v77Food("hat_sen_kho","Hạt sen khô","nuts","nuts",332,15.41,64.47,1.97,"100 g · hạt khô","🌰",["hạt sen", "hạt sen khô", "lotus seeds", "dried lotus seeds"],"hạt sen hạt sen khô lotus seeds dried lotus seeds","USDA FoodData Central (SR Legacy) · Seeds, lotus seeds, dried",{}),
+    v77Food("hat_sen_tuoi","Hạt sen tươi","nuts","nuts",89,4.13,17.28,0.53,"100 g · hạt tươi","🌰",["hạt sen tươi", "sen tươi", "fresh lotus seeds"],"hạt sen tươi sen tươi fresh lotus seeds","USDA FoodData Central (SR Legacy) · Seeds, lotus seeds, raw",{}),
+    v77Food("lac_luoc","Lạc luộc","nuts","nuts",318,13.5,21.26,22.01,"100 g · nhân đã luộc","🥜",["lạc luộc", "đậu phộng luộc", "boiled peanuts"],"lạc luộc đậu phộng luộc boiled peanuts","USDA FoodData Central (SR Legacy) · Peanuts, all types, cooked, boiled, with salt",{}),
+    v77Food("nuoc_cot_dua","Nước cốt dừa","nuts","nuts",197,2.02,2.81,21.33,"100 g","🥥",["nước cốt dừa", "cốt dừa", "coconut milk", "canned coconut milk", "coconut cream"],"nước cốt dừa cốt dừa coconut milk canned coconut milk coconut cream","USDA FoodData Central (SR Legacy) · Nuts, coconut milk, canned (liquid expressed from grated meat and water)",{}),
+    v77Food("suon_non","Sườn non heo (sống)","meat","pork",277,15.47,0,23.4,"100 g · sống, cả xương sụn","🍖",["sườn non", "sườn non heo", "sườn non lợn", "sườn heo sống", "sườn sống", "pork spareribs", "spare ribs", "pork ribs raw"],"sườn non sườn non heo sườn non lợn sườn heo sống sườn sống pork spareribs spare ribs pork ribs raw","USDA FoodData Central (SR Legacy) · Pork, fresh, spareribs, separable lean and fat, raw",{}),
+    v77Food("thit_heo_xay","Thịt heo xay (thịt băm)","meat","pork",263,16.88,0,21.19,"100 g · sống","🥩",["thịt băm", "thịt xay", "thịt heo xay", "thịt lợn xay", "thịt heo băm", "thịt lợn băm", "ground pork", "minced pork", "pork mince"],"thịt băm thịt xay thịt heo xay thịt lợn xay thịt heo băm thịt lợn băm ground pork minced pork pork mince","USDA FoodData Central (SR Legacy) · Pork, fresh, ground, raw",{}),
+    v77Food("chan_gio","Chân giò heo (móng giò)","meat","pork",212,23.16,0,12.59,"100 g · sống, phần ăn được","🍖",["chân giò", "móng giò", "chân giò heo", "chân giò lợn", "móng heo", "giò heo", "pork feet", "pork trotters", "pig feet", "pork hock"],"chân giò móng giò chân giò heo chân giò lợn móng heo giò heo pork feet pork trotters pig feet pork hock","USDA FoodData Central (SR Legacy) · Pork, fresh, variety meats and by-products, feet, raw",{}),
+    v77Food("luoi_heo","Lưỡi heo","meat","pork",225,16.3,0,17.2,"100 g · sống","🥩",["lưỡi heo", "lưỡi lợn", "pork tongue", "pig tongue"],"lưỡi heo lưỡi lợn pork tongue pig tongue","USDA FoodData Central (SR Legacy) · Pork, fresh, variety meats and by-products, tongue, raw",{}),
+    v77Food("than_bo","Thăn bò (nạc, sống)","meat","beef",153,22.12,0,6.52,"100 g · sống","🥩",["thăn bò", "thăn nội bò", "beef tenderloin", "tenderloin", "filet mignon"],"thăn bò thăn nội bò beef tenderloin tenderloin filet mignon","USDA FoodData Central (SR Legacy) · Beef, tenderloin, steak, separable lean only, trimmed to 1/8 inch fat, all grades, raw",{}),
+    v77Food("bap_bo","Bắp bò (nạc, sống)","meat","beef",128,21.75,0,3.85,"100 g · sống","🥩",["bắp bò", "bắp bò hoa", "bắp rùa", "beef shank", "shank"],"bắp bò bắp bò hoa bắp rùa beef shank shank","USDA FoodData Central (SR Legacy) · Beef, shank crosscuts, separable lean only, trimmed to 1/4 inch fat, choice, raw",{}),
+    v77Food("gan_bo","Gân bò (luộc chín)","meat","beef",157,31.0,0,5.1,"100 g · đã luộc","🥩",["gân bò", "gân chân bò", "gân bò luộc", "beef tendon", "tendon"],"gân bò gân chân bò gân bò luộc beef tendon tendon","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · うし［副生物］腱 ゆで",{}),
+    v77Food("sach_bo","Sách bò (lá sách)","meat","beef",57,11.7,0,1.3,"100 g · sống","🥩",["sách bò", "lá sách", "lá sách bò", "beef omasum", "omasum"],"sách bò lá sách lá sách bò beef omasum omasum","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · うし［副生物］第三胃 生",{}),
+    v77Food("thit_de","Thịt dê","meat","other-meat",109,20.6,0,2.31,"100 g · sống","🐐",["thịt dê", "dê", "goat meat", "goat"],"thịt dê dê goat meat goat","USDA FoodData Central (SR Legacy) · Game meat, goat, raw",{}),
+    v77Food("thit_cuu","Thịt cừu","meat","other-meat",267,16.88,0,21.59,"100 g · sống","🐑",["thịt cừu", "cừu", "lamb", "lamb meat", "mutton"],"thịt cừu cừu lamb lamb meat mutton","USDA FoodData Central (SR Legacy) · Lamb, domestic, composite of trimmed retail cuts, separable lean and fat, raw",{}),
+    v77Food("thit_tho","Thịt thỏ","meat","other-meat",136,20.05,0,5.55,"100 g · sống","🐇",["thịt thỏ", "thỏ", "rabbit meat", "rabbit"],"thịt thỏ thỏ rabbit meat rabbit","USDA FoodData Central (SR Legacy) · Game meat, rabbit, domesticated, composite of cuts, raw",{}),
+    v77Food("thit_ngua","Thịt ngựa","meat","other-meat",133,21.39,0,4.6,"100 g · sống","🐎",["thịt ngựa", "horse meat"],"thịt ngựa horse meat","USDA FoodData Central (SR Legacy) · Game meat, horse, raw",{}),
+    v77Food("thit_ngong","Thịt ngỗng (nạc)","meat","poultry",161,22.75,0,7.13,"100 g · sống, bỏ da","🪿",["thịt ngỗng", "ngỗng", "goose", "goose meat"],"thịt ngỗng ngỗng goose goose meat","USDA FoodData Central (SR Legacy) · Goose, domesticated, meat only, raw",{}),
+    v77Food("bo_cau","Chim bồ câu (có da)","meat","poultry",294,18.47,0,23.8,"100 g · sống, cả da","🐦",["chim bồ câu", "bồ câu", "thịt bồ câu", "chim câu", "pigeon", "squab"],"chim bồ câu bồ câu thịt bồ câu chim câu pigeon squab","USDA FoodData Central (SR Legacy) · Squab, (pigeon), meat and skin, raw",{}),
+    v77Food("canh_ga_song","Cánh gà (sống, có da)","meat","poultry",191,17.52,0,12.85,"100 g · sống, phần ăn được","🍗",["cánh gà", "cánh gà sống", "cánh gà tươi", "chicken wing", "chicken wings", "raw chicken wings"],"cánh gà cánh gà sống cánh gà tươi chicken wing chicken wings raw chicken wings","USDA FoodData Central (SR Legacy) · Chicken, broilers or fryers, wing, meat and skin, raw",{}),
+    v77Food("bacon_song","Ba chỉ xông khói (bacon sống)","meat","processed-meat",393,13.66,0,37.13,"100 g · chưa rán","🥓",["thịt ba chỉ xông khói", "ba chỉ xông khói", "ba rọi xông khói", "thịt xông khói sống", "bacon sống", "raw bacon", "uncooked bacon"],"thịt ba chỉ xông khói ba chỉ xông khói ba rọi xông khói thịt xông khói sống bacon sống raw bacon uncooked bacon","USDA FoodData Central (SR Legacy) · Pork, cured, bacon, unprepared",{}),
+    v77Food("trung_vit","Trứng vịt","eggs","eggs",185,12.81,1.45,13.77,"100 g · phần ăn được","🥚",["trứng vịt", "trứng vịt luộc", "duck egg", "duck eggs"],"trứng vịt trứng vịt luộc duck egg duck eggs","USDA FoodData Central (SR Legacy) · Egg, duck, whole, fresh, raw",{"gramsPerUnit": 70}),
+    v77Food("trung_cut","Trứng cút","eggs","eggs",158,13.05,0.41,11.09,"100 g · phần ăn được","🥚",["trứng cút", "trứng chim cút", "trứng cút luộc", "quail egg", "quail eggs"],"trứng cút trứng chim cút trứng cút luộc quail egg quail eggs","USDA FoodData Central (SR Legacy) · Egg, quail, whole, fresh, raw",{"gramsPerUnit": 9}),
+    v77Food("trung_bac_thao","Trứng bắc thảo","eggs","eggs",188,13.7,0,16.5,"100 g · phần ăn được (1 quả ≈ 60 g)","🥚",["trứng bắc thảo", "trứng vịt bắc thảo", "century egg", "pidan", "preserved egg"],"trứng bắc thảo trứng vịt bắc thảo century egg pidan preserved egg","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · あひる卵 ピータン",{"gramsPerUnit": 60}),
+    v77Food("trung_vit_muoi","Trứng vịt muối (luộc)","eggs","eggs",177,13.8,0,13.5,"100 g · phần ăn được (1 quả ≈ 60 g)","🥚",["trứng muối", "trứng vịt muối", "trứng muối luộc", "salted duck egg", "salted egg"],"trứng muối trứng vịt muối trứng muối luộc salted duck egg salted egg","Bảng thành phần thực phẩm Trung Quốc (ấn bản 6) · 咸鸭蛋（煮）",{"gramsPerUnit": 60}),
+    v77Food("ca_trich","Cá trích","fish","fish-main",158,17.96,0,9.04,"100 g · phi lê sống","🐟",["cá trích", "herring"],"cá trích herring","USDA FoodData Central (SR Legacy) · Fish, herring, Atlantic, raw",{}),
+    v77Food("ca_moi","Cá mòi (tươi)","fish","fish-main",124,17.5,0,6.0,"100 g · phần ăn được","🐟",["cá mòi", "cá mòi tươi", "sardine", "fresh sardine"],"cá mòi cá mòi tươi sardine fresh sardine","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Cá mòi (cá sardin), tươi (mã 8015)",{}),
+    v77Food("ca_moi_hop","Cá mòi đóng hộp (ngâm dầu)","fish","fish-main",208,24.62,0,11.45,"100 g · đã chắt dầu","🥫",["cá mòi đóng hộp", "cá mòi hộp", "cá mòi ngâm dầu", "canned sardines", "sardines in oil"],"cá mòi đóng hộp cá mòi hộp cá mòi ngâm dầu canned sardines sardines in oil","USDA FoodData Central (SR Legacy) · Fish, sardine, Atlantic, canned in oil, drained solids with bone",{}),
+    v77Food("ca_ngu_hop_nuoc","Cá ngừ đóng hộp (ngâm nước)","fish","fish-main",86,19.44,0,0.96,"100 g · đã chắt nước","🥫",["cá ngừ đóng hộp", "cá ngừ hộp", "cá ngừ ngâm nước", "canned tuna", "tuna in water", "canned tuna in water"],"cá ngừ đóng hộp cá ngừ hộp cá ngừ ngâm nước canned tuna tuna in water canned tuna in water","USDA FoodData Central (SR Legacy) · Fish, tuna, light, canned in water, drained solids",{}),
+    v77Food("ca_ngu_hop_dau","Cá ngừ đóng hộp (ngâm dầu)","fish","fish-main",198,29.13,0,8.21,"100 g · đã chắt dầu","🥫",["cá ngừ ngâm dầu", "cá ngừ hộp ngâm dầu", "tuna in oil", "canned tuna in oil"],"cá ngừ ngâm dầu cá ngừ hộp ngâm dầu tuna in oil canned tuna in oil","USDA FoodData Central (SR Legacy) · Fish, tuna, light, canned in oil, drained solids",{}),
+    v77Food("ca_troi","Cá trôi","fish","fish-main",127,18.8,0,5.7,"100 g · phần ăn được","🐟",["cá trôi", "cá trôi ta", "cá trôi ấn", "mrigal", "rohu"],"cá trôi cá trôi ta cá trôi ấn mrigal rohu","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Cá trôi, tươi (mã 8032)",{}),
+    v77Food("ca_me","Cá mè","fish","fish-main",144,15.4,0,9.1,"100 g · phần ăn được","🐟",["cá mè", "cá mè trắng", "cá mè hoa", "silver carp", "bighead carp"],"cá mè cá mè trắng cá mè hoa silver carp bighead carp","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Cá mè, tươi (mã 8014)",{}),
+    v77Food("luon","Lươn","fish","fish-main",89,18.0,1.2,1.4,"100 g · phần ăn được","🐍",["lươn", "thịt lươn", "lươn đồng", "swamp eel", "rice field eel"],"lươn thịt lươn lươn đồng swamp eel rice field eel","Bảng thành phần thực phẩm Trung Quốc (ấn bản 6) · 黄鳝 (lươn đồng)",{}),
+    v77Food("tom_hum","Tôm hùm","fish","shrimp-crab",77,16.52,0,0.75,"100 g · thịt sống","🦞",["tôm hùm", "lobster"],"tôm hùm lobster","USDA FoodData Central (SR Legacy) · Crustaceans, lobster, northern, raw",{}),
+    v77Food("hen","Hến","fish","shellfish",45,4.5,5.1,0.7,"100 g · thịt hến","🐚",["hến", "hến sông", "ruột hến", "thịt hến", "corbicula", "baby clams"],"hến hến sông ruột hến thịt hến corbicula baby clams","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Hến, tươi (mã 8037)",{}),
+    v77Food("so_huyet","Sò huyết","fish","shellfish",70,13.5,3.5,0.3,"100 g · thịt sò","🐚",["sò huyết", "blood cockle", "blood clam", "ark clam"],"sò huyết blood cockle blood clam ark clam","Bảng thành phần thực phẩm Nhật Bản 2020 (MEXT) · あかがい 生 (cùng họ sò huyết)",{}),
+    v77Food("trai","Trai (nước ngọt)","fish","shellfish",38,4.6,2.5,1.1,"100 g · thịt trai","🐚",["trai sông", "thịt trai", "freshwater mussel"],"trai sông thịt trai freshwater mussel","Bảng thành phần thực phẩm Việt Nam (Viện Dinh dưỡng) · Trai, nước ngọt, tươi (mã 8054)",{}),
+    v77Food("hau_hop","Hàu đóng hộp","fish","shellfish",68,7.06,3.91,2.47,"100 g","🥫",["hàu đóng hộp", "hàu hộp", "canned oysters", "oysters canned"],"hàu đóng hộp hàu hộp canned oysters oysters canned","USDA FoodData Central (SR Legacy) · Mollusks, oyster, eastern, canned",{}),
+    v77Food("nuoc_ep_tao","Nước ép táo","drinks","soft-drinks",46,0.1,11.3,0.13,"100 ml","🧃",["nước ép táo", "nước táo", "apple juice"],"nước ép táo nước táo apple juice","USDA FoodData Central (SR Legacy) · Apple juice, canned or bottled, unsweetened",{}),
+    v77Food("soda_chanh","Nước ngọt chanh (7Up, Sprite)","drinks","soft-drinks",41,0.09,10.42,0,"100 ml","🥤",["seven up", "sprite", "nước ngọt chanh", "soda chanh", "lemon lime soda"],"seven up sprite nước ngọt chanh soda chanh lemon lime soda","USDA FoodData Central (SR Legacy) · Beverages, carbonated, lemon-lime soda, no caffeine",{}),
+    v77Food("sua_yen_mach","Sữa yến mạch (oat milk)","drinks","soft-drinks",50,1.25,6.67,2.08,"100 ml","🥛",["sữa yến mạch", "sữa oat", "oat milk", "oatmilk", "oat drink", "oatmeal milk"],"sữa yến mạch sữa oat oat milk oatmilk oat drink oatmeal milk","USDA FoodData Central (Branded) · Oatly Original Oatmilk",{}),
+    v77Food("sua_hanh_nhan","Sữa hạnh nhân (không đường)","drinks","soft-drinks",15,0.4,1.31,0.96,"100 ml","🥛",["sữa hạnh nhân", "sữa hạnh nhân không đường", "almond milk", "unsweetened almond milk"],"sữa hạnh nhân sữa hạnh nhân không đường almond milk unsweetened almond milk","USDA FoodData Central (SR Legacy) · Beverages, almond milk, unsweetened, shelf stable",{}),
+    v77Food("sua_gao","Sữa gạo (không đường)","drinks","soft-drinks",47,0.28,9.17,0.97,"100 ml","🥛",["sữa gạo", "rice milk"],"sữa gạo rice milk","USDA FoodData Central (SR Legacy) · Beverages, rice milk, unsweetened",{}),
+    v77Food("socola_den","Sô cô la đen (70–85%)","snacks","snacks",598,7.79,45.9,42.63,"100 g","🍫",["sô cô la đen", "socola đen", "sôcôla đen", "chocolate đen", "dark chocolate"],"sô cô la đen socola đen sôcôla đen chocolate đen dark chocolate","USDA FoodData Central (SR Legacy) · Chocolate, dark, 70-85% cacao solids",{}),
+    v77Food("socola_sua","Sô cô la sữa","snacks","snacks",535,7.65,59.4,29.66,"100 g","🍫",["sô cô la sữa", "socola sữa", "sôcôla sữa", "socola", "sô cô la", "sôcôla", "milk chocolate", "thanh socola", "chocolate bar"],"sô cô la sữa socola sữa sôcôla sữa socola sô cô la sôcôla milk chocolate thanh socola chocolate bar","USDA FoodData Central (SR Legacy) · Candies, milk chocolate",{"gramsPerUnit": 44}),
+    v77Food("snack_khoai_tay","Snack khoai tây chiên lát","snacks","snacks",532,6.39,53.83,33.98,"100 g","🥔",["khoai tây chiên lát", "snack khoai tây", "bim bim", "bimbim", "bim bim khoai tây", "potato chips", "lays", "pringles"],"khoai tây chiên lát snack khoai tây bim bim bimbim bim bim khoai tây potato chips lays pringles","USDA FoodData Central (SR Legacy) · Snacks, potato chips, plain, salted",{}),
+    v77Food("banh_waffle","Bánh waffle","sweet-cakes","sweet-cakes",291,7.9,32.9,14.1,"100 g","🧇",["bánh waffle", "waffle", "waffles", "bánh tổ ong", "cheese waffle", "bánh waffle phô mai"],"bánh waffle waffle waffles bánh tổ ong cheese waffle bánh waffle phô mai","USDA FoodData Central (SR Legacy) · Waffles, plain, prepared from recipe",{}),
+    v77Food("che_chung","Chè (ước tính chung)","sweet-soups","sweet-soups",350,6.0,66.0,8.1,"1 bát · 300 g","🍧",["chè", "chè thập cẩm", "chè các loại", "chè ngọt"],"chè chè thập cẩm chè các loại chè ngọt","Trung vị 7 loại chè có sẵn trong kho (khúc bạch, đỗ đen, bà cốt, bưởi, sen long nhãn, khoai dẻo, trôi nước)",{}),
+    v77Food("nom_chung","Nộm / gỏi (ước tính chung)","restaurant","salad",288,18.0,30.0,13.0,"1 đĩa · 250 g","🥗",["nộm", "gỏi", "nộm rau", "gỏi rau", "vietnamese salad", "nộm chay"],"nộm gỏi nộm rau gỏi rau vietnamese salad nộm chay","Trung vị 5 món nộm/gỏi có sẵn trong kho",{}),
+    v77Food("mo_lon","Mỡ lợn (mỡ nước)","seasoning","oils",902,0,0,100,"100 g","🫙",["mỡ lợn", "mỡ heo", "mỡ nước", "lard"],"mỡ lợn mỡ heo mỡ nước lard","USDA FoodData Central (SR Legacy) · Lard",{}),
+    v77Food("bo_thuc_vat","Bơ thực vật (margarine)","seasoning","oils",717,0.16,0.7,80.71,"100 g","🧈",["bơ thực vật", "margarine"],"bơ thực vật margarine","USDA FoodData Central (SR Legacy) · Margarine, regular, 80% fat, composite, stick, with salt",{}),
+    v77Food("sot_gravy","Sốt gravy","seasoning","sauces",31.8,2.25,2.89,1.42,"1 phần · 60 g (¼ cốc)","🥣",["sốt gravy", "gravy", "nước sốt gravy", "brown gravy"],"sốt gravy gravy nước sốt gravy brown gravy","USDA FoodData Central (SR Legacy) · Gravy, beef, canned, ready-to-serve",{}),
+    v77Food("sot_xi_dau_mat_ong","Sốt xì dầu mật ong","seasoning","sauces",32.1,0.76,7.82,0.05,"1 thìa canh · 18 g","🍯",["sốt xì dầu mật ong", "xì dầu mật ong", "nước tương mật ong", "sốt mật ong xì dầu", "honey soy sauce", "honey soy"],"sốt xì dầu mật ong xì dầu mật ong nước tương mật ong sốt mật ong xì dầu honey soy sauce honey soy","Ước tính theo công thức 1:1 từ USDA SR Legacy · Soy sauce (shoyu) 53 kcal + Honey 304 kcal /100 g",{}),
+  ];
+
   function buildUnifiedFoodCatalog() {
     const candidates=[];
     FREQUENT_FOODS.forEach((food)=>{const x=normalizeFrequentFood(food);if(x)candidates.push(x);});
@@ -10279,6 +10475,7 @@
     candidates.push(...CURATED_CATALOG_V47);
     candidates.push(...CURATED_CATALOG_V68);
     candidates.push(...CURATED_CATALOG_V71);
+    candidates.push(...CURATED_CATALOG_V77);
     /* Không gộp ở đây: lọc và chọn bản ưu tiên tại renderUnifiedFoodCatalog. */
     return candidates;
   }
@@ -10494,6 +10691,8 @@
   function catalogItemScore(item) {
     const source=normalizeFoodText(item.source||"");
     let score=item.kind==="local"?120:0;
+    /* V77: số liệu đã đối chiếu bảng chuẩn thắng bản trùng tên. */
+    if(item.v77) score+=400;
     if(source.includes("v47")) score+=160;
     else if(source.includes("v44")) score+=140;
     else if(source.includes("v7")) score+=70;

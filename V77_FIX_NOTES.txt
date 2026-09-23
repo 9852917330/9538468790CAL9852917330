@@ -1,0 +1,65 @@
+V77 · 2026-09-22 · "food-coverage" — Thêm váng đậu + quét và vá món chưa nhận diện / nhận nhầm
+==========================================================================================
+
+1) VÁNG ĐẬU (nhóm Đậu trên trang Thực phẩm, nhận diện được trong Sheet)
+   • Váng đậu tươi: 218 kcal · 21,8 g đạm · 13,7 g béo · 4,1 g carb /100 g
+     (Bảng thành phần thực phẩm Nhật Bản 2020 – MEXT · 湯葉 生).
+     Gõ: váng đậu, váng đậu tươi, yuba, tofu skin…  "váng đậu rán" = váng đậu tươi + dầu rán.
+   • Váng đậu khô (tàu hũ ky): 485 kcal · 50,4 g đạm · 32,1 g béo · 7,2 g carb /100 g
+     (MEXT · 湯葉 干し 乾). Gõ: váng đậu khô, tàu hũ ky, đậu hũ ky, phù trúc, dried yuba…
+
+2) CÁCH QUÉT
+   • Chạy lại toàn bộ 321 món khác nhau trong Sheet cũ + 541 món thông dụng (Việt, Á, Âu).
+   • Trước V77: 155/541 món thông dụng KHÔNG nhận diện; hàng chục món bị khớp NHẦM:
+     "tỏi" → Ngan cháy tỏi (850 kcal), "hành tây" → Onion rings, "gừng" → Gà kho gừng,
+     "măng" → Bún măng vịt, "chanh" → Trà chanh, "đỗ đen" → Chè đỗ đen,
+     "black beans" → Xôi đỗ đen, "gạo lứt" → cơm gạo lứt (chín), "trứng vịt/trứng cút" → trứng gà,
+     "thịt băm" → Thịt quay, "chân giò" → giò lụa, "nước cốt dừa" → Tom kha gai,
+     "lươn" → Miến lươn, "mướp" → Mướp đắng, "rice noodles" → Mì…
+   • Sau V77: còn 48/541 (chủ yếu món hỗn hợp không có bảng chuẩn: lẩu, buffet, cà phê trứng,
+     canh các loại, sữa hộp theo hãng…). Món trong Sheet cũ của anh: 21 món chưa nhận diện → còn 1
+     ("4 oysters in oil" – hàu hun khói ngâm dầu, chưa có số liệu chuẩn).
+
+3) 117 MÓN MỚI — mỗi món ghi nguồn ngay trong trường "source"
+   • USDA SR Legacy: rau củ (tỏi, gừng, hành tây, ớt chuông, súp lơ, cải thảo, cải xoong, cải bó xôi,
+     rau lang, xà lách, măng, măng tây, rau đay, mướp, bầu, củ cải, củ dền, su hào, đậu que, đậu ván,
+     rong biển tươi…), tinh bột (gạo, gạo lứt, gạo nếp sống, bún/phở khô, mì Ý khô/luộc, bột mì,
+     bột năng, bột gạo, bột ngô, cháo yến mạch, sắn, củ từ), đậu đã luộc (đen, xanh, đỏ, nành, lăng,
+     gà, thận), tempeh, natto, hoa quả (chanh, chanh leo, nho khô, lựu, me, khế, táo tàu, roi),
+     thịt (sườn non, thịt xay, chân giò, lưỡi heo, thăn bò, bắp bò, dê, cừu, thỏ, ngựa, ngỗng,
+     bồ câu, cánh gà sống, bacon sống), trứng vịt, trứng cút, cá (trích, mòi hộp, ngừ hộp),
+     tôm hùm, hàu hộp, nước ép táo, 7Up, sữa hạnh nhân, sữa gạo, sô cô la, snack khoai tây,
+     bánh waffle, mỡ lợn, bơ thực vật, sốt gravy.
+   • Bảng thành phần thực phẩm Việt Nam: cá trôi, cá mè, cá mòi tươi, hến, trai, dưa cải,
+     cà pháo, cà pháo muối, sấu.
+   • Nhật Bản MEXT 2020: váng đậu, gân bò, sách bò, trứng bắc thảo, sò huyết, măng cụt, rong biển khô.
+   • Trung Quốc (ấn bản 6): lươn đồng, trứng vịt muối.  Ấn Độ IFCT 2017: xoài xanh.
+   • Oatly (USDA Branded): sữa yến mạch.
+   • Ước tính có ghi rõ: Chè (ước tính chung) = trung vị 7 loại chè trong kho;
+     Nộm/gỏi (ước tính chung) = trung vị 5 món nộm/gỏi; Sốt xì dầu mật ong = xì dầu + mật ong 1:1.
+
+4) QUY ƯỚC ĐẬU (quan trọng khi ghi Sheet)
+   • Ghi tên đậu trơn ("300g đỗ đen", "black beans", "soy beans") = HẠT KHÔ, đúng quy ước nhóm Đậu.
+   • Cân đậu ĐÃ NẤU thì ghi thêm "luộc"/"chín"/"cooked": "300g đỗ đen luộc" = 132 kcal/100 g
+     thay vì 341 kcal/100 g.
+
+5) SỬA ĐƠN VỊ & CÁCH TÁCH MÓN
+   • Đơn vị đong nhiều chữ: thìa canh, muỗng canh, thìa/muỗng cà phê, table spoon(s), tea spoon(s).
+     Trước đây "2 table spoons of sugar" = 200 g đường (800 kcal); nay = 25 g (100 kcal).
+     "1 thìa canh đường", "2 muỗng canh dầu ăn" trước đây không nhận diện.
+   • "1 bát cháo" = 300 g (trước là 100 g → 30 kcal). "1 gói xôi" ≈ 200 g (trước là 40 g).
+   • 1 quả trứng vịt 70 g, trứng cút 9 g, chanh 67 g, lựu 282 g, khế 91 g, hành tây 110 g,
+     1 thanh sô cô la 44 g (khối lượng đơn vị theo USDA).
+   • "X với Y" (vd. "200g khoai tây với sốt gravy", "cơm với trứng") được tách thành 2 món,
+     CHỈ khi cả cụm không phải tên một món và cả hai vế đều nhận diện được.
+   • "7up"/"7 up" không còn bị đọc thành "up".
+
+6) BẢO VỆ MÓN CŨ
+   • Món mới chỉ mang bí danh đã kiểm chứng, không kế thừa bí danh của hồ sơ cũ trùng tên
+     (tránh lỗi "Trứng vịt" hút luôn chữ "trứng gà").
+   • Kiểm tra hồi quy: gõ tên của TẤT CẢ 789 món có sẵn → 778 ra y hệt V76; 11 món đổi đều là
+     cùng món/số liệu chuẩn hơn (Cá ngừ hộp 116 → 86 kcal theo USDA hiện hành, Waffle 440 → 291…).
+   • test-food.js: 229 test (thêm 86 test V77: nhận diện món mới, chống cướp món cũ,
+     đơn vị đong, tách "với", nhóm trên trang Thực phẩm).
+
+7) APP_BUILD = sw.js BUILD = 2026-09-22-v77-food-coverage → service worker tự thay bản mới.
