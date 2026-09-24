@@ -3,7 +3,7 @@
    mà không cần ai xoá cache bằng tay.
    Cách làm: trả bản cache ngay cho nhanh, đồng thời tải bản mới ở nền; khi bản mới
    khác bản đang dùng thì báo cho trang để trang tự nạp lại đúng MỘT lần. */
-const BUILD = "2026-09-22-v77-food-coverage";
+const BUILD = "2026-09-23-v78-cardio-default-steps";
 const CACHE_NAME = `in-and-out-pwa-${BUILD}`;
 const INDEX_URL = new URL("./index.html", self.registration.scope).href;
 const APP_URL = new URL("./app.js", self.registration.scope).href;

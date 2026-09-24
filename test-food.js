@@ -111,25 +111,32 @@ const runK = (kmh, g) => { const S = kmh * 1000 / 60; return (0.2 * S + 0.9 * S 
 const metK = (met) => (met - 1) * 3.5 * KG * 5 / 1000;
 /* [câu nhập, số phút mong đợi, kcal mong đợi, chữ phải có trong nhãn] */
 const CARDIO = [
-  ["30mins", 30, 30 * walkK(4, 0), "Đi bộ 4 km/h"],
-  ["30 phút", 30, 30 * walkK(4, 0), "Đi bộ 4 km/h"],
+  /* V78: ô Cardio chỉ ghi số phút = máy chạy bộ dốc 12% · 3,5 km/h. */
+  ["30mins", 30, 30 * walkK(3.5, 12), "dốc 12%"],
+  ["30 phút", 30, 30 * walkK(3.5, 12), "dốc 12%"],
+  ["45 phút", 45, 45 * walkK(3.5, 12), "3,5 km/h"],
+  ["30 phút đi bộ", 30, 30 * walkK(3.5, 12), "dốc 12%"],
+  ["30 phút đi bộ thường", 30, 30 * walkK(4, 0), "Đi bộ 4 km/h"],
+  ["60 phút đi bộ phẳng", 60, 60 * walkK(4, 0), "Đi bộ 4 km/h"],
+  ["30 phút đi bộ nhanh", 30, 30 * walkK(5.5, 0), "5,5 km/h"],
+  ["1 tiếng dốc 12", 60, 60 * walkK(3.5, 12), "dốc 12%"],
   ["1h đi bộ dốc 12 3.3km/h", 60, 60 * walkK(3.3, 12), "dốc 12%"],
   ["30mins elliptical level 5", 30, 30 * metK(4 + 4 * 5 / 19), "Elliptical level 5"],
   ["45 phút đạp xe 10km/h", 45, 45 * metK(4.0), "Đạp xe 10 km/h"],
   ["1h đi bộ dốc 12, 3.3km/h", 60, 60 * walkK(3.3, 12), "dốc 12%"],
   ["30 min incline 12% 3.3 km/h", 30, 30 * walkK(3.3, 12), "dốc 12%"],
   ["dốc 12 độ 3.3km/h 60 phút", 60, 60 * walkK(3.3, 12), "dốc 12%"],
-  ["30 + 45", 75, 75 * walkK(4, 0), "Đi bộ"],
-  ["30 phút đi bộ + 20 phút chạy bộ 9km/h", 50, 30 * walkK(4, 0) + 20 * runK(9, 0), "Chạy 9 km/h"],
+  ["30 + 45", 75, 75 * walkK(3.5, 12), "Đi bộ"],
+  ["30 phút đi bộ + 20 phút chạy bộ 9km/h", 50, 30 * walkK(3.5, 12) + 20 * runK(9, 0), "Chạy 9 km/h"],
   ["chạy 5km trong 30 phút", 30, 30 * runK(10, 0), "Chạy 10 km/h"],
-  ["45p máy chạy bộ", 45, 45 * walkK(4, 0), "Đi bộ"],
+  ["45p máy chạy bộ", 45, 45 * walkK(3.5, 12), "Đi bộ"],
   ["30 phút máy chạy bộ 8km/h", 30, 30 * runK(8, 0), "Chạy 8 km/h"],
   ["20 phút nhảy dây", 20, 20 * metK(11.0), "Nhảy dây"],
   ["1 tiếng cầu lông", 60, 60 * metK(5.5), "Cầu lông"],
   ["40 phút xe đạp tập 120W", 40, 40 * metK(6.8), "Xe đạp tập"],
   ["30p rowing 160w", 30, 30 * metK(11.0), "Chèo"],
   ["30 phút bơi sải nhanh", 30, 30 * metK(9.8), "Bơi"],
-  ["1:30", 90, 90 * walkK(4, 0), "Đi bộ"],
+  ["1:30", 90, 90 * walkK(3.5, 12), "Đi bộ"],
   ["300 kcal", 0, 300, ""],
   ["45 phút elliptical 350 kcal", 45, 350, "Elliptical"],
 ];
@@ -177,10 +184,53 @@ for (const [input, minutes, kcal, label] of CARDIO) {
 }
 /* Thẻ Tổng quan phải dùng ĐÚNG tốc độ đốt ròng mà lịch sử dùng. */
 {
-  const plan = T.v75WalkPlan(10000, KG, { speedKmh: 4, gradePct: 0 });
+  /* Thẻ "giờ đi bộ dốc" trên Tổng quan phải cùng tốc độ đốt với một giờ cardio mặc định. */
+  const plan = T.v75WalkPlan(10000, KG, { speedKmh: 3.5, gradePct: 12 });
   const day = T.cardioBurnV75(T.parseCardioV75("60 phút"), KG);
   if (Math.abs(plan.kcalPerMinute * 60 - day.kcal) > 1) bad(`Tổng quan đốt ${Math.round(plan.kcalPerMinute * 60)} kcal/giờ nhưng lịch sử ghi ${day.kcal}`); else good();
+  const flat = T.v75WalkPlan(10000, KG, { speedKmh: 4, gradePct: 0 });
+  const flatDay = T.cardioBurnV75(T.parseCardioV75("60 phút đi bộ thường"), KG);
+  if (Math.abs(flat.kcalPerMinute * 60 - flatDay.kcal) > 1) bad(`Đi bộ thường: tổng quan ${Math.round(flat.kcalPerMinute * 60)} vs lịch sử ${flatDay.kcal}`); else good();
 }
+
+/* ---------- V78 · ĐẾM BƯỚC ----------
+   Quãng đường = số bước × 0,43 × chiều cao; năng lượng theo ACSM đường bằng.
+   Kỳ vọng tính độc lập ngay tại đây từ chiều cao 160 cm của hồ sơ test. */
+console.log("=== V78 · SỐ BƯỚC ===");
+{
+  const STRIDE = 0.43 * 1.60;                       /* m mỗi bước */
+  const stepKcal = (steps, kmh = 3.8, grade = 0) => { const km = steps * STRIDE / 1000; const min = km / kmh * 60; return { min, kcal: min * walkK(kmh, grade) }; };
+  const cases = [
+    ["10000 bước", 10000], ["10.000 bước", 10000], ["10,000 bước", 10000], ["10k bước", 10000],
+    ["8000 steps", 8000], ["12000 bước", 12000], ["6000 buoc", 6000],
+  ];
+  for (const [input, steps] of cases) {
+    const parsed = T.parseCardioV75(input), burn = T.cardioBurnV75(parsed, KG), want = stepKcal(steps);
+    if (Math.abs(parsed.minutes - Math.round(want.min)) > 1) { bad(`${input} → ${parsed.minutes} phút, công thức ra ${Math.round(want.min)}`); continue; }
+    if (Math.abs(burn.kcal - Math.round(want.kcal)) > 2) { bad(`${input} → ${burn.kcal} kcal, công thức ra ${Math.round(want.kcal)}`); continue; }
+    if (!burn.label.includes("bước")) { bad(`${input} → nhãn "${burn.label}" không ghi số bước`); continue; }
+    good();
+  }
+  /* Có cả số bước lẫn thời gian: quãng đường giữ nguyên, tốc độ suy ra từ thời gian. */
+  {
+    const parsed = T.parseCardioV75("10000 bước trong 80 phút"), burn = T.cardioBurnV75(parsed, KG);
+    const km = 10000 * STRIDE / 1000, kmh = km / (80 / 60);
+    if (parsed.minutes !== 80 || Math.abs(burn.kcal - Math.round(80 * walkK(kmh, 0))) > 2) bad(`10000 bước trong 80 phút → ${parsed.minutes} phút / ${burn.kcal} kcal, mong đợi 80 / ${Math.round(80 * walkK(kmh, 0))}`); else good();
+  }
+  /* Gộp chung với buổi tập khác trong cùng ô. */
+  {
+    const parsed = T.parseCardioV75("30mins + 10000 bước"), burn = T.cardioBurnV75(parsed, KG);
+    const want = 30 * walkK(3.5, 12) + stepKcal(10000).kcal;
+    if (parsed.segments.length !== 2 || Math.abs(burn.kcal - Math.round(want)) > 3) bad(`30mins + 10000 bước → ${parsed.segments.length} bài / ${burn.kcal} kcal, mong đợi 2 / ${Math.round(want)}`); else good();
+  }
+  /* Số bước KHÔNG được đọc thành số phút. */
+  {
+    const parsed = T.parseCardioV75("10000 bước");
+    if (parsed.minutes > 500) bad(`10000 bước bị tính thành ${parsed.minutes} phút`); else good();
+  }
+}
+
+
 
 console.log("=== TRAP ===");
 for (const [input, expect, expectNot] of TRAP) {

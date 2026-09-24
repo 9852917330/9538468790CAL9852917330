@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-22-v77-food-coverage";
+  const APP_BUILD = "2026-09-23-v78-cardio-default-steps";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -7887,7 +7887,28 @@
     return Number.isFinite(n) ? n.toLocaleString("vi-VN", { maximumFractionDigits: 1, minimumFractionDigits: 0 }) : "—";
   }
   const V75_DEFAULT_WALK = { speedKmh: 4, gradePct: 0 };
-  const V75_REFERENCE_INCLINE = { speedKmh: 3.3, gradePct: 12 };
+  /* V78 · Ô Cardio chỉ ghi số phút = buổi máy chạy bộ dốc 12% ở 3,5 km/h — đúng bài
+     anh Điền tập hằng ngày. Ghi rõ bài khác (tốc độ, quãng đường, "đi bộ thường",
+     "nhanh/nhẹ", tên môn) thì máy dùng đúng thứ được ghi, không ép về mặc định. */
+  const V78_DEFAULT_CARDIO = { speedKmh: 3.5, gradePct: 12 };
+  const V75_REFERENCE_INCLINE = { speedKmh: 3.5, gradePct: 12 };
+  /* V78 · Đếm bước: đi bộ thường, tốc độ vừa phải 3,8 km/h.
+     Quãng đường = số bước × sải chân; sải chân ≈ 0,43 × chiều cao (các bảng quy đổi
+     bước→quãng đường dùng khoảng 0,41–0,45 × chiều cao cho người đi bộ vừa phải).
+     Năng lượng đi bộ trên đường bằng ≈ 0,5 kcal cho mỗi kg thể trọng mỗi km, nên
+     tốc độ 3,8 km/h chỉ đổi số PHÚT, không đổi số calo. */
+  const V78_STEP_WALK = { speedKmh: 3.8, gradePct: 0 };
+  const V78_STEP_LENGTH_RATIO = 0.43;
+  function v78StepLengthMeters() {
+    const h = Number(PROFILE.height);
+    return Number.isFinite(h) && h > 0 ? (h / 100) * V78_STEP_LENGTH_RATIO : 0.72;
+  }
+  /* "10.000", "10,000", "10000" đều là mười nghìn bước. */
+  function v78StepCount(raw) {
+    const text = String(raw).trim();
+    if (/^\d{1,3}(?:[.,]\d{3})+$/.test(text)) return Number(text.replace(/[.,]/g, ""));
+    return Number(text.replace(",", "."));
+  }
 
   /* Bảng tra MET (Compendium 2024). Thứ tự quan trọng: cụm cụ thể đứng trước cụm
      chung — "nhảy dây" phải khớp trước "nhảy", "đạp xe tại chỗ" trước "đạp xe". */
@@ -7931,6 +7952,8 @@
   const V75_VIGOROUS = /\b(?:manh|nang|vigorous|hard|intense|cuong do cao|het suc|max)\b/;
   const V75_LIGHT = /\b(?:nhe|light|easy|cham|slow|thu gian|thong tha)\b/;
   const V75_FAST = /\b(?:nhanh|fast|brisk)\b/;
+  /* V78: chữ báo hiệu đi bộ đường BẰNG, để không bị áp mặc định dốc 12%. */
+  const V78_FLAT = /\b(?:thuong|binh thuong|normal|flat|phang|bang phang|duong bang|khong doc|doc 0)\b/;
 
   /* Đạp xe ngoài trời theo tốc độ (Compendium 2024, 01010–01060). */
   function v75CycleMet(speedKmh) {
@@ -8006,6 +8029,11 @@
     take(/(\d+(?:[.,]\d+)?)\s*(?:w|watt|watts)\b/, (m) => { seg.watts = v75Num(m[1]); });
     take(/(\d+(?:[.,]\d+)?)\s*(?:km|kilomet|kilometer|kilometre)\b/, (m) => { seg.distanceKm = v75Num(m[1]); });
     take(/(\d+(?:[.,]\d+)?)\s*(?:met|meter|metre)\b/, (m) => { seg.distanceKm = v75Num(m[1]) / 1000; });
+    /* V78 · Số bước phải đọc TRƯỚC thời lượng, nếu không "10000 bước" thành 10.000 phút. */
+    take(/(\d+(?:[.,]\d+)*)\s*(k)?\s*(?:buoc|step|steps)\b/, (m) => {
+      const n = v78StepCount(m[1]) * (m[2] ? 1000 : 1);
+      if (Number.isFinite(n) && n > 0) seg.steps = Math.round(n);
+    });
 
     /* Thời lượng: 1h30 · 1 giờ 30 phút · 1:30 · 45p · 30mins · 30' · 1.5h */
     let minutes = 0;
@@ -8026,6 +8054,8 @@
     }
     seg.minutes = Math.max(0, minutes);
 
+    /* Phải soi trước khi dọn chữ thừa: "đi bộ thường/phẳng" = đường bằng, không dốc. */
+    seg.flat = V78_FLAT.test(text);
     if (V75_VIGOROUS.test(text)) seg.intensity = "vigorous";
     else if (V75_LIGHT.test(text)) seg.intensity = "light";
     seg.fast = V75_FAST.test(text);
@@ -8034,10 +8064,17 @@
 
     /* Có quãng đường và thời gian thì suy ra tốc độ; chỉ có quãng đường thì suy ra
        thời gian từ tốc độ đã ghi (hoặc tốc độ mặc định của bài đó). */
+    /* Số bước → quãng đường (nếu người dùng không tự ghi km). */
+    if (seg.steps && !seg.distanceKm) {
+      seg.stepLengthM = v78StepLengthMeters();
+      seg.distanceKm = (seg.steps * seg.stepLengthM) / 1000;
+    }
     if (seg.speedKmh === null && seg.distanceKm && seg.minutes > 0) seg.speedKmh = seg.distanceKm / (seg.minutes / 60);
     if (!seg.minutes && seg.distanceKm && seg.explicitKcal === null) {
       const k = seg.activity?.kind;
-      const assumed = seg.speedKmh ?? (k === "run" ? 8 : k === "cycle" ? 15 : k === "swim" ? 2 : V75_DEFAULT_WALK.speedKmh);
+      const assumed = seg.speedKmh ?? (k === "run" ? 8 : k === "cycle" ? 15 : k === "swim" ? 2
+        : seg.steps ? V78_STEP_WALK.speedKmh
+        : seg.gradePct > 0 ? V78_DEFAULT_CARDIO.speedKmh : V75_DEFAULT_WALK.speedKmh);
       seg.minutes = (seg.distanceKm / assumed) * 60;
       seg.minutesFromDistance = true;
     }
@@ -8069,12 +8106,29 @@
     }
 
     if (kind === "walk") {
-      const speed = seg.speedKmh ?? (seg.fast ? 5.5 : seg.intensity === "light" ? 3.2 : V75_DEFAULT_WALK.speedKmh);
-      const grade = seg.gradePct ?? V75_DEFAULT_WALK.gradePct;
+      /* V78 · Mặc định là buổi dốc 12% · 3,5 km/h. Chỉ về đường BẰNG khi người dùng
+         đã nói rõ: ghi tốc độ, ghi quãng đường/số bước, ghi "đi bộ thường/phẳng",
+         hoặc ghi nhanh/nhẹ (đó là mô tả của đi bộ đường bằng). */
+      const explicitSpeed = seg.speedKmh !== null, explicitGrade = seg.gradePct !== null;
+      const wantsFlat = seg.flat || !!seg.steps || seg.fast || seg.intensity === "light"
+        || (explicitSpeed && !explicitGrade) || (!!seg.distanceKm && !explicitGrade);
+      const grade = explicitGrade ? seg.gradePct : (wantsFlat ? 0 : V78_DEFAULT_CARDIO.gradePct);
+      const speed = explicitSpeed ? seg.speedKmh
+        : seg.fast ? 5.5
+        : seg.intensity === "light" ? 3.2
+        : seg.steps ? V78_STEP_WALK.speedKmh
+        : grade > 0 ? V78_DEFAULT_CARDIO.speedKmh
+        : V75_DEFAULT_WALK.speedKmh;
       out.speedKmh = speed; out.gradePct = grade;
       out.kcalPerMinute = v75KcalPerMinFromNetVo2(v75WalkNetVo2(speed, grade), weightKg);
       out.method = "Phương trình đi bộ ACSM";
       out.label = grade > 0 ? `Đi bộ dốc ${v75Fmt(grade)}% · ${v75Fmt(speed)} km/h` : `Đi bộ ${v75Fmt(speed)} km/h`;
+      if (seg.steps) {
+        out.label = grade > 0
+          ? `Đi bộ ${fmt(seg.steps)} bước dốc ${v75Fmt(grade)}% · ${v75Fmt(speed)} km/h`
+          : `Đi bộ ${fmt(seg.steps)} bước · ${v75Fmt(speed)} km/h`;
+        out.method += ` · ${fmt(seg.steps)} bước ≈ ${v75Fmt(Number(seg.distanceKm.toFixed(2)))} km (sải chân ${fmt(seg.stepLengthM || v78StepLengthMeters(), 2)} m ≈ 0,43 × chiều cao)`;
+      }
     } else if (kind === "run") {
       const speed = seg.speedKmh ?? (seg.fast ? 10 : seg.intensity === "light" ? 7 : 8);
       const grade = seg.gradePct ?? 0;
@@ -8134,7 +8188,7 @@
 
   /* Tách ô Cardio thành từng bài. Một ngày có nhiều dòng thì normalizeRows nối
      bằng " + " — trước đây chỉ bài đầu tiên được tính. */
-  const V75_HAS_DURATION = /(?:\d+(?:[.,]\d+)?\s*(?:h|hr|hrs|hour|hours|gio|tieng|phut|ph|p|min|mins|minute|minutes|m|')(?![a-z])|\d{1,2}\s*:\s*\d{1,2}|^\s*\d+(?:[.,]\d+)?\s*$|\d\s*(?:kcal|calo|cal)\b|\d\s*(?:km|met|meter)\b(?!\s*\/))/;
+  const V75_HAS_DURATION = /(?:\d+(?:[.,]\d+)?\s*(?:h|hr|hrs|hour|hours|gio|tieng|phut|ph|p|min|mins|minute|minutes|m|')(?![a-z])|\d{1,2}\s*:\s*\d{1,2}|^\s*\d+(?:[.,]\d+)?\s*$|\d\s*(?:kcal|calo|cal)\b|\d\s*(?:km|met|meter)\b(?!\s*\/)|\d\s*k?\s*(?:buoc|step|steps)\b)/;
   function v75SplitCardio(text) {
     const pieces = String(text ?? "")
       .replace(/(\d)\s*,\s*(\d)/g, "$1<V75DEC>$2")
@@ -8666,9 +8720,9 @@
         : `Mỡ hiện tại ${fmt(goal.bodyFat, 1)}% · từ cân ${fmt(goal.weight, 1)} kg${waistText}`,
     );
     setText("targetBurnWalkTime", achieved ? "0" : fmt(Math.ceil(plan.walkMinutes / 60)));
-    setText("targetBurnWalkSub", achieved ? "Đã đạt mục tiêu." : `Đi bộ thường · 4 km/h · ${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
+    setText("targetBurnWalkSub", achieved ? "Đã đạt mục tiêu." : `Đi bộ thường · ${v75Fmt(V75_DEFAULT_WALK.speedKmh)} km/h · ${fmt(plan.kcalPerMinute, 2)} kcal/phút`);
     setText("targetBurnInclineTime", achieved ? "0" : fmt(Math.ceil(plan.inclineMinutes / 60)));
-    setText("targetBurnInclineSub", `Dốc 12% · 3,3 km/h · ${fmt(plan.inclineKcalPerMinute, 2)} kcal/phút`);
+    setText("targetBurnInclineSub", `Dốc ${v75Fmt(V75_REFERENCE_INCLINE.gradePct)}% · ${v75Fmt(V75_REFERENCE_INCLINE.speedKmh)} km/h · ${fmt(plan.inclineKcalPerMinute, 2)} kcal/phút`);
     setText("targetBurnRate", achieved
       ? `${fmt(goal.weight, 1)} kg`
       : `${fmt(goal.weight, 1)}→${fmt(plan.targetWeightNow, 1)} kg`);

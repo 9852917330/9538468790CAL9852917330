@@ -1,0 +1,47 @@
+V78 · 2026-09-23 · "cardio-default-steps" — Mặc định cardio = dốc 12% · 3,5 km/h + đếm calo theo số bước
+=====================================================================================================
+
+1) MẶC ĐỊNH MỚI CỦA Ô CARDIO
+   Chỉ ghi số phút ("30mins", "45 phút", "1h", "1:30", "30 + 45") hoặc ghi "đi bộ"/"máy chạy bộ"
+   mà không kèm tốc độ → máy tính là ĐI BỘ DỐC 12% · 3,5 km/h (ACSM).
+   Ở 70 kg: 6,45 kcal/phút = 387 kcal/giờ (trước đây, đi bộ thường 4 km/h, chỉ 140 kcal/giờ).
+
+   Vẫn giữ nguyên khi người dùng ghi rõ — máy KHÔNG ép về mặc định:
+   • "30 phút đi bộ thường" / "đi bộ phẳng" / "dốc 0"      → đường bằng 4 km/h
+   • "30 phút đi bộ 5km/h"                                  → 5 km/h đường bằng (có tốc độ = có chủ đích)
+   • "30 phút đi bộ nhanh" / "nhẹ"                          → 5,5 / 3,2 km/h đường bằng
+   • "1h đi bộ dốc 12 3.3km/h", "30 min incline 12% 3.3"    → đúng số đã ghi
+   • "1 tiếng dốc 12" (chỉ có độ dốc)                        → 3,5 km/h ở dốc 12%
+   • "5km đi bộ" (có quãng đường)                            → đường bằng 4 km/h
+   • Mọi bài khác (chạy, đạp xe, elliptical, chèo, bơi, nhảy dây, HIIT, cầu lông…) giữ nguyên
+     cách tính của V75 theo Compendium 2024 và phương trình ACSM.
+
+2) ĐẾM CALO THEO SỐ BƯỚC (mới)
+   Ghi "10000 bước" (hoặc "10.000 bước", "10,000 bước", "10k bước", "8000 steps", "6000 buoc").
+   • Quãng đường = số bước × sải chân; sải chân = 0,43 × chiều cao trong Cài đặt
+     (các bảng quy đổi bước → quãng đường dùng khoảng 0,41–0,45 × chiều cao khi đi vừa phải).
+     Cao 160 cm → 0,69 m/bước → 10.000 bước ≈ 6,9 km.
+   • Tốc độ mặc định 3,8 km/h (đi bộ vừa phải) → 10.000 bước ≈ 109 phút.
+   • Calo theo phương trình đi bộ ACSM: ở 70 kg, 10.000 bước ≈ 240 kcal.
+   • Lưu ý bản chất: năng lượng đi bộ đường bằng ≈ 0,5 kcal cho mỗi kg thể trọng mỗi km,
+     nên TỐC ĐỘ chỉ đổi số PHÚT, không đổi số calo. Muốn đổi calo thì phải đổi quãng đường
+     (số bước) hoặc độ dốc.
+   • Ghi kèm thời gian thật thì máy lấy thời gian đó và suy ra tốc độ: "10000 bước trong 80 phút"
+     → 80 phút, 5,2 km/h, calo vẫn 240 (cùng quãng đường).
+   • Ghi kèm độ dốc: "10000 bước dốc 12" → tính theo dốc 12%.
+   • Cộng chung trong một ô: "30mins + 10000 bước" = 2 bài, cộng calo.
+   • Nhãn ở Lịch sử ghi rõ: "Đi bộ 10.000 bước · 3,8 km/h", mở chi tiết thấy
+     "10.000 bước ≈ 6,9 km (sải chân 0,69 m ≈ 0,43 × chiều cao)".
+
+3) THẺ TỔNG QUAN
+   Dòng thứ hai của thẻ "GIỜ ĐI BỘ CẦN THIẾT" đổi từ dốc 12% · 3,3 km/h sang dốc 12% · 3,5 km/h
+   để khớp với bài mặc định mới. Dòng thứ nhất vẫn là đi bộ thường 4 km/h để so sánh.
+   Hai dòng này đọc thẳng từ cùng một hằng số với bộ tính Lịch sử, không còn ghi cứng trong chữ.
+
+4) KIỂM TRA
+   test-food.js: 246 test (thêm 17 test V78: mặc định dốc 12% cho mọi cách ghi số phút, "đi bộ
+   thường/phẳng/nhanh/nhẹ" vẫn đường bằng, số bước ra đúng quãng đường – phút – calo, số bước
+   không bị đọc thành số phút, gộp nhiều bài trong một ô, và thẻ Tổng quan phải cùng tốc độ đốt
+   với Lịch sử). Kiểm tra trình duyệt ở 390 và 412 px, nền sáng và tối: không lỗi, không tràn thẻ.
+
+5) APP_BUILD = sw.js BUILD = 2026-09-23-v78-cardio-default-steps → service worker tự thay bản mới.
