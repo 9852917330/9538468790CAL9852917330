@@ -1,0 +1,61 @@
+V79 · 2026-09-30 · Công cụ cardio
+================================
+
+THAY ĐỔI
+• Thêm “Tính cardio” cuối menu; mở trực tiếp bằng #cardio.
+• Chiều cao và cân nặng tự lưu tại trình duyệt. Nếu đã có thông số trong Cài đặt,
+  công cụ lấy làm giá trị ban đầu. Cân nặng tại đây là cân nặng hiện tại để tính tập;
+  không đổi cân nặng khởi điểm hoặc dữ liệu Google Sheet của trang theo dõi.
+• Mặc định calo vận động (net), khớp cách tính cardio ở Lịch sử. Có thêm tổng calo
+  (gross) và luôn hiển thị cả hai con số cho cùng một thời lượng.
+• Gõ calo → tính thời gian; gõ vào ô thời gian đang tự tính → chuyển sang tính calo.
+  Có thể chọn tính tốc độ hoặc độ dốc; giữ các đầu vào khác để có một nghiệm xác định.
+• Đơn vị phút/giờ; nhận dấu phẩy hoặc dấu chấm thập phân. Giữ số chưa làm tròn bên
+  trong để việc đổi đơn vị hoặc tính ngược không tích lũy sai số.
+• 8 bài: đi bộ/đi bộ dốc, chạy bộ, xe đạp tập, elliptical, máy leo cầu thang,
+  máy chèo, nhảy dây, HIIT. Chỉ hiện tốc độ/độ dốc với bài có phương trình phù hợp.
+• Nút “Thử ví dụ”: 160 cm, 72 kg, 500 kcal, đi bộ dốc 12%, 3,3 km/h.
+• Dữ liệu trống, số không hợp lệ, hoặc mục tiêu đòi hỏi độ dốc/tốc độ ngoài giới hạn
+  đều được báo rõ, không ép thành một kết quả khác hoặc tiếp tục hiện kết quả cũ.
+• Lưu cả buổi tính cuối; giao diện sáng/tối và bố cục điện thoại. Bổ sung cache cho
+  cardio.js/cardio.css và tăng APP_BUILD/BUILD để bản PWA cập nhật và dùng offline.
+• README.md giữ trống.
+
+CÔNG THỨC
+Đi bộ: VO2 = 0,1 × S + 1,8 × S × G + 3,5.
+Chạy:  VO2 = 0,2 × S + 0,9 × S × G + 3,5.
+S: mét/phút = km/h × 1000 ÷ 60. G: độ dốc phần trăm ÷ 100.
+Tổng kcal/phút = VO2 × cân nặng ÷ 200.
+Calo vận động/phút = (VO2 − 3,5) × cân nặng ÷ 200.
+Bài MET: VO2 = MET × 3,5; cùng công thức quy đổi sang kcal.
+Chiều cao được nhớ theo yêu cầu nhưng không đưa vào các phương trình này.
+
+Ví dụ đã đối chiếu:
+• Đi bộ 3,3 km/h, dốc 12%, 72 kg: 6,2568 kcal vận động/phút;
+  7,5168 tổng kcal/phút.
+• 500 kcal vận động: 79,9130546 phút, khoảng 1 giờ 19 phút 55 giây.
+• 500 tổng kcal: 66,5176671 phút, khoảng 1 giờ 6 phút 31 giây.
+Calo thực tế vẫn là ước tính. Bám/tì tay, máy, cơ địa, cường độ và các đoạn nghỉ
+có thể làm khác kết quả. Công cụ có lưu ý khi ngoại suy tốc độ/dốc ngoài khoảng
+thường dùng; không tự đổi từ đi bộ sang chạy bộ.
+
+NGUỒN
+https://pmc.ncbi.nlm.nih.gov/articles/PMC3656435/
+https://pmc.ncbi.nlm.nih.gov/articles/PMC7356312/
+https://pacompendium.com/conditioning-exercise/
+https://pacompendium.com/bicycling/
+https://pacompendium.com/sports/
+https://pubmed.ncbi.nlm.nih.gov/17135860/
+
+KIỂM TRA
+• node test-cardio.js: kiểm tra số tham chiếu độc lập, tính ngược 4 biến, net/gross,
+  bảng MET, dữ liệu không hợp lệ và nghiệm không thể đạt.
+• node test-food.js: 246 đạt, 0 lỗi; giữ nguyên nghiệp vụ cũ.
+• Chromium: nhập liệu thực, chuyển bài, đổi đơn vị nhiều lần, khôi phục dữ liệu,
+  dữ liệu lưu hỏng/bị chặn, 320/390/768 px, desktop, theme tối, điều hướng và offline.
+
+CẬP NHẬT REPO
+Giải nén, dùng toàn bộ nội dung trong thư mục 9538468790CAL9852917330-main để cập nhật
+repo hiện có, gồm cả hai file mới cardio.js và cardio.css. Không chỉ chép riêng
+app.js. Triển khai lại như bản trước. Không cần nhập lại Google Sheet hoặc xóa dữ
+liệu trình duyệt. Công cụ cardio tự hoạt động ngay cả khi chưa kết nối Google Sheet.

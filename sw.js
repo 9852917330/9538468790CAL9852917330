@@ -3,7 +3,7 @@
    mà không cần ai xoá cache bằng tay.
    Cách làm: trả bản cache ngay cho nhanh, đồng thời tải bản mới ở nền; khi bản mới
    khác bản đang dùng thì báo cho trang để trang tự nạp lại đúng MỘT lần. */
-const BUILD = "2026-09-23-v78-cardio-default-steps";
+const BUILD = "2026-09-30-v79-cardio-calculator";
 const CACHE_NAME = `in-and-out-pwa-${BUILD}`;
 const INDEX_URL = new URL("./index.html", self.registration.scope).href;
 const APP_URL = new URL("./app.js", self.registration.scope).href;
@@ -11,12 +11,14 @@ const ROOT_URL = new URL("./", self.registration.scope).href;
 const OPTIONAL_SHELL = [
   ROOT_URL,
   APP_URL,
+  new URL("./cardio.js", self.registration.scope).href,
+  new URL("./cardio.css", self.registration.scope).href,
   new URL("./manifest.webmanifest", self.registration.scope).href,
   new URL("./icon-192.png", self.registration.scope).href,
   new URL("./icon-512.png", self.registration.scope).href
 ];
 /* Hai file này quyết định app chạy đúng hay sai nên luôn được kiểm tra bản mới ở nền. */
-const REVALIDATE = new Set([INDEX_URL, APP_URL, ROOT_URL]);
+const REVALIDATE = new Set([INDEX_URL, APP_URL, ROOT_URL, new URL("./cardio.js", self.registration.scope).href, new URL("./cardio.css", self.registration.scope).href]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

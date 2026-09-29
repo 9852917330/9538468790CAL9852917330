@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-23-v78-cardio-default-steps";
+  const APP_BUILD = "2026-09-30-v79-cardio-calculator";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -9443,6 +9443,7 @@
     document
       .querySelectorAll(".nav-btn")
       .forEach((b) => b.classList.toggle("active", b.dataset.page === name));
+    document.querySelector(`.nav-btn[data-page="${name}"]`)?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     history.replaceState(null, "", `#${name}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (name === "lookup") {
@@ -11196,7 +11197,7 @@
   } catch {}
   const rawHash = location.hash.replace("#", "");
   const hash = rawHash === "foods" ? "lookup" : rawHash;
-  if (["overview", "calendar", "charts", "history", "lookup"].includes(hash))
+  if (["overview", "calendar", "charts", "history", "lookup", "cardio"].includes(hash))
     showPage(hash);
   const hasCachedRows = hydrateSheetCache();
   const hasOverviewSnapshot = hydrateOverviewSnapshot();

@@ -1978,6 +1978,8 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   }
   html[data-theme="light"] #page-overview .overview-walk-alt{border-top-color:rgba(255,255,255,.22)}
 </style>
+<link rel="stylesheet" href="./cardio.css">
+<script src="./cardio.js" defer></script>
 </head>
 
 <body>
@@ -2006,7 +2008,7 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
   <rect x="200" y="112" width="120" height="7" rx="3.5" fill="url(#bl-amber)"/>
 </svg>
 </div><div class="brand-copy"><strong>In and Out Calories</strong><span>Calo · Tập luyện · Tỉ lệ mỡ</span></div></div>
-  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button><button class="nav-btn" data-page="lookup">Thực phẩm</button></nav>
+  <nav class="nav" aria-label="Menu"><button class="nav-btn active" data-page="overview">Tổng quan</button><button class="nav-btn" data-page="calendar">Lịch năm</button><button class="nav-btn" data-page="charts">Biểu đồ</button><button class="nav-btn" data-page="history">Lịch sử</button><button class="nav-btn" data-page="lookup">Thực phẩm</button><button class="nav-btn" data-page="cardio">Tính cardio</button></nav>
   <div class="header-tools"><button id="stickyRefreshBtn" class="header-refresh-btn" type="button" aria-label="Cập nhật dữ liệu Google Sheet ngay"><span aria-hidden="true">↻</span><b>Cập nhật ngay</b></button><div class="status-wrap"><div class="status"><span id="syncDot" class="status-dot"></span><span id="syncText">Đang kết nối Sheet…</span></div><span id="lookupText" class="lookup-state">CSDL nguyên liệu đơn lẻ · Việt/Tây + USDA</span></div></div>
 </div></header>
 <main>
@@ -2153,6 +2155,56 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     </div>
   </section>
 </section>
+
+<section id="page-cardio" class="page" aria-labelledby="cardio-title">
+  <div class="cc-heading">
+    <div><span class="cc-eyebrow">CALO ↔ THỜI GIAN</span><h1 id="cardio-title">Công cụ cardio</h1><p>Nhập mục tiêu, tính buổi tập phù hợp.</p></div>
+    <button type="button" class="cc-example" id="cardio-example">Thử ví dụ</button>
+  </div>
+  <div class="cc-profile">
+    <div class="cc-profile-copy"><h2>Thông số cơ thể</h2><div class="cc-save" id="cardio-saved">Nhập một lần, tự nhớ cho lần sau</div><p class="cc-small">Calo dùng cân nặng; công thức không dùng chiều cao.</p></div>
+    <div class="cc-field"><label for="cardio-height">Chiều cao <span class="cc-small">Tùy chọn</span></label><div class="cc-input-wrap"><input id="cardio-height" type="text" inputmode="decimal" placeholder="Ví dụ: 160" autocomplete="off" maxlength="10"><span class="cc-unit">cm</span></div></div>
+    <div class="cc-field"><label for="cardio-weight">Cân nặng hiện tại</label><div class="cc-input-wrap"><input id="cardio-weight" type="text" inputmode="decimal" placeholder="Ví dụ: 72" autocomplete="off" maxlength="10"><span class="cc-unit">kg</span></div></div>
+  </div>
+  <div class="cc-layout">
+    <div class="cc-form">
+      <div class="cc-field"><label for="cardio-activity">Bài cardio</label><select id="cardio-activity"></select><p class="cc-small" id="cardio-activity-note"></p></div>
+      <div class="cc-field" id="cardio-preset-wrap" hidden><label for="cardio-preset">Cường độ / công suất</label><select id="cardio-preset"></select></div>
+      <div class="cc-mode"><label for="cardio-target">Tự tính thông số</label><select id="cardio-target"><option value="minutes">Thời gian cần tập</option><option value="calories">Calo đốt được</option><option value="speed">Tốc độ cần tập</option><option value="grade">Độ dốc cần tập</option></select><p class="cc-small" id="cardio-auto-help"></p></div>
+      <div class="cc-row">
+        <div class="cc-field" id="cardio-field-calories"><label for="cardio-calories">Calo <span class="cc-auto-tag" id="cardio-tag-calories" hidden>Tự tính</span></label><div class="cc-input-wrap"><input id="cardio-calories" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><span class="cc-unit">kcal</span></div></div>
+        <div class="cc-field" id="cardio-field-minutes"><label for="cardio-minutes">Thời gian <span class="cc-auto-tag" id="cardio-tag-minutes">Tự tính</span></label><div class="cc-input-wrap cc-time"><input id="cardio-minutes" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><select id="cardio-unit" aria-label="Đơn vị thời gian"><option value="min">Phút</option><option value="hour">Giờ</option></select></div></div>
+      </div>
+      <div class="cc-row">
+        <div class="cc-field" id="cardio-field-speed"><label for="cardio-speed">Tốc độ <span class="cc-auto-tag" id="cardio-tag-speed" hidden>Tự tính</span></label><div class="cc-input-wrap"><input id="cardio-speed" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><span class="cc-unit">km/h</span></div></div>
+        <div class="cc-field" id="cardio-field-grade"><label for="cardio-grade">Độ dốc <span class="cc-auto-tag" id="cardio-tag-grade" hidden>Tự tính</span></label><div class="cc-input-wrap"><input id="cardio-grade" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><span class="cc-unit">%</span></div><p class="cc-small" id="cardio-grade-help">12 = dốc 12%, không phải 12°.</p></div>
+      </div>
+      <div class="cc-field"><label for="cardio-basis">Cách tính calo</label><select id="cardio-basis"><option value="net">Calo vận động · trừ phần nghỉ</option><option value="gross">Tổng calo · gồm cả phần nghỉ</option></select><p class="cc-small" id="cardio-basis-help"></p></div>
+      <p class="cc-error" id="cardio-error" role="status" hidden></p>
+    </div>
+    <div>
+      <div class="cc-result" id="cardio-result" role="status" aria-live="polite" aria-atomic="true">
+        <div class="cc-result-top"><span class="cc-result-kicker" id="cardio-result-basis">CALO VẬN ĐỘNG</span><span class="cc-estimate">Ước tính</span></div>
+        <div class="cc-result-caption" id="cardio-result-caption">THỜI GIAN CẦN TẬP</div>
+        <div class="cc-main-value"><strong id="cardio-result-value">—</strong><span id="cardio-result-unit"></span></div>
+        <p class="cc-equivalent" id="cardio-result-equivalent">Nhập cân nặng để bắt đầu.</p>
+        <div class="cc-rates"><div><strong id="cardio-rate">—</strong><span>kcal / phút</span></div><div><strong id="cardio-hourly">—</strong><span>kcal / giờ</span></div></div>
+        <dl class="cc-totals"><div><dt>Calo vận động</dt><dd id="cardio-net-total">—</dd></div><div><dt>Tổng calo</dt><dd id="cardio-gross-total">—</dd></div><div><dt>Quãng đường</dt><dd id="cardio-distance">—</dd></div><div><dt>Cường độ (MET)</dt><dd id="cardio-met">—</dd></div></dl>
+        <p class="cc-summary" id="cardio-summary"></p>
+      </div>
+      <p class="cc-warning" id="cardio-warnings" role="status" hidden></p>
+      <p class="cc-method"><span id="cardio-method">Phương trình đi bộ ACSM</span> · <a id="cardio-source" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7356312/" target="_blank" rel="noopener noreferrer">Xem nguồn</a></p>
+      <details class="cc-info"><summary>Hiểu đúng kết quả &amp; cách sử dụng</summary>
+        <p>Đổi calo → tự tính thời gian. Gõ vào thời gian → tự tính calo. Muốn tính ngược tốc độ hoặc độ dốc, chọn ô cần tính ở trên; những ô còn lại được giữ nguyên. Một mục tiêu calo không xác định duy nhất cả tốc độ lẫn độ dốc.</p>
+        <p>Đây là ước tính theo công thức, không phải phép đo riêng cho cơ thể. Dùng thời gian thực sự vận động, không cộng thời gian nghỉ. Tốc độ và dốc cần ổn định; bám hoặc tì tay lên tay vịn có thể làm kết quả cao hơn thực tế.</p>
+        <p>Đi bộ/chạy dùng ACSM: VO₂ = a × S + b × S × G + 3,5. S là m/phút, G là dốc chia 100. Đi bộ: a = 0,1; b = 1,8. Chạy: a = 0,2; b = 0,9. Tổng kcal/phút = VO₂ × kg ÷ 200; calo vận động trừ thêm 3,5 × kg ÷ 200.</p>
+        <p>Các bài khác dùng MET từ <a href="https://pacompendium.com/" target="_blank" rel="noopener noreferrer">Compendium 2024</a>: tổng kcal/phút = MET × 3,5 × kg ÷ 200; calo vận động dùng MET − 1. Đây là mức tham chiếu cho người lớn, không hiệu chỉnh riêng theo tuổi, chiều cao hay thể lực.</p>
+        <p>Kết quả trên thẻ được làm tròn; phép tính bên trong giữ đủ độ chính xác. Thông số được nhớ trên trình duyệt và địa chỉ web hiện tại; xóa dữ liệu trình duyệt hoặc đổi thiết bị có thể cần nhập lại.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 </main>
 <script id="instant-overview-hydration">
 (() => {
