@@ -1,0 +1,57 @@
+V80 · 2026-10-02 · Sửa cường độ máy leo cầu thang và rà soát cardio
+================================================================
+
+1. MÁY LEO CẦU THANG
+Bản V79 chỉ có 9,3 MET chung; số đó không đại diện cho mọi nhịp leo.
+V80 mặc định nhập nhịp leo và chiều cao bậc, có 8 lựa chọn nhanh:
+20 / 30 / 40 / 50 / 60 / 80 / 100 / 120 bậc/phút, hoặc nhập số khác.
+Có thể tính calo, thời gian, hoặc tính ngược nhịp leo cần thiết.
+Hiển thị số bậc và độ cao leo tương đương; thông số được lưu theo từng bài.
+Giữ lựa chọn 9,3 MET tham chiếu khi chưa biết thông số, kèm ghi chú rõ.
+Không tự gán level của các hãng máy thành cùng một mức calo.
+
+Mô hình Holland cho máy bậc xoay: VO2 = 2 × bậc/phút × cao bậc (m) + 3,5.
+Tổng kcal/phút = VO2 × kg / 200; kcal vận động trừ 3,5 × kg / 200.
+Không dùng công thức bước lên-xuống bục cho máy bậc xoay.
+Kết quả là ước tính, không phải phép đo riêng cho máy Relax hay người tập.
+Ví dụ kiểm tra: 71 kg, 30 bậc/phút, bậc cao 25 cm, 25 phút:
+133,125 kcal vận động; 164,1875 tổng kcal; 750 bậc; 187,5 m tương đương.
+Nguồn: https://jhk.termedia.pl/pdf-158728-84987?filename=84987.pdf
+
+2. RÀ SOÁT CÁC BÀI CÒN LẠI
+• Đối chiếu 8 bài và các mức MET với Compendium 2024.
+• Xe đạp tập: bổ sung 25–30 W và trên 325 W; tổng cộng 13 lựa chọn.
+• Giữ đúng mức vừa/mạnh đã có nguồn cho elliptical, HIIT; mức công suất cho máy
+  chèo, mức nhịp cho nhảy dây. Không tự tạo thêm MET cho level riêng của máy.
+• Đi bộ/chạy vẫn dùng ACSM, tính ngược tốc độ/dốc và cảnh báo ngoài khoảng thường dùng.
+• Mỗi bài nhớ cường độ riêng. Chuyển bài không mang độ dốc của đi bộ sang chạy,
+  không xóa lựa chọn watt/nhịp của bài đã dùng; quay lại sẽ phục hồi.
+• Dữ liệu V79 được chuyển đúng lựa chọn xe đạp dù vị trí các mục thay đổi.
+• Nút ví dụ không ghi đè cân nặng/chiều cao hợp lệ của người dùng.
+• Xóa thông số hoặc nhập sai sẽ xóa kết quả, không giữ số cũ gây hiểu lầm.
+Nguồn các mức: https://pacompendium.com/conditioning-exercise/
+https://pacompendium.com/bicycling/ và https://pacompendium.com/sports/
+
+3. ĐỒNG BỘ PHẦN ĐỌC CARDIO TRONG LỊCH SỬ
+• Nhận nhịp bậc/phút và chiều cao bậc trong dòng Stairmaster. Ví dụ nhập:
+  25 phút stairmaster 30 bậc/phút bậc cao 25cm
+• Cùng công thức bậc xoay với công cụ mới; nhận chiều cao bằng cm hoặc m.
+• Bỏ phép nội suy level tùy ý của xe đạp tập/elliptical. Nếu chỉ có level, dùng
+  mức tham chiếu và ghi rõ chưa thể quy đổi level. Số calo của các dòng cũ chỉ ghi
+  level có thể thay đổi sau khi cập nhật; nội dung Google Sheet không bị sửa.
+• Calo ghi trực tiếp vẫn được ưu tiên như trước.
+
+4. KIỂM TRA
+• node test-cardio.js: 200 kiểm tra đạt.
+• node test-food.js (cần jsdom): 249 kiểm tra đạt, 0 lỗi.
+• Chromium: 92 kiểm tra giao diện đạt; không lỗi JavaScript. Kiểm tra từng bài,
+  8 mức leo, phép tính ngược, chuyển bài, khôi phục phiên, đổi phút/giờ, dữ liệu
+  bị chặn/hỏng, offline, màn hình 320/390/768 px và desktop, giao diện sáng/tối.
+• PWA V79 tự nâng lên V80, giữ hồ sơ và dữ liệu cục bộ khác.
+• README.md vẫn hoàn toàn trống.
+
+5. CẬP NHẬT
+Dùng toàn bộ nội dung thư mục 9538468790CAL9852917330-main trong ZIP để chép đè
+repo hiện có rồi triển khai lại. Phải cập nhật cả index.html, app.js, cardio.js,
+cardio.css và sw.js. Không cần xóa dữ liệu trình duyệt.
+APP_BUILD = BUILD = 2026-10-02-v80-stair-intensity.

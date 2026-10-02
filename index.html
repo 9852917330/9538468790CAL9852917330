@@ -2170,7 +2170,20 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
     <div class="cc-form">
       <div class="cc-field"><label for="cardio-activity">Bài cardio</label><select id="cardio-activity"></select><p class="cc-small" id="cardio-activity-note"></p></div>
       <div class="cc-field" id="cardio-preset-wrap" hidden><label for="cardio-preset">Cường độ / công suất</label><select id="cardio-preset"></select></div>
-      <div class="cc-mode"><label for="cardio-target">Tự tính thông số</label><select id="cardio-target"><option value="minutes">Thời gian cần tập</option><option value="calories">Calo đốt được</option><option value="speed">Tốc độ cần tập</option><option value="grade">Độ dốc cần tập</option></select><p class="cc-small" id="cardio-auto-help"></p></div>
+      <div id="cardio-step-wrap" class="cc-step-panel" hidden>
+        <div class="cc-field"><label for="cardio-step-mode">Cách tính cường độ leo thang</label><select id="cardio-step-mode"><option value="cadence">Theo nhịp leo &amp; chiều cao bậc</option><option value="reference">Tham chiếu chung · 9,3 MET</option></select></div>
+        <div id="cardio-step-inputs">
+          <div class="cc-field"><label for="cardio-step-quick">Chọn nhanh mức nhịp leo</label><select id="cardio-step-quick"><option value="">Tự nhập bậc/phút</option><option value="20">20 bậc/phút</option><option value="30">30 bậc/phút</option><option value="40">40 bậc/phút</option><option value="50">50 bậc/phút</option><option value="60">60 bậc/phút</option><option value="80">80 bậc/phút</option><option value="100">100 bậc/phút</option><option value="120">120 bậc/phút</option></select></div>
+          <div class="cc-row">
+            <div class="cc-field" id="cardio-field-stepRate"><label for="cardio-stepRate">Nhịp leo <span class="cc-auto-tag" id="cardio-tag-stepRate" hidden>Tự tính</span></label><div class="cc-input-wrap cc-step-rate"><input id="cardio-stepRate" type="text" inputmode="decimal" placeholder="Ví dụ: 30" autocomplete="off" maxlength="10"><span class="cc-unit">bậc/phút</span></div></div>
+            <div class="cc-field"><label for="cardio-stepHeight">Chiều cao bậc</label><div class="cc-input-wrap"><input id="cardio-stepHeight" type="text" inputmode="decimal" placeholder="Ví dụ: 20,3" autocomplete="off" maxlength="10"><span class="cc-unit">cm</span></div></div>
+          </div>
+          <p class="cc-small">Mỗi lần đặt chân lên bậc mới tính là 1 bậc. Đo chiều cao giữa hai mặt bậc; không dùng chiều dài mặt bậc. Thông số được tự nhớ.</p>
+          <p class="cc-small">Mô hình dành cho máy bậc xoay, không áp dụng cho máy hai bàn đạp lên xuống. Tì người lên tay vịn có thể làm mức đốt thực tế thấp hơn.</p>
+        </div>
+        <p id="cardio-step-reference" class="cc-small" hidden>Chỉ dùng khi chưa biết nhịp leo. Mức chung này không đại diện riêng cho level thấp hay cao.</p>
+      </div>
+      <div class="cc-mode"><label for="cardio-target">Tự tính thông số</label><select id="cardio-target"><option value="minutes">Thời gian cần tập</option><option value="calories">Calo đốt được</option><option value="speed">Tốc độ cần tập</option><option value="grade">Độ dốc cần tập</option><option value="stepRate">Nhịp leo cần tập</option></select><p class="cc-small" id="cardio-auto-help"></p></div>
       <div class="cc-row">
         <div class="cc-field" id="cardio-field-calories"><label for="cardio-calories">Calo <span class="cc-auto-tag" id="cardio-tag-calories" hidden>Tự tính</span></label><div class="cc-input-wrap"><input id="cardio-calories" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><span class="cc-unit">kcal</span></div></div>
         <div class="cc-field" id="cardio-field-minutes"><label for="cardio-minutes">Thời gian <span class="cc-auto-tag" id="cardio-tag-minutes">Tự tính</span></label><div class="cc-input-wrap cc-time"><input id="cardio-minutes" type="text" inputmode="decimal" autocomplete="off" maxlength="12"><select id="cardio-unit" aria-label="Đơn vị thời gian"><option value="min">Phút</option><option value="hour">Giờ</option></select></div></div>
@@ -2189,15 +2202,16 @@ html[data-theme="dark"] .theme-toggle{color:#fff!important;background:linear-gra
         <div class="cc-main-value"><strong id="cardio-result-value">—</strong><span id="cardio-result-unit"></span></div>
         <p class="cc-equivalent" id="cardio-result-equivalent">Nhập cân nặng để bắt đầu.</p>
         <div class="cc-rates"><div><strong id="cardio-rate">—</strong><span>kcal / phút</span></div><div><strong id="cardio-hourly">—</strong><span>kcal / giờ</span></div></div>
-        <dl class="cc-totals"><div><dt>Calo vận động</dt><dd id="cardio-net-total">—</dd></div><div><dt>Tổng calo</dt><dd id="cardio-gross-total">—</dd></div><div><dt>Quãng đường</dt><dd id="cardio-distance">—</dd></div><div><dt>Cường độ (MET)</dt><dd id="cardio-met">—</dd></div></dl>
+        <dl class="cc-totals"><div><dt>Calo vận động</dt><dd id="cardio-net-total">—</dd></div><div><dt>Tổng calo</dt><dd id="cardio-gross-total">—</dd></div><div><dt id="cardio-distance-label">Quãng đường</dt><dd id="cardio-distance">—</dd></div><div id="cardio-steps-row" hidden><dt>Số bậc tương đương</dt><dd id="cardio-steps">—</dd></div><div><dt>Cường độ (MET)</dt><dd id="cardio-met">—</dd></div></dl>
         <p class="cc-summary" id="cardio-summary"></p>
       </div>
       <p class="cc-warning" id="cardio-warnings" role="status" hidden></p>
       <p class="cc-method"><span id="cardio-method">Phương trình đi bộ ACSM</span> · <a id="cardio-source" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7356312/" target="_blank" rel="noopener noreferrer">Xem nguồn</a></p>
       <details class="cc-info"><summary>Hiểu đúng kết quả &amp; cách sử dụng</summary>
-        <p>Đổi calo → tự tính thời gian. Gõ vào thời gian → tự tính calo. Muốn tính ngược tốc độ hoặc độ dốc, chọn ô cần tính ở trên; những ô còn lại được giữ nguyên. Một mục tiêu calo không xác định duy nhất cả tốc độ lẫn độ dốc.</p>
+        <p>Đổi calo → tự tính thời gian. Gõ vào thời gian → tự tính calo. Muốn tính ngược tốc độ hoặc độ dốc, chọn ô cần tính ở trên (máy bậc xoay còn tính ngược được nhịp leo); những ô còn lại được giữ nguyên. Một mục tiêu calo không xác định duy nhất cả tốc độ lẫn độ dốc.</p>
         <p>Đây là ước tính theo công thức, không phải phép đo riêng cho cơ thể. Dùng thời gian thực sự vận động, không cộng thời gian nghỉ. Tốc độ và dốc cần ổn định; bám hoặc tì tay lên tay vịn có thể làm kết quả cao hơn thực tế.</p>
         <p>Đi bộ/chạy dùng ACSM: VO₂ = a × S + b × S × G + 3,5. S là m/phút, G là dốc chia 100. Đi bộ: a = 0,1; b = 1,8. Chạy: a = 0,2; b = 0,9. Tổng kcal/phút = VO₂ × kg ÷ 200; calo vận động trừ thêm 3,5 × kg ÷ 200.</p>
+        <p>Máy cầu thang bậc xoay: VO₂ = 2 × nhịp leo (bậc/phút) × chiều cao bậc (m) + 3,5, theo mô hình Holland được đánh giá trong nghiên cứu năm 2022. Đây vẫn là ước tính, chưa hiệu chuẩn riêng cho từng máy hoặc người tập.</p>
         <p>Các bài khác dùng MET từ <a href="https://pacompendium.com/" target="_blank" rel="noopener noreferrer">Compendium 2024</a>: tổng kcal/phút = MET × 3,5 × kg ÷ 200; calo vận động dùng MET − 1. Đây là mức tham chiếu cho người lớn, không hiệu chỉnh riêng theo tuổi, chiều cao hay thể lực.</p>
         <p>Kết quả trên thẻ được làm tròn; phép tính bên trong giữ đủ độ chính xác. Thông số được nhớ trên trình duyệt và địa chỉ web hiện tại; xóa dữ liệu trình duyệt hoặc đổi thiết bị có thể cần nhập lại.</p>
       </details>

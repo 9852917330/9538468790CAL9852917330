@@ -31,7 +31,7 @@ eq(C.solve({ ...base, target: 'calories', minutes: 90 }).netKcal, 563.112);
 // Independent MET reference: elliptical 5 MET, 72 kg, 30 min.
 const ell = C.solve({ ...base, activity: 'elliptical', preset: 0, target: 'calories', minutes: 30 });
 eq(ell.netKcal, 151.2); eq(ell.grossKcal, 189);
-for (const [activity, a] of Object.entries(C.ACTIVITIES)) if (!a.treadmill) {
+for (const [activity, a] of Object.entries(C.ACTIVITIES)) if (!a.treadmill && !a.stepmill) {
   for (let preset = 0; preset < a.presets.length; preset++) {
     const r = C.solve({ ...base, activity, preset });
     ok(r.ok); ok(r.rates.net > 0); eq(r.netKcal, 500);
@@ -53,4 +53,25 @@ const zero = C.solve({ ...base, calories: 0 }); ok(zero.ok); eq(zero.state.minut
 ok(C.solve({ ...base, speed: 2 }).warnings.length > 0);
 eq(C.parseNumber('3,3'), 3.3); eq(C.parseNumber('3.3'), 3.3); eq(C.parseNumber(' 72 '), 72);
 for (const value of ['', 'Infinity', '1e4', '3.3.3', 'abc', '-12']) ok(C.parseNumber(value) === null);
+// V80: independently worked stairmill example (Holland): 2×30×.25+3.5 = 18.5 ml/kg/min.
+const stairs = { ...base, activity: 'stairs', stepRate: 30, stepHeight: 25, weight: 71, minutes: 25, target: 'calories' };
+const sr = C.solve(stairs); ok(sr.ok); eq(sr.netKcal, 133.125); eq(sr.grossKcal, 164.1875); eq(sr.steps, 750); eq(sr.ascent, 187.5);
+for (const basis of ['net', 'gross']) {
+  const r = C.solve({ ...stairs, basis });
+  for (const target of ['minutes', 'calories', 'stepRate']) {
+    const inverse = C.solve({ ...r.state, target, [target]: null });
+    ok(inverse.ok); eq(inverse.state[target], r.state[target]);
+  }
+}
+for (const stepRate of [20,30,40,50,60,80,100,120]) {
+ const r=C.solve({...stairs,stepRate});ok(r.ok);eq(r.netKcal,133.125*stepRate/30);
+}
+eq(C.solve({...stairs,stepHeight:20}).netKcal,106.5);
+eq(C.solve({...stairs,stepMode:'reference',preset:0}).rates.met,9.3);
+ok(C.solve({...stairs,stepMode:'reference',preset:0}).warnings.length > 0);
+for (const x of [{stepRate:null},{stepHeight:null},{stepRate:0},{stepRate:201},{stepHeight:4},{stepHeight:41},{stepMode:'bad'},{stepRate:Infinity},{target:'stepRate',minutes:0},{target:'stepRate',calories:0},{target:'stepRate',basis:'gross',calories:1}]) ok(!C.solve({...stairs,...x}).ok);
+ok(!C.solve({...base,activity:'toString'}).ok);
+// Newly restored cycling bands: 25–30 W and >325 W.
+eq(C.solve({...base,activity:'bike',preset:0}).rates.met,3.5);
+eq(C.solve({...base,activity:'bike',preset:11}).rates.met,16.3);
 console.log(`PASS: ${checks} cardio assertions`);

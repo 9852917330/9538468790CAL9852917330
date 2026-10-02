@@ -93,3 +93,11 @@ html[data-theme="dark"] #page-cardio .cc-warning{color:#ffdc9c;background:#392b1
 #page-cardio .cc-main-value strong,#page-cardio .cc-rates strong{color:#effff7!important}
 #page-cardio .cc-equivalent{color:#b3d9c9!important}
 #page-cardio .cc-summary{color:#c1dfd3!important}
+
+/* V80: revolving stairmill controls. */
+#page-cardio .cc-step-panel{display:grid;gap:14px;padding:15px;border:1px solid var(--cc-line);border-radius:13px;background:var(--cc-soft)}
+#page-cardio #cardio-step-inputs{display:grid;gap:14px}
+#page-cardio .cc-step-rate input{padding-right:65px}
+#page-cardio .cc-step-panel select,#page-cardio .cc-step-panel input{background:var(--cc-bg)}
+#page-cardio .cc-step-panel .cc-computed input{background:var(--cc-tint)}
+@media(max-width:400px){#page-cardio .cc-step-panel{padding:12px}#page-cardio .cc-step-panel .cc-row{grid-template-columns:1fr}#page-cardio .cc-step-panel label{font-size:12px}}

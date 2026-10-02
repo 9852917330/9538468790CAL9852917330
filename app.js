@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const APP_BUILD = "2026-09-30-v79-cardio-calculator";
+  const APP_BUILD = "2026-10-02-v80-stair-intensity";
   try {
     if (localStorage.getItem("inAndOutAppBuild") !== APP_BUILD) {
       localStorage.setItem("inAndOutAppBuild", APP_BUILD);
@@ -7913,7 +7913,7 @@
   /* Bảng tra MET (Compendium 2024). Thứ tự quan trọng: cụm cụ thể đứng trước cụm
      chung — "nhảy dây" phải khớp trước "nhảy", "đạp xe tại chỗ" trước "đạp xe". */
   const V75_ACTIVITIES = [
-    { key: "stair_machine", label: "Máy leo cầu thang", re: /\b(?:stair ?master|stair ?climber|stepmill|step mill|may leo (?:cau )?thang|leo thang may)\b/, met: 9.3, code: "02065" },
+    { key: "stair_machine", label: "Máy leo cầu thang", kind: "stair_machine", re: /\b(?:stair ?master|stair ?climber|stepmill|step mill|may leo (?:cau )?thang|leo thang may)\b/, met: 9.3, code: "02065" },
     { key: "stairs", label: "Leo cầu thang", re: /\b(?:leo cau thang|leo thang|stairs?|stair climbing)\b/, met: 6.8, light: 4.5, vigorous: 9.3, code: "17131" },
     { key: "spin", label: "Đạp xe spin", re: /\b(?:spin(?:ning)?|rpm class|dap xe spin)\b/, met: 9.0, code: "01270" },
     { key: "cycle_stationary", label: "Xe đạp tập", re: /\b(?:xe dap tap|dap xe tai cho|xe dap tai cho|dap xe trong nha|stationary (?:bike|cycling)|exercise bike|indoor (?:bike|cycling)|may dap xe|bike tai cho)\b/, kind: "cycle_stationary" },
@@ -8012,7 +8012,7 @@
     if (!text || /^(?:0+(?:[.,]0+)?|khong|none|no|nghi|-)$/.test(text)) return null;
 
     const seg = { original, activity: null, minutes: 0, speedKmh: null, gradePct: null, level: null,
-      watts: null, distanceKm: null, explicitKcal: null, intensity: "moderate", unknownWords: "" };
+      watts: null, stepRate: null, stepHeightCm: null, distanceKm: null, explicitKcal: null, intensity: "moderate", unknownWords: "" };
 
     const take = (re, fn) => { const m = text.match(re); if (m) { fn(m); text = text.replace(m[0], " "); } return m; };
 
@@ -8027,6 +8027,9 @@
     take(/(\d+(?:[.,]\d+)?)\s*%\s*(?:doc|incline|grade)?/, (m) => { if (seg.gradePct === null) seg.gradePct = v75Num(m[1]); });
     take(/(?:level|lvl|lv|muc|cap|do kho|resistance|khang luc)\s*[:=]?\s*(\d+(?:[.,]\d+)?)/, (m) => { seg.level = v75Num(m[1]); });
     take(/(\d+(?:[.,]\d+)?)\s*(?:w|watt|watts)\b/, (m) => { seg.watts = v75Num(m[1]); });
+    /* V80: cadence and step height precede duration/step-count parsing. */
+    take(/(\d+(?:[.,]\d+)?)\s*(?:(?:bac|steps?)\s*\/\s*(?:phut|min(?:ute)?s?)|spm)\b/, (m) => { seg.stepRate = v75Num(m[1]); });
+    take(/(?:chieu cao bac|bac cao|cao bac|step height)\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*(cm|m)\b/, (m) => { seg.stepHeightCm = v75Num(m[1]) * (m[2] === "m" ? 100 : 1); });
     take(/(\d+(?:[.,]\d+)?)\s*(?:km|kilomet|kilometer|kilometre)\b/, (m) => { seg.distanceKm = v75Num(m[1]); });
     take(/(\d+(?:[.,]\d+)?)\s*(?:met|meter|metre)\b/, (m) => { seg.distanceKm = v75Num(m[1]) / 1000; });
     /* V78 · Số bước phải đọc TRƯỚC thời lượng, nếu không "10000 bước" thành 10.000 phút. */
@@ -8140,7 +8143,17 @@
       /* Với đi bộ/chạy, "nhanh" là tốc độ; với các bài khác thì "nhanh" là cường độ. */
       if (seg.fast && seg.intensity === "moderate") seg = { ...seg, intensity: "vigorous" };
       let met = a.met, code = a.code || "", detail = "";
-      if (kind === "cycle") {
+      if (kind === "stair_machine") {
+        if (Number.isFinite(seg.stepRate) && seg.stepRate >= 1 && seg.stepRate <= 200
+            && Number.isFinite(seg.stepHeightCm) && seg.stepHeightCm >= 5 && seg.stepHeightCm <= 40) {
+          met = (2 * seg.stepRate * seg.stepHeightCm / 100 + 3.5) / 3.5;
+          code = "Holland 1990";
+          detail = `${v75Fmt(seg.stepRate)} bậc/phút · bậc cao ${v75Fmt(seg.stepHeightCm)} cm`;
+        } else {
+          met = 9.3; code = "02065";
+          detail = "tham chiếu chung (chưa đủ nhịp leo và chiều cao bậc)";
+        }
+      } else if (kind === "cycle") {
         if (seg.speedKmh !== null) { ({ met, code } = v75CycleMet(seg.speedKmh)); detail = `${v75Fmt(seg.speedKmh)} km/h`; }
         else if (seg.watts !== null) { ({ met, code } = v75StationaryMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
         else if (seg.intensity === "vigorous") { met = 9.0; code = "01017"; detail = "mạnh"; }
@@ -8148,14 +8161,13 @@
         else { met = 6.8; code = "01011"; }
       } else if (kind === "cycle_stationary") {
         if (seg.watts !== null) { ({ met, code } = v75StationaryMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
-        else if (seg.level !== null) { met = clamp(3.5 + seg.level * 0.45, 3.5, 12.5); code = "≈01210–01240"; detail = `level ${v75Fmt(seg.level)}`; }
+        else if (seg.level !== null) { met = 6.8; code = "01200"; detail = `tham chiếu chung; level ${v75Fmt(seg.level)} chưa quy đổi được sang W`; }
         else { met = 6.8; code = "01200"; }
       } else if (kind === "elliptical") {
-        /* Compendium chỉ có 2 mức: vừa 5,0 và mạnh 9,0. Level mỗi máy mỗi khác nên
-           quy đổi tuyến tính trên thang 1–20: level 1 ≈ 4 MET, level 20 = 9 MET. */
-        if (seg.level !== null) { met = clamp(4 + (seg.level - 1) * (5 / 19), 4, 9); code = "≈02048–02049"; detail = `level ${v75Fmt(seg.level)}`; }
-        else if (seg.intensity === "vigorous") { met = 9.0; code = "02049"; detail = "mạnh"; }
-        else { met = 5.0; code = "02048"; }
+        /* V80: do not invent a universal level-to-MET mapping. */
+        if (seg.intensity === "vigorous") { met = 9.0; code = "02049"; detail = "mạnh"; }
+        else { met = 5.0; code = "02048"; detail = "mức vừa tham chiếu"; }
+        if (seg.level !== null) detail += `; level ${v75Fmt(seg.level)} không quy đổi chung`;
       } else if (kind === "rowing") {
         if (seg.watts !== null) { ({ met, code } = v75RowingMet(seg.watts)); detail = `${fmt(seg.watts)} W`; }
         else if (seg.intensity === "vigorous") { met = 7.3; code = "02070"; detail = "mạnh"; }
@@ -8175,7 +8187,7 @@
       }
       out.met = met; out.code = code;
       out.kcalPerMinute = v75KcalPerMinFromMet(met, weightKg);
-      out.method = `MET ${v75Fmt(met)} · Compendium 2024${code ? ` #${code}` : ""}${a.approx ? " (ước lượng gần đúng)" : ""}`;
+      out.method = code === "Holland 1990" ? `Ước tính bậc xoay · Holland: VO₂ = 2 × bậc/phút × chiều cao bậc (m) + 3,5; trừ 1 MET nghỉ` : `MET ${v75Fmt(met)} · Compendium 2024${code ? ` #${code}` : ""}${a.approx ? " (ước lượng gần đúng)" : ""}`;
       out.label = detail ? `${a.label} ${detail}` : a.label;
     }
     out.kcal = out.kcalPerMinute * seg.minutes;
